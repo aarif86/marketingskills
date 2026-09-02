@@ -1,11 +1,11 @@
 {
   "name": "nsd-sg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "NSD.SG — upload your AI-generated website, host it on name.nsd.sg",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.0.0" },
-  "main": "src/server.js",
+  "main": "server.cjs",
   "scripts": {
     "start": "node src/server.js",
     "dev": "NODE_ENV=development node --watch src/server.js",

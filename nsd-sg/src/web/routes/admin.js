@@ -1,6 +1,7 @@
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
+import { isEnabled as hostingEnabled, listOrphanDirs } from '../../publish/hostinger.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -322,6 +323,12 @@ export async function registerAdminRoutes(app) {
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
       dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env,
+      hosting: hostingEnabled() ? {
+        tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
+        byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
+        errors: all("SELECT id, subdomain, hosting_error FROM sites WHERE hosting_state = 'error' ORDER BY updated_at DESC LIMIT 20"),
+        orphans: listOrphanDirs(),
+      } : null,
     }) });
   });
 }

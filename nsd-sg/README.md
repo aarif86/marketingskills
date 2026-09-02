@@ -40,24 +40,30 @@ src/
                      rate limiter, audit, mailer (zero-dep SMTP), html templating
   services/          users (auth/sessions/tokens), sites, plans (entitlements)
   storage/           releases (immutable versions, hard-link CoW, rollback, prune), zip (safe extraction)
-  serve/             tenant static server + branding injection
+  serve/             tenant static server + branding injection (VPS / local)
+  publish/           Hostinger publisher: rebuilds each tenant's LiteSpeed docroot on every change (managed hosting)
   web/               middleware (session/CSRF/headers), routes/, views/ (server-rendered), public/
-deploy/              Dockerfile, docker-compose.yml, caddy/ (wildcard + on-demand TLS), scripts/, systemd/
-docs/                01 discovery+architecture · 02 security · 03 product spec · 04 Hostinger deploy ·
-                     05 business model · 06 operations
+deploy/              Dockerfile, docker-compose.yml, caddy/ (wildcard + on-demand TLS), scripts/, systemd/,
+                     hostinger/ (env template + archive builder for managed hosting)
+docs/                01 discovery+architecture · 02 security · 03 product spec · 04 Hostinger VPS deploy ·
+                     05 business model · 06 operations · 07 Hostinger managed hosting (the live deployment)
 test/                node:test suites incl. hostile-ZIP fixtures and cross-tenant checks
 ```
 
 ## Production
 
-See `docs/04-deployment-hostinger.md`. In short: Hostinger KVM VPS → `bash deploy/scripts/setup-vps.sh`
+**Live (since 3 Sep 2026): Hostinger Cloud Startup, managed Node.js.** See `docs/07-hostinger-managed-hosting.md`.
+In short: `deploy/hostinger/build-archive.sh` → upload via the Hostinger MCP / hPanel → the app runs under
+LiteSpeed lsnode via `server.cjs`; tenant sites are Hostinger subdomains served from `public_html/tenants/<name>`.
+
+Alternative (VPS, not in use): `docs/04-deployment-hostinger.md` — KVM VPS → `bash deploy/scripts/setup-vps.sh`
 → edit `.env` → run again. DNS: `A @`, `A www`, `A *` → VPS IP.
 
 ## Security
 
 Read `docs/02-security-model.md` before changing anything in `src/storage`, `src/serve` or
 `src/lib/{mime,paths,subdomain}.js`. The short version: tenants are static-only, isolated by origin
-and filesystem, served through allowlists, and the badge is injected at the serving layer.
+and filesystem, served through allowlists, and the badge is injected at the serving layer (VPS) or baked into the published docroot (managed hosting).
 
 ## Licence
 

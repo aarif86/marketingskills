@@ -4,6 +4,7 @@ import { newId, nowIso } from '../lib/ids.js';
 import { normalizeSubdomain, validateSubdomainSyntax } from '../lib/subdomain.js';
 import { entitlementsFor } from './plans.js';
 import { deleteSiteStorage } from '../storage/releases.js';
+import { syncSite as resync, provisionSubdomain, deprovisionSubdomain, isEnabled as hostingEnabled } from '../publish/hostinger.js';
 
 export function isReserved(name) {
   return !!getDb().prepare('SELECT 1 FROM reserved_subdomains WHERE name = ?').get(name);
@@ -64,7 +65,15 @@ export function createSite({ user, subdomain, title = '' }) {
     if (String(e.message).includes('UNIQUE')) return { ok: false, reason: 'That name is already taken.' };
     throw e;
   }
-  return { ok: true, site: getSiteById(id) };
+  const site = getSiteById(id);
+  // Managed hosting: ask Hostinger for the subdomain now, then publish the "coming soon" page.
+  // Failures are recorded on the row (hosting_state='error') and retried by `cli sync-all` / the cron.
+  if (hostingEnabled()) {
+    provisionSubdomain(name)
+      .then((r) => { if (r.provisioned) db.prepare("UPDATE sites SET hosting_state = 'ready' WHERE id = ? AND hosting_state = 'pending'").run(id); else db.prepare("UPDATE sites SET hosting_error = ? WHERE id = ?").run(r.reason ?? 'not provisioned', id); resync(id); })
+      .catch((e) => db.prepare("UPDATE sites SET hosting_state = 'error', hosting_error = ? WHERE id = ?").run(String(e.message).slice(0, 500), id));
+  }
+  return { ok: true, site };
 }
 
 export function updateSiteSettings(siteId, { title, allow_framing }) {
@@ -81,10 +90,12 @@ export function updateSiteSettings(siteId, { title, allow_framing }) {
 
 export function setSiteStatus(siteId, status, reason = '') {
   getDb().prepare('UPDATE sites SET status = ?, suspended_reason = ?, updated_at = ? WHERE id = ?').run(status, reason, nowIso(), siteId);
+  resync(siteId);
 }
 
 export function setSiteBranding(siteId, removed) {
   getDb().prepare('UPDATE sites SET branding_removed = ?, updated_at = ? WHERE id = ?').run(removed ? 1 : 0, nowIso(), siteId);
+  resync(siteId);
 }
 
 /** Admin-only: move a site to a new subdomain (reclaim / rename). */
@@ -92,7 +103,14 @@ export function renameSubdomain(siteId, newName) {
   const name = normalizeSubdomain(newName);
   const reason = subdomainUnavailableReason(name);
   if (reason) return { ok: false, reason };
-  getDb().prepare('UPDATE sites SET subdomain = ?, updated_at = ? WHERE id = ?').run(name, nowIso(), siteId);
+  const before = getSiteById(siteId);
+  getDb().prepare("UPDATE sites SET subdomain = ?, hosting_state = 'pending', updated_at = ? WHERE id = ?").run(name, nowIso(), siteId);
+  if (hostingEnabled() && before) {
+    deprovisionSubdomain(before.subdomain).catch(() => {});
+    provisionSubdomain(name)
+      .then((r) => { if (r.provisioned) getDb().prepare("UPDATE sites SET hosting_state = 'ready' WHERE id = ? AND hosting_state = 'pending'").run(siteId); resync(siteId); })
+      .catch((e) => getDb().prepare("UPDATE sites SET hosting_state = 'error', hosting_error = ? WHERE id = ?").run(String(e.message).slice(0, 500), siteId));
+  }
   return { ok: true, subdomain: name };
 }
 
@@ -108,6 +126,7 @@ export function deleteSite(siteId) {
     db.prepare('DELETE FROM releases WHERE site_id = ?').run(siteId);
   })();
   deleteSiteStorage(siteId);
+  if (hostingEnabled()) deprovisionSubdomain(site.subdomain).catch(() => {});
   return true;
 }
 

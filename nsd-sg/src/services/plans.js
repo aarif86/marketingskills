@@ -1,6 +1,7 @@
 // Plan resolution. Effective limits = plan limits + per-user admin overrides.
 // Nothing here is hardcoded per customer: community/founding accounts are just rows in `plans`.
 import { getDb } from '../db/index.js';
+import { syncUserSites as resyncUser } from '../publish/hostinger.js';
 import { newId, isoAfterDays, nowIso } from '../lib/ids.js';
 
 export const HARD_LIMITS = {
@@ -95,6 +96,7 @@ export function assignPlan({ userId, planId, actorId = null, reason = '' }) {
     db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(newId(), userId, 'plan_changed', user?.plan_id ?? null, plan.id, JSON.stringify({ reason }), actorId);
   })();
+  resyncUser(userId);
   return expires;
 }
 
@@ -108,6 +110,7 @@ export function extendPlan({ userId, days, actorId = null, type = 'extension_gra
     db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(newId(), userId, type, user.plan_id, user.plan_id, JSON.stringify({ days, reason }), actorId);
   })();
+  resyncUser(userId);
   return next;
 }
 

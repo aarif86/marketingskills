@@ -1,5 +1,9 @@
 // Users, authentication, sessions and one-time tokens.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { getDb } from '../db/index.js';
+import { syncUserSites as resyncUser } from '../publish/hostinger.js';
 import { config } from '../config.js';
 import { newId, newToken, sha256, nowIso, isoAfterSeconds } from '../lib/ids.js';
 import { hashPassword, verifyPassword, needsRehash } from '../lib/password.js';
@@ -157,10 +161,12 @@ export function markEmailVerified(userId) {
 export function setUserStatus(userId, status) {
   getDb().prepare('UPDATE users SET status = ?, updated_at = ? WHERE id = ?').run(status, nowIso(), userId);
   if (status !== 'active') destroyAllSessions(userId);
+  resyncUser(userId);
 }
 
 export function setUserOverrides(userId, overrides) {
   getDb().prepare('UPDATE users SET overrides_json = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(overrides ?? {}), nowIso(), userId);
+  resyncUser(userId); // branding_removed override changes the badge
 }
 
 export function setUserNotes(userId, notes) {
@@ -178,9 +184,10 @@ export function countAdmins() {
 // Bootstraps the first admin from env on first boot.
 export async function ensureBootstrapAdmin(log = console) {
   if (countAdmins() > 0) return false;
-  const { email, password, name } = config.admin;
-  if (!email || !password) {
-    log.warn('No admin exists and ADMIN_EMAIL/ADMIN_PASSWORD are not set. Create one with: node src/cli.js make-admin <email>');
+  const { email, name } = config.admin;
+  let { password } = config.admin;
+  if (!email) {
+    log.warn('No admin exists and ADMIN_EMAIL is not set. Create one with: node src/cli.js make-admin <email>');
     return false;
   }
   const existing = findUserByEmail(email);
@@ -188,8 +195,21 @@ export async function ensureBootstrapAdmin(log = console) {
     setUserRole(existing.id, 'admin');
     return true;
   }
+  // Managed hosting has no shell for `make-admin`: when no password is configured, generate one and
+  // leave it in DATA_DIR/initial-admin-password.txt (mode 600, outside any document root). Change it after first login.
+  let generated = false;
+  if (!password) {
+    password = crypto.randomBytes(12).toString('base64url');
+    generated = true;
+  }
   await createUser({ email, password, name, role: 'admin', planId: 'plus', verified: true });
-  log.info(`Bootstrap admin created: ${email}`);
+  if (generated) {
+    const file = path.join(config.dataDir, 'initial-admin-password.txt');
+    fs.writeFileSync(file, `${email}\n${password}\n`, { mode: 0o600 });
+    log.warn(`Bootstrap admin created: ${email}. Generated password written to ${file} - sign in and change it.`);
+  } else {
+    log.info(`Bootstrap admin created: ${email}`);
+  }
   return true;
 }
 

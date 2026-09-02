@@ -1,5 +1,6 @@
 // Central configuration. Read once at boot; everything else imports from here.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,9 +9,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Minimal .env loader (no dependency). Real env vars always win.
 function loadDotEnv() {
   const candidates = [process.env.NSD_ENV_FILE, path.join(__dirname, '..', '.env')].filter(Boolean);
-  for (const file of candidates) {
-    if (!fs.existsSync(file)) continue;
-    for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
+  // Second pass: DATA_DIR/.env holds operator secrets on managed hosting (never inside the build archive).
+  const fromData = () => (process.env.DATA_DIR ? path.join(process.env.DATA_DIR, '.env') : null);
+  for (const file of candidates.concat(() => fromData())) {
+    const resolved = typeof file === 'function' ? file() : file; // DATA_DIR may come from an earlier file
+    if (!resolved || !fs.existsSync(resolved)) continue;
+    for (const raw of fs.readFileSync(resolved, 'utf8').split('\n')) {
       const line = raw.trim();
       if (!line || line.startsWith('#')) continue;
       const eq = line.indexOf('=');
@@ -40,10 +44,33 @@ const isProd = NODE_ENV === 'production';
 const isTest = NODE_ENV === 'test';
 
 const baseDomain = env('BASE_DOMAIN', 'nsd.sg').toLowerCase();
-const sessionSecret = env('SESSION_SECRET', isProd ? '' : 'dev-only-secret-not-for-production-use-please-change');
+const dataDir = path.resolve(env('DATA_DIR', path.join(__dirname, '..', 'data')));
+
+// SESSION_SECRET: from the environment, or generated once and kept in DATA_DIR/session-secret (mode 600).
+// The file lives outside any document root. Managed hosts (Hostinger) have no shell to run `openssl rand`,
+// so this keeps the secret stable across deploys without shipping it inside the build archive.
+function resolveSessionSecret() {
+  const fromEnv = env('SESSION_SECRET', '');
+  if (fromEnv && !fromEnv.startsWith('change-me')) return fromEnv;
+  if (!isProd) return 'dev-only-secret-not-for-production-use-please-change';
+  const file = path.join(dataDir, 'session-secret');
+  try {
+    const existing = fs.readFileSync(file, 'utf8').trim();
+    if (existing.length >= 32) return existing;
+  } catch { /* create below */ }
+  const generated = crypto.randomBytes(48).toString('hex');
+  fs.mkdirSync(dataDir, { recursive: true, mode: 0o750 });
+  fs.writeFileSync(file, generated + '\n', { mode: 0o600 });
+  return generated;
+}
+const sessionSecret = resolveSessionSecret();
 if (isProd && (!sessionSecret || sessionSecret.length < 32 || sessionSecret.startsWith('change-me'))) {
   throw new Error('SESSION_SECRET must be set to a random string of at least 32 characters in production');
 }
+
+// Hostinger managed hosting: tenants are served by LiteSpeed from TENANT_ROOT/<label>, not by this process.
+// Leave TENANT_ROOT empty for the VPS/Caddy deployment where the app serves *.BASE_DOMAIN itself.
+const tenantRoot = env('TENANT_ROOT', '');
 
 export const config = Object.freeze({
   env: NODE_ENV,
@@ -57,7 +84,7 @@ export const config = Object.freeze({
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean),
   publicScheme: env('PUBLIC_SCHEME', isProd ? 'https' : 'http'),
-  dataDir: path.resolve(env('DATA_DIR', path.join(__dirname, '..', 'data'))),
+  dataDir,
   sessionSecret,
   sessionCookieName: isProd ? '__Host-nsd_session' : 'nsd_session',
   sessionTtlSeconds: int('SESSION_TTL_SECONDS', 60 * 60 * 24 * 14),
@@ -88,6 +115,13 @@ export const config = Object.freeze({
     from: env('SMTP_FROM', `NSD.SG <no-reply@${baseDomain}>`),
   },
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
+  hostinger: {
+    tenantRoot: tenantRoot ? path.resolve(tenantRoot) : '',
+    publicHtml: path.resolve(env('PUBLIC_HTML', tenantRoot ? path.dirname(path.resolve(tenantRoot)) : path.join(__dirname, '..', 'data', 'public_html'))),
+    username: env('HOSTINGER_USERNAME', ''),
+    apiToken: env('HOSTINGER_API_TOKEN', ''),
+    apiBase: env('HOSTINGER_API_BASE', 'https://developers.hostinger.com'),
+  },
   version: JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version,
   rootDir: path.join(__dirname, '..'),
 });

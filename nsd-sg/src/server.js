@@ -127,15 +127,4 @@ export async function buildApp({ logger = true } = {}) {
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname);
-if (isMain) {
-  const app = await buildApp();
-  const shutdown = async (sig) => {
-    app.log.info({ sig }, 'shutting down');
-    await app.close();
-    process.exit(0);
-  };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  await app.listen({ host: config.host, port: config.port });
-  app.log.info(`NSD.SG v${config.version} platform on ${config.platformHosts.join(', ')} · tenants on *.${config.baseDomain}`);
-}
+if (isMain) await import('./start.js');

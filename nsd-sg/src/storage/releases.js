@@ -11,6 +11,7 @@ import { getDb } from '../db/index.js';
 import { newId, nowIso } from '../lib/ids.js';
 import { sanitizeRelativePath } from '../lib/paths.js';
 import { extractZip, ZipError } from './zip.js';
+import { syncSite } from '../publish/hostinger.js';
 
 export class StorageError extends Error {}
 
@@ -162,7 +163,8 @@ function commitRelease({ siteId, releaseId, source, note, userId, maxReleases })
   })();
   pruneReleases(siteId, maxReleases);
   db.prepare('UPDATE sites SET total_storage_bytes = ? WHERE id = ?').run(uniqueBytes(siteId), siteId);
-  return { id: releaseId, version, bytes, count };
+  const hosting = syncSite(siteId); // no-op unless TENANT_ROOT is set
+  return { id: releaseId, version, bytes, count, hosting };
 }
 
 export function pruneReleases(siteId, keep) {

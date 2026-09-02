@@ -66,6 +66,7 @@ function safeOrigin(referer) {
 }
 
 export function platformSecurityHeaders(reply) {
+  reply.header('Cache-Control', 'private, no-store'); // the platform is per-user; never let a proxy cache it
   reply.header('X-Content-Type-Options', 'nosniff');
   reply.header('X-Frame-Options', 'DENY');
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');

@@ -5,6 +5,7 @@ import { createUser, findUserByEmail, setUserRole, changePassword } from './serv
 import { assignPlan, listPlans } from './services/plans.js';
 import { pruneReleases, cleanTemp } from './storage/releases.js';
 import { config } from './config.js';
+import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisionSubdomain } from './publish/hostinger.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -62,6 +63,28 @@ async function main() {
       });
       break;
     }
+    case 'sync-all': {
+      if (!hostingEnabled()) throw new Error('TENANT_ROOT is not set; nothing to sync');
+      console.log(await syncAll());
+      const orphans = listOrphanDirs();
+      if (orphans.length) console.log('Orphan tenant dirs (not owned by any site):', orphans.join(', '));
+      break;
+    }
+    case 'sync-site': {
+      const [name] = args;
+      const row = getDb().prepare("SELECT id FROM sites WHERE subdomain = ? AND status != 'deleted'").get(name);
+      if (!row) throw new Error('no such site');
+      await provisionSubdomain(name);
+      console.log(syncSite(row.id));
+      break;
+    }
+    case 'hosting': {
+      const db = getDb();
+      console.log({ enabled: hostingEnabled(), tenantRoot: config.hostinger.tenantRoot, username: config.hostinger.username, apiToken: config.hostinger.apiToken ? 'set' : 'MISSING',
+        byState: db.prepare("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state").all(),
+        errors: db.prepare("SELECT subdomain, hosting_error FROM sites WHERE hosting_state = 'error' LIMIT 20").all() });
+      break;
+    }
     default:
       console.log(`NSD.SG CLI
   migrate                       apply schema/migrations
@@ -69,7 +92,10 @@ async function main() {
   set-plan <email> <planId>     assign a plan (free | plus | community | ...)
   plans                         list plans
   prune                         prune old releases + temp files
-  stats                         quick counts`);
+  stats                         quick counts
+  sync-all                      (Hostinger) provision pending subdomains + rebuild every tenant docroot
+  sync-site <name>              (Hostinger) provision + rebuild one site
+  hosting                       (Hostinger) publisher status`);
   }
   closeDb();
 }

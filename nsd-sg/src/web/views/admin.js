@@ -230,6 +230,12 @@ ${pct > 85 ? html`<div class="flash flash-error">Disk is ${pct}% full. Prune rel
 <div class="card"><h2>Top bandwidth (7d)</h2><table class="table small"><tbody>${h.top.map((t) => html`<tr><td><a href="/admin/sites/${t.id}">${t.subdomain}</a></td><td>${t.requests.toLocaleString()} req</td><td>${formatBytes(t.bytes)}</td></tr>`)}</tbody></table></div>
 <div class="card"><h2>Largest sites</h2><table class="table small"><tbody>${h.bigSites.map((s) => html`<tr><td><a href="/admin/sites/${s.id}">${s.subdomain}</a></td><td>${formatBytes(s.total_storage_bytes)}</td></tr>`)}</tbody></table></div>
 </div>
+${h.hosting ? html`<div class="card"><h2>Hostinger publisher</h2>
+<p>Tenant sites are served by LiteSpeed from <code>${h.hosting.tenantRoot}/&lt;name&gt;</code>; this app rebuilds each folder on every change. API token: <strong>${h.hosting.apiToken ? 'set' : 'MISSING — subdomains will not be created'}</strong> · account <code>${h.hosting.username || '?'}</code>.</p>
+<p>${h.hosting.byState.map((r) => html`<span class="badge">${r.hosting_state}: ${r.n}</span> `)}</p>
+${h.hosting.errors.length ? html`<table class="table small"><tbody>${h.hosting.errors.map((e) => html`<tr><td><a href="/admin/sites/${e.id}">${e.subdomain}</a></td><td>${e.hosting_error}</td></tr>`)}</tbody></table>` : ''}
+${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root: <code>${h.hosting.orphans.join(', ')}</code></p>` : ''}
+<p class="muted">Retry: <code>node src/cli.js sync-all</code> (also run by the hourly cron).</p></div>` : ''}
 <div class="card"><h2>Checks</h2><ul class="plain">
   <li>Platform hosts: <code>${config.platformHosts.join(', ')}</code> · tenants: <code>*.${h.baseDomain}</code></li>
   <li>Health endpoint: <code>GET /healthz</code> (use for uptime monitoring)</li>
