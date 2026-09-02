@@ -1,0 +1,31 @@
+# Alternative to Docker: run the app directly under systemd (Node 22 installed on the host, Caddy from apt).
+# Install: cp nsd.service /etc/systemd/system/ && systemctl enable --now nsd
+[Unit]
+Description=NSD.SG platform
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nsd
+Group=nsd
+WorkingDirectory=/opt/nsd/nsd-sg
+EnvironmentFile=/opt/nsd/nsd-sg/.env
+Environment=NODE_ENV=production HOST=127.0.0.1 PORT=3000 DATA_DIR=/var/lib/nsd
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nsd
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=768M
+
+[Install]
+WantedBy=multi-user.target

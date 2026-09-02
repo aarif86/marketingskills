@@ -1,0 +1,50 @@
+# NSD.SG edge configuration.
+#
+# Two TLS strategies — pick ONE by setting TLS_MODE in .env:
+#   TLS_MODE=wildcard   (recommended) DNS for nsd.sg is on Cloudflare; Caddy gets ONE wildcard cert via DNS-01.
+#                       Needs CLOUDFLARE_API_TOKEN (Zone:DNS:Edit for nsd.sg) in .env.
+#   TLS_MODE=ondemand   DNS stays at Hostinger (wildcard A record only). Caddy issues a certificate per subdomain
+#                       on first visit, after asking the app whether the hostname exists. Subject to Let's Encrypt
+#                       rate limits (~50 new certs / week per registered domain) — fine to start, upgrade to
+#                       wildcard as you grow.
+#
+# The app is a single upstream; it routes by Host header itself.
+
+{
+	email {$ACME_EMAIL:admin@nsd.sg}
+	servers {
+		protocols h1 h2 h3
+		trusted_proxies static private_ranges
+	}
+	# --- on-demand mode only: gate certificate issuance on hostnames the platform knows ---
+	on_demand_tls {
+		ask http://app:3000/internal/tls-ask?token={$TLS_ASK_TOKEN}
+	}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		# TLS-level hardening. App-level headers are set by the Node process.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy app:3000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+		transport http {
+			read_timeout 120s
+		}
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Platform + all tenant subdomains, wildcard certificate (TLS_MODE=wildcard)
+# The `import` of an env-selected snippet keeps one Caddyfile for both modes.
+import /etc/caddy/mode-{$TLS_MODE:ondemand}.caddy

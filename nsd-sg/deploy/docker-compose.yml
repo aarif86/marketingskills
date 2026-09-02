@@ -1,0 +1,63 @@
+# NSD.SG production stack: Caddy (TLS + reverse proxy) -> app (Node). SQLite + files on a named volume.
+# Usage (on the VPS, from the repo's nsd-sg/ directory):
+#   cp .env.example .env && edit .env
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: nsd-app
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATA_DIR: /var/lib/nsd
+      TRUST_PROXY: "true"        # only Caddy can reach this container (internal network)
+    volumes:
+      - nsd-data:/var/lib/nsd
+    networks: [internal]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  caddy:
+    build:
+      context: ./caddy
+    container_name: nsd-caddy
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [internal]
+    depends_on: [app]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+volumes:
+  nsd-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:

@@ -1,0 +1,12 @@
+# On-demand mode: apex + www get normal certs; every tenant subdomain gets its own cert on first request,
+# but only if the app confirms the hostname exists (see /internal/tls-ask).
+{$BASE_DOMAIN:nsd.sg}, www.{$BASE_DOMAIN:nsd.sg} {
+	import common
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	import common
+}
