@@ -171,7 +171,8 @@ ${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><
 
 export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [] }) {
   const activeSub = subscriptions.find((s) => s.status === 'active');
-  const pendingSub = subscriptions.find((s) => s.status === 'pending');
+  // Only a fresh checkout deserves the "not confirmed yet" notice; older ones are timed out by reconcileUser.
+  const pendingSub = subscriptions.find((s) => s.status === 'pending' && Date.now() - Date.parse(s.created_at) < 2 * 3600_000);
   const pct = Math.min(100, Math.round((storageUsed / ent.limits.max_storage_bytes) * 100));
   return html`<h1>Plan &amp; billing</h1>
 ${planBanner(ent)}

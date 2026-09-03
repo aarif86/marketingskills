@@ -87,6 +87,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-5-2', '0.5.2', 'Subscriptions you can see and stop', `- New: Plan & billing shows your HitPay subscription and lets you cancel it yourself — your plan stays for 30 days after cancelling.
+- New: Public roadmap and changelog (you are reading it). Vote on what we build next, or suggest an idea.
+- Improved: if you close the payment page halfway, the dashboard checks with HitPay on its own and clears the leftover "payment started" notice.
+- Fixed: payment confirmations from HitPay were sometimes rejected; both webhook formats are now accepted.`, 'new,improved,fixed', '2026-09-03T12:30:00Z'],
   ['cl-0-4-4', '0.4.4', 'Payments by card, promo codes and a public showcase', `- New: Plus and Beta can be paid by card through HitPay — the plan activates automatically after payment.
 - New: Promo codes. Redeem one on Plan & billing to unlock the Beta plan (3 sites, no badge, 90 days free, then S$6/month).
 - New: /showcase lists every live site. Plus and Beta users can hide theirs from Site settings.

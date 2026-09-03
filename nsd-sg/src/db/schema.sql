@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   id            TEXT PRIMARY KEY,                     -- HitPay recurring_billing id
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   plan_id       TEXT NOT NULL REFERENCES plans(id),
-  status        TEXT NOT NULL DEFAULT 'pending',      -- pending | active | canceled | failed
+  status        TEXT NOT NULL DEFAULT 'pending',      -- pending | active | canceled | failed | abandoned
   reference     TEXT NOT NULL,
   last_event    TEXT NOT NULL DEFAULT '',
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

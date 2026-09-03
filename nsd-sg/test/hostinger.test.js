@@ -165,6 +165,12 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   assert.equal(signup.statusCode, 302);
   const fay = db().prepare("SELECT id FROM users WHERE email = 'fay@example.com'").get();
   db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_1', ?, 'plus', 'pending', ?)").run(fay.id, `${fay.id}:plus:abc`);
+  // an earlier checkout the user abandoned (closed the HitPay tab) and a very old one
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_0', ?, 'plus', 'pending', ?)").run(fay.id, `${fay.id}:plus:old`);
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, created_at) VALUES ('rb_stale', ?, 'beta', 'pending', ?, '2026-01-01T00:00:00.000Z')").run(fay.id, `${fay.id}:beta:zzz`);
+  const { expireStalePending } = await import('../src/services/hitpay.js');
+  assert.equal(expireStalePending(fay.id), 1, 'only the stale row times out');
+  assert.equal(db().prepare("SELECT status FROM subscriptions WHERE id = 'rb_stale'").get().status, 'abandoned');
   const body = JSON.stringify({ recurring_billing_id: 'rb_1', status: 'succeeded', amount: 9, currency: 'SGD', customer: { email: 'fay@example.com' } });
   const bad = await app.inject({ method: 'POST', url: '/billing/hitpay/webhook', headers: { host: H, 'content-type': 'application/json', 'hitpay-signature': 'nope' }, body });
   assert.equal(bad.statusCode, 401);
@@ -175,6 +181,7 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   assert.equal(u.plan_id, 'plus');
   assert.equal(u.plan_expires_at, null, 'paid plan never expires');
   assert.equal(db().prepare("SELECT status FROM subscriptions WHERE id = 'rb_1'").get().status, 'active');
+  assert.equal(db().prepare("SELECT status FROM subscriptions WHERE id = 'rb_0'").get().status, 'abandoned', 'sibling pending checkout superseded on activation');
   const cancel = JSON.stringify({ recurring_billing_id: 'rb_1', status: 'canceled' });
   const sig2 = crypto.createHmac('sha256', 'test-salt').update(cancel).digest('hex');
   await app.inject({ method: 'POST', url: '/billing/hitpay/webhook', headers: { host: H, 'content-type': 'application/json', 'hitpay-signature': sig2, 'hitpay-event-type': 'recurring_billing.subscription_updated' }, body: cancel });

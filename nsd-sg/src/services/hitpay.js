@@ -113,6 +113,7 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
         .run(newId(), sub.user_id, 'payment_received', null, sub.plan_id, JSON.stringify({ subscription: sub.id, status, eventType }));
     }
     db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id) WHERE id = ?").run(eventType || status, now, paymentId, sub.id);
+    abandonOtherPending(sub.user_id, sub.id);
     return { ok: true, activated: sub.status !== 'active' };
   }
   if (DEAD.has(status)) {
@@ -124,10 +125,25 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
         .run(newId(), sub.user_id, 'subscription_canceled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, status, graceUntil: grace }));
     }
     db.prepare("UPDATE subscriptions SET status = ?, last_event = ?, updated_at = ? WHERE id = ?").run(status === 'failed' ? 'failed' : 'canceled', eventType || status, now, sub.id);
+    abandonOtherPending(sub.user_id, sub.id);
     return { ok: true, canceled: true };
   }
   db.prepare('UPDATE subscriptions SET last_event = ?, updated_at = ? WHERE id = ?').run(eventType || status, now, sub.id);
   return { ok: true, noop: true };
+}
+
+/** A user has one live checkout at a time: once any subscription is decided, older unpaid attempts are noise. */
+function abandonOtherPending(userId, keepId) {
+  getDb().prepare("UPDATE subscriptions SET status = 'abandoned', last_event = 'superseded', updated_at = ? WHERE user_id = ? AND id != ? AND status = 'pending'").run(nowIso(), userId, keepId);
+}
+
+/** Pending checkouts that never got paid (HitPay says scheduled/pending, or the id is gone) stop being "pending" after this long. */
+export const PENDING_TTL_HOURS = 2;
+
+export function expireStalePending(userId = null) {
+  const db = getDb();
+  const sql = `UPDATE subscriptions SET status = 'abandoned', last_event = 'timed_out', updated_at = ? WHERE status = 'pending' AND created_at < datetime('now', '-${PENDING_TTL_HOURS} hours')` + (userId ? ' AND user_id = ?' : '');
+  return (userId ? db.prepare(sql).run(nowIso(), userId) : db.prepare(sql).run(nowIso())).changes;
 }
 
 /** After the customer returns from HitPay: ask the API for the subscription state (webhook may be slower). */
@@ -157,11 +173,18 @@ export async function diagnose() {
 /** Re-check every pending subscription of a user against HitPay (billing page load + admin re-check). */
 export async function reconcileUser(userId, { maxAgeHours = 72 } = {}) {
   if (!enabled()) return [];
-  const rows = getDb().prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'pending' AND created_at > datetime('now', ?)").all(userId, `-${maxAgeHours} hours`);
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'pending' AND created_at > datetime('now', ?)").all(userId, `-${maxAgeHours} hours`);
   const out = [];
   for (const sub of rows) {
-    try { out.push({ id: sub.id, ...(await checkSubscription(sub.id)) }); } catch (e) { out.push({ id: sub.id, ok: false, error: e.message }); }
+    try { out.push({ id: sub.id, ...(await checkSubscription(sub.id)) }); }
+    catch (e) {
+      // HitPay no longer knows this id (deleted/expired checkout) -> nothing will ever confirm it.
+      if (/-> 404/.test(e.message)) db.prepare("UPDATE subscriptions SET status = 'abandoned', last_event = 'not_found', updated_at = ? WHERE id = ?").run(nowIso(), sub.id);
+      out.push({ id: sub.id, ok: false, error: e.message });
+    }
   }
+  expireStalePending(userId);
   return out;
 }
 
