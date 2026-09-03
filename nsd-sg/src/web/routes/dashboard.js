@@ -12,7 +12,7 @@ import { watchdog } from '../../lib/audit.js';
 import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite,
 } from '../../services/sites.js';
-import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode } from '../../services/plans.js';
+import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser, setUserStatus } from '../../services/users.js';
 import {
@@ -256,7 +256,7 @@ export async function registerDashboardRoutes(app) {
       const r = await hitpay.reconcileUser(req.user.id);
       if (r.some((x) => x.activated)) { const { findUserById } = await import('../../services/users.js'); user = findUserById(req.user.id); }
     } catch (e) { req.log.warn({ err: e }, 'hitpay reconcile failed'); }
-    return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
+    return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), promo: activePromoFor(user.id), freePlan: getDefaultPlan(), pendingExtension: pendingExtensionFor(user.id), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
   });
 
   app.post('/billing/hitpay/cancel', { preHandler: requireUser }, async (req, reply) => {
@@ -273,13 +273,20 @@ export async function registerDashboardRoutes(app) {
     return reply.redirect('/billing');
   });
 
+  app.post('/billing/promo/remove', { preHandler: requireUser }, async (req, reply) => {
+    const r = removePromo({ userId: req.user.id });
+    audit({ req, action: 'promo.removed', targetType: 'user', targetId: req.user.id, details: { ok: r.ok } });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? `Promo code removed. You are back on the ${r.plan.name} plan with your previous dates.` : r.reason);
+    return reply.redirect('/billing');
+  });
+
   app.post('/billing/extend', { preHandler: requireUser }, async (req, reply) => {
     const reason = String(req.body?.reason ?? '').slice(0, 60);
     const note = String(req.body?.note ?? '').trim().slice(0, 500);
     if (!reason || note.length < 20) { flash(reply, 'error', 'Pick a reason and tell us a little more (at least 20 characters) so we can say yes.'); return reply.redirect('/billing'); }
     const r = requestExtension({ userId: req.user.id, note: `${reason}: ${note}` });
     audit({ req, action: 'plan.extension_requested', targetType: 'user', targetId: req.user.id });
-    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Extension requested. We will confirm by email, usually within a day.' : r.reason);
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Free extension submitted. We review requests within 3–5 working days and confirm by email — check back here for the new expiry date.' : r.reason);
     return reply.redirect('/billing');
   });
 

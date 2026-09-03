@@ -147,14 +147,48 @@ export function redeemPromoCode({ userId, code }) {
   if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return { ok: false, reason: 'That code has expired.' };
   if (row.uses >= row.max_uses) return { ok: false, reason: 'That code has already been used up.' };
   if (db.prepare('SELECT 1 FROM promo_redemptions WHERE code = ? AND user_id = ?').get(c, userId)) return { ok: false, reason: 'You have already used this code.' };
-  const user = db.prepare('SELECT plan_id FROM users WHERE id = ?').get(userId);
+  const user = db.prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(userId);
   if (user?.plan_id === row.plan_id) return { ok: false, reason: 'You are already on that plan.' };
   db.transaction(() => {
-    db.prepare('INSERT INTO promo_redemptions (code, user_id) VALUES (?, ?)').run(c, userId);
+    db.prepare('INSERT INTO promo_redemptions (code, user_id, prev_plan_id, prev_expires_at) VALUES (?, ?, ?, ?)').run(c, userId, user?.plan_id ?? null, user?.plan_expires_at ?? null);
     db.prepare('UPDATE promo_codes SET uses = uses + 1 WHERE code = ?').run(c);
   })();
   const expires = assignPlan({ userId, planId: row.plan_id, actorId: userId, reason: `promo:${c}` });
   return { ok: true, plan: getPlan(row.plan_id), expires };
+}
+
+/** The promo code currently powering this user's plan (if any). */
+export function activePromoFor(userId) {
+  const db = getDb();
+  const r = db.prepare('SELECT r.*, p.plan_id FROM promo_redemptions r JOIN promo_codes p ON p.code = r.code WHERE r.user_id = ? AND r.removed_at IS NULL ORDER BY r.created_at DESC LIMIT 1').get(userId);
+  if (!r) return null;
+  const user = db.prepare('SELECT plan_id FROM users WHERE id = ?').get(userId);
+  return user?.plan_id === r.plan_id ? r : null;
+}
+
+/** User-initiated undo: back to the plan and expiry they had before the code. The code stays used. */
+export function removePromo({ userId }) {
+  const db = getDb();
+  const r = activePromoFor(userId);
+  if (!r) return { ok: false, reason: 'No promo code is active on your account.' };
+  const prev = getPlan(r.prev_plan_id) ?? getDefaultPlan();
+  const now = nowIso();
+  db.transaction(() => {
+    db.prepare('UPDATE users SET plan_id = ?, plan_expires_at = ?, updated_at = ? WHERE id = ?').run(prev.id, r.prev_expires_at, now, userId);
+    db.prepare('UPDATE promo_redemptions SET removed_at = ? WHERE code = ? AND user_id = ?').run(now, r.code, userId);
+    db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(newId(), userId, 'plan_changed', r.plan_id, prev.id, JSON.stringify({ reason: `promo_removed:${r.code}` }), userId);
+  })();
+  resyncUser(userId);
+  return { ok: true, plan: prev };
+}
+
+/** Latest extension request that has not been answered yet (admin grant = extension_granted after it). Shown on billing. */
+export function pendingExtensionFor(userId) {
+  return getDb().prepare(`SELECT e.created_at FROM plan_events e WHERE e.user_id = ? AND e.type = 'extension_requested'
+      AND e.created_at > datetime('now', '-14 days')
+      AND NOT EXISTS (SELECT 1 FROM plan_events g WHERE g.user_id = e.user_id AND g.type = 'extension_granted' AND g.created_at > e.created_at)
+      ORDER BY e.created_at DESC LIMIT 1`).get(userId) ?? null;
 }
 
 export function requestExtension({ userId, note = '' }) {

@@ -209,9 +209,11 @@ export function roadmapPage({ items, user, csrf, flash }) {
     ${items.filter((i) => i.status === key).map((i) => roadmapCard(i, { user, csrf }))}</div>`)}</div>
   ${items.some((i) => i.status === 'under_review') ? html`<h2 class="mt">Under review <span class="muted">${items.filter((i) => i.status === 'under_review').length}</span></h2><p class="muted small">Ideas from users we are looking at.</p><div class="rm-grid">${items.filter((i) => i.status === 'under_review').map((i) => roadmapCard(i, { user, csrf }))}</div>` : ''}
   <div class="card mt rm-suggest" id="suggest"><h2>Have an idea?</h2>
-  ${user ? html`<form method="post" action="/roadmap/suggest" class="form"><input type="hidden" name="_csrf" value="${csrf}">
+  ${user ? html`<p class="muted">Feature ideas, bugs, anything that got in your way — attach a screenshot if it helps.</p>
+    <form method="post" action="/roadmap/suggest" class="form" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="${csrf}">
     <label>Title <input name="title" maxlength="120" required placeholder="e.g. Let me schedule a publish for later"></label>
     <label>Why it would help <small>(optional)</small> <textarea name="body" rows="3" maxlength="2000"></textarea></label>
+    <label>Screenshots or a PDF <small>(optional)</small> <input type="file" name="files" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.avif,.svg,.pdf,image/*,application/pdf"><small class="muted">Images (PNG, JPG, GIF, WebP, AVIF, SVG) or PDF · up to 3 files, 5 MB each. Only the NSD.SG team sees them.</small></label>
     <button class="btn btn-primary" type="submit">Send idea</button> <span class="muted small">It shows up under review once we've read it.</span></form>`
    : html`<p class="muted"><a href="/login?next=/roadmap#suggest">Log in</a> or <a href="/signup">create a free account</a> to vote and suggest ideas.</p>`}
   </div>

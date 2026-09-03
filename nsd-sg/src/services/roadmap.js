@@ -1,5 +1,8 @@
 // Roadmap + changelog. Seeded once with the real history; admin edits from /admin/roadmap and /admin/changelog.
+import fs from 'node:fs';
+import path from 'node:path';
 import { getDb } from '../db/index.js';
+import { config } from '../config.js';
 import { newId, nowIso } from '../lib/ids.js';
 
 export const STATUSES = ['under_review', 'planned', 'in_progress', 'shipped', 'declined'];
@@ -37,6 +40,42 @@ export function suggest({ userId, title, body }) {
   return { ok: true, id };
 }
 
+// ---- attachments (feedback screenshots / PDFs) ----
+export const ATTACHMENT_EXTS = new Map([
+  ['png', 'image/png'], ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['gif', 'image/gif'], ['webp', 'image/webp'],
+  ['avif', 'image/avif'], ['svg', 'image/svg+xml'], ['pdf', 'application/pdf'],
+]);
+export const ATTACHMENT_MAX_FILES = 3;
+export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const attachmentDir = (itemId) => path.join(config.dataDir, 'feedback', itemId);
+export const attachmentExt = (name) => String(name ?? '').split('.').pop().toLowerCase();
+
+/** Move an already-written temp file into the item's folder and record it. Caller has validated ext + size. */
+export function addAttachment({ itemId, filename, tmpPath, bytes }) {
+  const ext = attachmentExt(filename);
+  if (!ATTACHMENT_EXTS.has(ext)) throw new Error('unsupported attachment type');
+  const id = newId();
+  fs.mkdirSync(attachmentDir(itemId), { recursive: true, mode: 0o700 });
+  fs.renameSync(tmpPath, path.join(attachmentDir(itemId), `${id}.${ext}`));
+  getDb().prepare('INSERT INTO roadmap_attachments (id, item_id, filename, ext, bytes) VALUES (?, ?, ?, ?, ?)').run(id, itemId, String(filename).slice(0, 120), ext, bytes);
+  return id;
+}
+export function listAttachments(itemId) { return getDb().prepare('SELECT * FROM roadmap_attachments WHERE item_id = ? ORDER BY created_at').all(itemId); }
+export function attachmentsByItem(itemIds) {
+  const out = new Map();
+  if (!itemIds.length) return out;
+  for (const a of getDb().prepare(`SELECT * FROM roadmap_attachments WHERE item_id IN (${itemIds.map(() => '?').join(',')}) ORDER BY created_at`).all(...itemIds)) {
+    if (!out.has(a.item_id)) out.set(a.item_id, []);
+    out.get(a.item_id).push(a);
+  }
+  return out;
+}
+export function getAttachment(id) {
+  const a = getDb().prepare('SELECT * FROM roadmap_attachments WHERE id = ?').get(id);
+  if (!a) return null;
+  return { ...a, path: path.join(attachmentDir(a.item_id), `${a.id}.${a.ext}`), mime: ATTACHMENT_EXTS.get(a.ext) ?? 'application/octet-stream' };
+}
+
 export function upsertItem({ id, title, body, status, category, is_public, sort_order }) {
   const db = getDb();
   const now = nowIso();
@@ -54,7 +93,10 @@ export function upsertItem({ id, title, body, status, category, is_public, sort_
   return nid;
 }
 
-export function deleteItem(id) { getDb().prepare('DELETE FROM roadmap_items WHERE id = ?').run(id); }
+export function deleteItem(id) {
+  getDb().prepare('DELETE FROM roadmap_items WHERE id = ?').run(id);
+  fs.rmSync(attachmentDir(id), { recursive: true, force: true });
+}
 
 export function listChangelog(limit = 50) {
   return getDb().prepare('SELECT * FROM changelog ORDER BY published_at DESC LIMIT ?').all(limit);
@@ -87,6 +129,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-5-3', '0.5.3', 'Feedback from the dashboard, clearer promo plans', `- New: a Feedback link in the dashboard — send an idea or a bug with screenshots or a PDF attached.
+- New: Plan & billing shows exactly what your promo code unlocked next to the Free plan, and lets you remove the code yourself.
+- Improved: after you ask for a free extension, the page shows it was submitted and that we answer within 3–5 working days.`, 'new,improved', '2026-09-03T15:10:00Z'],
   ['cl-0-5-2', '0.5.2', 'Subscriptions you can see and stop', `- New: Plan & billing shows your HitPay subscription and lets you cancel it yourself — your plan stays for 30 days after cancelling.
 - New: Public roadmap and changelog (you are reading it). Vote on what we build next, or suggest an idea.
 - Improved: if you close the payment page halfway, the dashboard checks with HitPay on its own and clears the leftover "payment started" notice.

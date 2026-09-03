@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
@@ -298,7 +299,15 @@ export async function registerAdminRoutes(app) {
 
   app.get('/admin/roadmap', opts, async (req, reply) => {
     const rm = await import('../../services/roadmap.js');
-    return render(req, reply, { title: 'Roadmap', active: 'roadmap', body: V.roadmapAdminPage({ items: rm.listRoadmap({ includeHidden: true }), entries: rm.listChangelog(200), csrf: csrfTokenFor(req), statuses: rm.STATUSES, categories: rm.CATEGORIES }) });
+    const items = rm.listRoadmap({ includeHidden: true });
+    return render(req, reply, { title: 'Roadmap', active: 'roadmap', body: V.roadmapAdminPage({ items, attachments: rm.attachmentsByItem(items.map((i) => i.id)), entries: rm.listChangelog(200), csrf: csrfTokenFor(req), statuses: rm.STATUSES, categories: rm.CATEGORIES }) });
+  });
+  app.get('/admin/roadmap/attachments/:id', opts, async (req, reply) => {
+    const rm = await import('../../services/roadmap.js');
+    const a = rm.getAttachment(String(req.params.id));
+    if (!a || !fs.existsSync(a.path)) return reply.code(404).send('Not found');
+    const inline = /^image\/(png|jpeg|gif|webp|avif)$|^application\/pdf$/.test(a.mime); // SVG only as a download (could carry scripts)
+    return reply.type(a.mime).header('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${a.filename.replace(/["\\]/g, '')}"`).header('X-Content-Type-Options', 'nosniff').send(fs.createReadStream(a.path));
   });
   app.post('/admin/roadmap', opts, async (req, reply) => {
     const rm = await import('../../services/roadmap.js');

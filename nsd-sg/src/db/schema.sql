@@ -189,6 +189,7 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   created_by  TEXT,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+-- (migration 004 adds prev_plan_id / prev_expires_at / removed_at: the plan before the code, so the user can undo it)
 CREATE TABLE IF NOT EXISTS promo_redemptions (
   code        TEXT NOT NULL REFERENCES promo_codes(code),
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -223,6 +224,16 @@ CREATE TABLE IF NOT EXISTS roadmap_items (
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+-- Screenshots / PDFs attached to a suggestion. Files live in DATA_DIR/feedback/<item_id>/<id>.<ext>; admin-only.
+CREATE TABLE IF NOT EXISTS roadmap_attachments (
+  id          TEXT PRIMARY KEY,
+  item_id     TEXT NOT NULL REFERENCES roadmap_items(id) ON DELETE CASCADE,
+  filename    TEXT NOT NULL,
+  ext         TEXT NOT NULL,
+  bytes       INTEGER NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_attachments_item ON roadmap_attachments(item_id);
 CREATE TABLE IF NOT EXISTS roadmap_votes (
   item_id     TEXT NOT NULL REFERENCES roadmap_items(id) ON DELETE CASCADE,
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

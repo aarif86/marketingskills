@@ -162,3 +162,6 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
   .dz-buttons .btn{width:100%}.release-row .btn,.plan-line .btn{width:100%}
   .card{padding:20px}.stats{grid-template-columns:1fr 1fr}
 }
+.flash-info{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.35)}
+.promo-box{padding:14px 16px;border:1px solid rgba(139,92,246,.4);background:rgba(139,92,246,.07);border-radius:var(--r);margin:0 0 16px}.promo-box h3{margin:0 0 10px}.promo-box .compare{margin-bottom:10px}.promo-box .compare th{text-align:left;font-weight:600}.promo-box .compare .hl{color:var(--text)}.promo-box .compare td:first-child{color:var(--muted)}
+.rm-files{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}.rm-files a{font-size:.85rem}

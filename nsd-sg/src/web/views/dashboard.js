@@ -169,7 +169,26 @@ ${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><
 <input type="password" name="password" placeholder="password" required><input name="confirm" placeholder="type DELETE" required autocomplete="off"><button class="btn btn-danger" type="submit">Delete my account</button></form></div>` : ''}`.toString();
 }
 
-export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [] }) {
+function planCompare(freePlan, ent, promo, csrf) {
+  const f = { ...freePlan.limits }, m = ent.limits;
+  const mb = (b) => `${Math.round(b / 1024 / 1024)} MB`;
+  const rows = [
+    ['Sites', f.max_sites ?? 1, m.max_sites],
+    ['Storage', mb(f.max_storage_bytes ?? 0), mb(m.max_storage_bytes)],
+    ['Versions kept', f.max_releases ?? 1, m.max_releases],
+    ['NSD.SG badge', 'shown', ent.brandingRemoved ? 'removed' : 'shown'],
+    ['Hide from showcase', 'no', ent.features?.hide_from_showcase ? 'yes' : 'no'],
+    ['Free period', `${freePlan.trial_days ?? 0} days`, ent.plan.trial_days ? `${ent.plan.trial_days} days, then S$${(ent.plan.price_cents_month / 100).toFixed(0)}/month` : 'none'],
+  ];
+  return html`<div class="promo-box"><h3>Your code <code>${promo.code}</code> unlocked ${ent.plan.name}</h3>
+  <table class="table small compare"><thead><tr><th></th><th>${freePlan.name}</th><th class="hl">${ent.plan.name} (you)</th></tr></thead>
+  <tbody>${rows.map(([k, a, b]) => html`<tr><td>${k}</td><td class="muted">${a}</td><td class="hl"><strong>${b}</strong></td></tr>`)}</tbody></table>
+  <form method="post" action="/billing/promo/remove" class="inline" data-confirm="Remove the promo code? You go back to your previous plan and dates. The code cannot be used again."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Remove promo code</button></form>
+  <span class="muted small">Back to ${getPlanName(promo.prev_plan_id, freePlan)} with the dates you had before.</span></div>`;
+}
+const getPlanName = (id, freePlan) => (id && id !== freePlan.id ? id : freePlan.name);
+
+export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [], promo = null, freePlan = null, pendingExtension = null }) {
   const activeSub = subscriptions.find((s) => s.status === 'active');
   // Only a fresh checkout deserves the "not confirmed yet" notice; older ones are timed out by reconcileUser.
   const pendingSub = subscriptions.find((s) => s.status === 'pending' && Date.now() - Date.parse(s.created_at) < 2 * 3600_000);
@@ -177,8 +196,9 @@ export function billingPage({ user, ent, plans, events, storageUsed, siteCount, 
   return html`<h1>Plan &amp; billing</h1>
 ${planBanner(ent)}
 <div class="grid two">
-<div class="card"><h2>Current plan: ${ent.plan.name}</h2>
+<div class="card"><h2>Current plan: ${ent.plan.name}${promo ? html` <span class="pill pill-live">promo</span>` : ''}</h2>
   <p>${ent.plan.description}</p>
+  ${promo && freePlan ? planCompare(freePlan, ent, promo, csrf) : ''}
   <ul class="plain">
     <li>Sites: <strong>${siteCount} / ${ent.limits.max_sites}</strong></li>
     <li>Storage: <strong>${formatBytes(storageUsed)} / ${formatBytes(ent.limits.max_storage_bytes)}</strong><div class="meter"><span style="width:${pct}%"></span></div></li>
@@ -187,7 +207,8 @@ ${planBanner(ent)}
     <li>Started: ${formatDate(user.plan_started_at)}</li>
     <li>Expires: <strong>${ent.expiresAt ? formatDate(ent.expiresAt) : 'never'}</strong>${ent.daysLeft !== null && !ent.expired ? html` <span class="muted">(${ent.daysLeft} days left)</span>` : ''}</li>
   </ul>
-  ${ent.plan.trial_days ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
+  ${ent.plan.trial_days && pendingExtension ? html`<div class="flash flash-info ext-pending"><strong>Free extension submitted</strong> on ${formatDate(pendingExtension.created_at)}. We review requests within 3–5 working days and confirm by email. Check back here — the expiry date above updates when it is approved.</div>` : ''}
+  ${ent.plan.trial_days && !pendingExtension ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
     <h3>Need more time?</h3><p class="muted small">Ask for another ${Math.round(ent.plan.trial_days / 30)} months free. Tell us why — we say yes to most real projects.</p>
     <label>Reason <select name="reason" required><option value="">Choose one…</option>
       <option>Still building my site</option><option>Showing it to clients or an employer</option><option>Student or learning project</option>

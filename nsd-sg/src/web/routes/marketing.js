@@ -10,8 +10,11 @@ import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
 import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage } from '../views/marketing.js';
 import { listShowcaseSites } from '../../services/sites.js';
-import { listRoadmap, listChangelog, toggleVote, suggest } from '../../services/roadmap.js';
-import { requireUser } from '../middleware.js';
+import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { listRoadmap, listChangelog, toggleVote, suggest, addAttachment, ATTACHMENT_EXTS, ATTACHMENT_MAX_FILES, ATTACHMENT_MAX_BYTES, attachmentExt } from '../../services/roadmap.js';
+import { tempFile } from '../../storage/releases.js';
+import { requireUser, csrfGuard } from '../middleware.js';
 import { brandingMarkup } from '../../serve/branding.js';
 
 export async function registerMarketingRoutes(app) {
@@ -27,11 +30,43 @@ export async function registerMarketingRoutes(app) {
     toggleVote({ itemId: String(req.params.id), userId: req.user.id });
     return reply.redirect('/roadmap');
   });
-  app.post('/roadmap/suggest', { preHandler: requireUser }, async (req, reply) => {
-    const r = suggest({ userId: req.user.id, title: req.body?.title, body: req.body?.body });
-    audit({ req, action: 'roadmap.suggest', targetType: 'roadmap', targetId: r.id ?? '-', details: { ok: r.ok } });
-    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Thanks — your idea is in. We read every one.' : r.reason);
-    return reply.redirect('/roadmap#suggest');
+  app.post('/roadmap/suggest', { preHandler: [requireUser, limiter('suggest', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
+    // Multipart (idea + optional screenshots/PDF) or a plain form post. CSRF is checked after the parts are read.
+    const fields = {};
+    const files = [];
+    const temps = [];
+    let problem = '';
+    try {
+      if (req.isMultipart?.()) {
+        for await (const part of req.parts()) {
+          if (part.type === 'field') { fields[part.fieldname] = String(part.value).slice(0, 2000); continue; }
+          if (!part.filename) { part.file.resume(); continue; }
+          const ext = attachmentExt(part.filename);
+          if (files.length >= ATTACHMENT_MAX_FILES) { part.file.resume(); problem ||= `At most ${ATTACHMENT_MAX_FILES} files per idea.`; continue; }
+          if (!ATTACHMENT_EXTS.has(ext)) { part.file.resume(); problem ||= `"${part.filename}" is not an image or PDF.`; continue; }
+          const tmp = tempFile('fb'); temps.push(tmp);
+          await pipeline(part.file, fs.createWriteStream(tmp, { mode: 0o600 }));
+          const bytes = fs.statSync(tmp).size;
+          if (bytes > ATTACHMENT_MAX_BYTES || part.file.truncated) { problem ||= `"${part.filename}" is over ${ATTACHMENT_MAX_BYTES / 1024 / 1024} MB.`; continue; }
+          files.push({ filename: part.filename, tmpPath: tmp, bytes });
+        }
+        req.csrfFromMultipart = fields._csrf ?? '';
+        req.body = { _csrf: fields._csrf };
+        let rejected = false;
+        await csrfGuard(req, { code: (c) => ({ send: (m) => { rejected = m; return c; } }) });
+        if (rejected) { flash(reply, 'error', 'Security token expired. Refresh the page and try again.'); return reply.redirect('/roadmap#suggest'); }
+      } else {
+        Object.assign(fields, req.body ?? {});
+      }
+      if (problem) { flash(reply, 'error', problem); return reply.redirect('/roadmap#suggest'); }
+      const r = suggest({ userId: req.user.id, title: fields.title, body: fields.body });
+      if (r.ok) for (const f of files) addAttachment({ itemId: r.id, ...f });
+      audit({ req, action: 'roadmap.suggest', targetType: 'roadmap', targetId: r.id ?? '-', details: { ok: r.ok, files: files.length } });
+      flash(reply, r.ok ? 'success' : 'error', r.ok ? `Thanks — your idea is in${files.length ? ` with ${files.length} file${files.length === 1 ? '' : 's'}` : ''}. We read every one.` : r.reason);
+      return reply.redirect('/roadmap#suggest');
+    } finally {
+      for (const t of temps) fs.rmSync(t, { force: true });
+    }
   });
   app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
   app.get('/badge', async (req, reply) => {

@@ -142,6 +142,44 @@ test('promo code moves a user to the beta plan; showcase lists live sites; badge
   assert.match(bill.body, /Current plan: Beta/);
   r = await post('/billing/redeem', dave, { code: 'BETA-TEST' }, '/billing');
   assert.equal(getDb().prepare("SELECT uses FROM promo_codes WHERE code = 'BETA-TEST'").get().uses, 1, 'second redeem refused');
+  assert.match(bill.body, /unlocked Beta/, 'comparison box shows what the code unlocked');
+  assert.match(bill.body, /Remove promo code/);
+  // extension request -> pending state replaces the form
+  r = await post('/billing/extend', dave, { reason: 'Still building my site', note: 'A portfolio for my freelance work, launching next month.' }, '/billing');
+  const bill2 = await get('/billing', dave);
+  assert.match(bill2.body, /Free extension submitted/);
+  assert.doesNotMatch(bill2.body, /Request free extension/);
+  // remove the promo -> back to free with the old expiry; the code stays used
+  const before = getDb().prepare("SELECT prev_expires_at FROM promo_redemptions WHERE code = 'BETA-TEST'").get().prev_expires_at;
+  r = await post('/billing/promo/remove', dave, {}, '/billing');
+  assert.equal(r.statusCode, 302);
+  const u = getDb().prepare("SELECT plan_id, plan_expires_at FROM users WHERE email = 'dave@example.com'").get();
+  assert.equal(u.plan_id, 'free');
+  assert.equal(u.plan_expires_at, before);
+  r = await post('/billing/redeem', dave, { code: 'BETA-TEST' }, '/billing');
+  assert.equal(getDb().prepare("SELECT plan_id FROM users WHERE email = 'dave@example.com'").get().plan_id, 'free', 'removed code cannot be redeemed again');
+  // idea with a screenshot attached (multipart)
+  const csrf = csrfFrom((await get('/roadmap', dave)).body);
+  const B = '----nsdtest';
+  const png = Buffer.from('89504e470d0a1a0a', 'hex');
+  const body = Buffer.concat([
+    Buffer.from(`--${B}\r\nContent-Disposition: form-data; name="_csrf"\r\n\r\n${csrf}\r\n--${B}\r\nContent-Disposition: form-data; name="title"\r\n\r\nUpload progress is hard to see\r\n--${B}\r\nContent-Disposition: form-data; name="files"; filename="shot.png"\r\nContent-Type: image/png\r\n\r\n`),
+    png, Buffer.from(`\r\n--${B}\r\nContent-Disposition: form-data; name="files"; filename="evil.php"\r\nContent-Type: text/plain\r\n\r\n<?php\r\n--${B}--\r\n`)]);
+  r = await app.inject({ method: 'POST', url: '/roadmap/suggest', headers: { host: H, cookie: dave, origin: `http://${H}`, 'content-type': `multipart/form-data; boundary=${B}` }, body });
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare("SELECT COUNT(*) n FROM roadmap_attachments").get().n, 0, 'a rejected file rejects the whole idea');
+  const body2 = Buffer.concat([
+    Buffer.from(`--${B}\r\nContent-Disposition: form-data; name="_csrf"\r\n\r\n${csrf}\r\n--${B}\r\nContent-Disposition: form-data; name="title"\r\n\r\nUpload progress is hard to see\r\n--${B}\r\nContent-Disposition: form-data; name="files"; filename="shot.png"\r\nContent-Type: image/png\r\n\r\n`),
+    png, Buffer.from(`\r\n--${B}--\r\n`)]);
+  r = await app.inject({ method: 'POST', url: '/roadmap/suggest', headers: { host: H, cookie: dave, origin: `http://${H}`, 'content-type': `multipart/form-data; boundary=${B}` }, body: body2 });
+  const att = getDb().prepare("SELECT * FROM roadmap_attachments").get();
+  assert.ok(att && att.ext === 'png' && att.bytes === 8, 'attachment recorded');
+  const adminPage = await get('/admin/roadmap', admin);
+  assert.match(adminPage.body, /shot\.png/);
+  const dl = await get(`/admin/roadmap/attachments/${att.id}`, admin);
+  assert.equal(dl.statusCode, 200);
+  assert.equal(dl.headers['content-type'], 'image/png');
+  assert.notEqual((await get(`/admin/roadmap/attachments/${att.id}`, dave)).statusCode, 200, 'non-admin cannot fetch attachments');
   // showcase + badge pages are public
   const sc = await get('/showcase');
   assert.equal(sc.statusCode, 200);

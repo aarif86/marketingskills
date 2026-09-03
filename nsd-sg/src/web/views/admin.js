@@ -273,7 +273,7 @@ ${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td><
 </tbody></table></div>`.toString();
 }
 
-export function roadmapAdminPage({ items, entries, csrf, statuses, categories }) {
+export function roadmapAdminPage({ items, entries, csrf, statuses, categories, attachments = new Map() }) {
   const opt = (list, cur) => list.map((v) => html`<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`);
   const itemForm = (i = {}) => html`<form method="post" action="/admin/roadmap" class="form card rm-admin-item">${hidden(csrf, { action: 'save', id: i.id ?? '' })}
     <div class="grid three tight">
@@ -285,6 +285,7 @@ export function roadmapAdminPage({ items, entries, csrf, statuses, categories })
     <div class="row-gap"><label class="check"><input type="checkbox" name="is_public" value="1" ${(i.is_public ?? 1) ? 'checked' : ''}> Public</label>
       <label>Sort <input name="sort_order" type="number" value="${i.sort_order ?? 100}" style="width:90px"></label>
       <span class="muted small">${i.votes !== undefined ? `${i.votes} votes` : ''}${i.suggested_name ? ` · suggested by ${i.suggested_name}` : ''}</span>
+      ${(attachments.get(i.id) ?? []).length ? html`<span class="rm-files">${attachments.get(i.id).map((a) => html`<a href="/admin/roadmap/attachments/${a.id}" target="_blank" rel="noopener">📎 ${a.filename} <span class="muted">(${formatBytes(a.bytes)})</span></a>`)}</span>` : ''}
       <button class="btn btn-primary btn-tiny" type="submit">${i.id ? 'Save' : 'Add item'}</button>
       ${i.id ? html`</form><form method="post" action="/admin/roadmap" class="inline" data-confirm="Delete this item?">${hidden(csrf, { action: 'delete', id: i.id })}<button class="btn btn-danger btn-tiny">Delete</button>` : ''}
     </div></form>`;
