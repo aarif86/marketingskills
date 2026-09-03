@@ -115,6 +115,12 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .tabs{display:flex;gap:4px;flex-wrap:wrap}.tabs a{padding:7px 14px;border-radius:980px;color:var(--muted);font-size:.9rem}.tabs a.active{background:var(--bg3);color:var(--text)}
 .legal h3{margin-top:1.4em}
 
+/* ---- back to top ------------------------------------------------------- */
+.to-top{position:fixed;right:20px;bottom:20px;z-index:150;width:46px;height:46px;border-radius:50%;border:1px solid var(--line-2);background:rgba(21,22,28,.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-md);opacity:0;transform:translateY(12px) scale(.9);pointer-events:none;transition:opacity .35s var(--spring),transform .35s var(--spring),background .2s,border-color .2s}
+.to-top.show{opacity:1;transform:none;pointer-events:auto}.to-top:hover{background:var(--accent);border-color:transparent;color:#fff;transform:translateY(-3px);box-shadow:var(--glow-hover)}
+.drawer-open .to-top{opacity:0;pointer-events:none}
+@media(max-width:600px){.to-top{right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}}
+
 /* ---- phones ------------------------------------------------------------ */
 @media(max-width:600px){
   .hero{padding-top:56px}.eyebrow{letter-spacing:.16em;font-size:.68rem}.eyebrow::before,.eyebrow::after{display:none}.hero-form{flex-direction:column}.hero-form .btn{width:100%}.domain-input{min-width:0}.flow{margin-top:36px;font-size:.82rem;gap:8px}

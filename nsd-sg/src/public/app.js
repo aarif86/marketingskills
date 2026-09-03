@@ -50,6 +50,20 @@
     targets.forEach(function (el) { io.observe(el); });
   }
 
+  // ---- scroll to top ----
+  var top = document.createElement('button');
+  top.type = 'button'; top.className = 'to-top'; top.setAttribute('aria-label', 'Back to top');
+  top.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+  document.body.appendChild(top);
+  var ticking = false;
+  var updateTop = function () { top.classList.toggle('show', window.scrollY > 480); ticking = false; };
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(updateTop); } }, { passive: true });
+  updateTop();
+  top.addEventListener('click', function () {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  });
+
   // ---- confirmations ----
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault(); });

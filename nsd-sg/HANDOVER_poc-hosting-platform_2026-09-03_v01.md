@@ -8,7 +8,7 @@
   Milestone log:
   [2–3 Sep 2026] — v0.1.0 born in a remote Claude Code session (VPS design,
                    nothing deployed; see previous handover).
-  [3 Sep 2026]   — v0.2.0 → v0.2.3. Discovered the account has no VPS,
+  [3 Sep 2026]   — v0.2.0 → v0.3.1. Discovered the account has no VPS,
                    re-platformed onto Hostinger Cloud Startup managed
                    Node.js, moved nsd.sg to the aarif.sg account, deployed,
                    and verified every tenant lifecycle step on the live
@@ -20,8 +20,8 @@
 
 # HANDOVER · NSD.SG · 3 Sep 2026 · v01
 
-**Project slug:** `poc-hosting-platform` · **Live:** https://nsd.sg (`/healthz` → version 0.2.3) · test tenant https://hello.nsd.sg
-**Repo / branch:** `aarif86/marketingskills` → `claude/nsd-sg-platform-build-6u10hd`, folder `nsd-sg/` — 4 local commits this session (`76a88e9`, `c3dba9e`, `ed18a08`, + 0.2.3) **not pushed** (session lacked repo authorisation); patch series 0001–0004 in `Downloads\nsd-deploy\patches\` (`git am *.patch` on the branch).
+**Project slug:** `poc-hosting-platform` · **Live:** https://nsd.sg (`/healthz` → version 0.3.1) · test tenant https://hello.nsd.sg
+**Repo / branch:** `aarif86/marketingskills` → `claude/nsd-sg-platform-build-6u10hd`, folder `nsd-sg/` — 6 local commits this session (0.2.0 → 0.3.1) **not pushed** (session lacked repo authorisation); patch series 0001–0006 in `Downloads\nsd-deploy\patches\` (`git am *.patch` on the branch).
 **Deploy target:** Hostinger Cloud Startup, account `u162210766` (the one with aarif.sg), managed Node.js under LiteSpeed lsnode. **Status:** live, self-serve provisioning working, admin logged in, no SMTP yet.
 
 ## What shipped this session
@@ -40,6 +40,7 @@
 - `src/web/middleware.js` — `Cache-Control: private, no-store` on all platform responses (LSCache sits in front).
 - Migration `001_hosting_state.sql` (hosting_state / hosting_error / hosting_synced_at); CLI `sync-all`, `sync-site`, `hosting`; admin System health: Hostinger publisher block, **Sync now**, orphan **remove**, secrets-file key names, server-disk stat relabelled (86% is the shared server, not our quota — warning now triggers only under 10 GB free), NSD.SG storage stat.
 - Admin nav: links on their own row; stat cards no longer overflow.
+- **v0.3.0 — Apple treatment (aarif.sg design language, NSD palette kept):** shared header with hamburger + full-screen drawer on all three shells (fixes the broken phone nav), pill buttons with layered accent glow and spring lift, shadow tiers, tighter display type via clamp(), eyebrow rules, reveal-on-scroll (reduced-motion safe), 16px inputs (no iOS zoom), full-width CTAs under 600px; v0.3.1 adds the floating back-to-top pill (appears after 480px of scroll, hides while the drawer is open). Verified with Playwright at 390px and 1440px before deploy.
 - `deploy/hostinger/env.hostinger` (non-secret env shipped as `.env`) + `build-archive.sh`; README and `.env.example` updated; docs/07 written.
 - Tests 31 → 38 (`test/hostinger.test.js`).
 
