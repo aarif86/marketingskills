@@ -195,9 +195,9 @@ ${planBanner(ent)}
   <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. ASATIZAH-2026" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
 </div>
 <div class="card"><h2>Upgrade</h2>
-  ${plans.filter((p) => p.id !== ent.plan.id && p.price_cents_month > 0).map((p) => html`
-    <div class="plan-line"><div><strong>${p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.description}</div></div>
-    <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.hitpay.plans[p.id] || config.payLinks[p.id] ? `Choose ${p.name} — pay with HitPay` : `Choose ${p.name}`}</button></form></div>`)}
+  ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public)).map((p) => html`
+    <div class="plan-line"><div><strong>${p.id === ent.plan.id ? `Keep ${p.name} after your free period` : p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.id === ent.plan.id ? `Same plan, no expiry. Your card is charged from today — do this any time before ${ent.expiresAt ? formatDate(ent.expiresAt) : 'your trial ends'}.` : p.description}</div></div>
+    <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.hitpay.plans[p.id] || config.payLinks[p.id] ? `${p.id === ent.plan.id ? 'Keep' : 'Choose'} ${p.name} — pay with HitPay` : `Choose ${p.name}`}</button></form></div>`)}
   <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Custom domains are an add-on on top of Plus — you buy the domain, we connect it.</p>
   <hr><h3>Want a real domain and a professional website?</h3><p class="muted"><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds and grows websites for Singapore businesses. Ask us about moving from ${config.baseDomain} to your own domain.</p>
 </div>

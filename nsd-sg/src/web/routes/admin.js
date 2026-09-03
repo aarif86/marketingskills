@@ -360,6 +360,26 @@ export async function registerAdminRoutes(app) {
     return reply.redirect('/admin/health');
   });
 
+  app.post('/admin/health/test-email', opts, async (req, reply) => {
+    const { sendMail } = await import('../../lib/mailer.js');
+    try {
+      const r = await sendMail({ to: req.user.email, subject: 'NSD.SG test email', text: `SMTP works. Sent ${new Date().toISOString()} from ${config.smtp.host}:${config.smtp.port} as ${config.smtp.user}.` });
+      flash(reply, 'success', r.delivered ? `Sent to ${req.user.email} via ${config.smtp.host}:${config.smtp.port}. Check your inbox (and spam).` : 'SMTP is not configured — the message was only logged.');
+    } catch (e) {
+      flash(reply, 'error', `SMTP failed: ${String(e.message).slice(0, 400)}`);
+    }
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/hitpay-check', opts, async (req, reply) => {
+    const hitpay = await import('../../services/hitpay.js');
+    if (!hitpay.enabled()) { flash(reply, 'error', 'HITPAY_API_KEY is not set.'); return reply.redirect('/admin/health'); }
+    const d = await hitpay.diagnose();
+    const parts = Object.entries(d.plans).map(([id, r]) => r.ok ? `${id}: OK (${r.name}, ${r.currency} ${r.amount} ${r.cycle})` : `${id}: ${r.error}`);
+    flash(reply, Object.values(d.plans).every((r) => r.ok) ? 'success' : 'error', `${d.apiBase} — ${parts.join(' · ') || 'no HITPAY_PLAN_* configured'}`);
+    return reply.redirect('/admin/health');
+  });
+
   app.post('/admin/health/orphan', opts, async (req, reply) => {
     const name = String(req.body?.name ?? '');
     const ok = removeOrphanDir(name);

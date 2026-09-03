@@ -61,6 +61,7 @@ export function homePage({ baseDomain, plans }) {
         <li>${p.limits.max_releases} versions kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge' : 'Small “Powered by NasarDigital” badge'}</li>
         <li>${p.features.custom_domains ? 'Bring your own domain (add-on)' : 'name.' + config.baseDomain + ' address'}</li>
+        <li>${p.features.hide_from_showcase ? 'Hide your site from the public showcase' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
         ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then extend or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>

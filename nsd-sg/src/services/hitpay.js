@@ -38,6 +38,8 @@ export async function startSubscription({ user, planId, returnUrl }) {
     reference,
     redirect_url: returnUrl,
     payment_methods: ['card'],
+    save_payment_method: 'true',   // keep the card on file for the monthly charge
+    start_date_method: 'sign_up_date', // first charge on sign-up
     send_email: 'true',
   });
   const id = String(r.id ?? r.recurring_billing_id ?? '');
@@ -119,4 +121,18 @@ export async function checkSubscription(id) {
 
 export function listSubscriptionsForUser(userId) {
   return getDb().prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+}
+
+/** Admin diagnostic: can we reach HitPay with this key, and do the configured plan ids exist? */
+export async function diagnose() {
+  const out = { apiBase: config.hitpay.apiBase, plans: {} };
+  for (const [planId, uuid] of Object.entries(config.hitpay.plans)) {
+    try {
+      const r = await api('GET', `/v1/subscription-plan/${encodeURIComponent(uuid)}`);
+      out.plans[planId] = { ok: true, name: r.name, amount: r.amount, currency: r.currency, cycle: r.cycle };
+    } catch (e) {
+      out.plans[planId] = { ok: false, error: e.message };
+    }
+  }
+  return out;
 }

@@ -250,7 +250,7 @@ export async function registerDashboardRoutes(app) {
 
   // ---- plan & billing ----
   app.get('/billing', { preHandler: requireUser }, async (req, reply) =>
-    render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user: req.user, ent: entitlementsFor(req.user), plans: listPlans({ publicOnly: true }), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) }));
+    render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user: req.user, ent: entitlementsFor(req.user), plans: listPlans(), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) }));
 
   app.post('/billing/extend', { preHandler: requireUser }, async (req, reply) => {
     const reason = String(req.body?.reason ?? '').slice(0, 60);
@@ -277,7 +277,8 @@ export async function registerDashboardRoutes(app) {
         return reply.redirect(url); // HitPay hosted checkout; the webhook / return handler activates the plan
       } catch (e) {
         req.log.error({ err: e }, 'hitpay start failed');
-        flash(reply, 'error', 'Could not start the payment page. Please try again in a minute or email us.');
+        audit({ req, action: 'hitpay.start_failed', targetType: 'user', targetId: req.user.id, details: { plan: planId, error: String(e.message).slice(0, 300) }, severity: 'warn' });
+        flash(reply, 'error', req.user.role === 'admin' ? `HitPay error: ${String(e.message).slice(0, 300)}` : 'Could not start the payment page. Please try again in a minute or email us.');
         return reply.redirect('/billing');
       }
     }
