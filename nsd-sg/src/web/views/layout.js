@@ -4,6 +4,19 @@ import { config } from '../../config.js';
 
 const brand = html`<a class="brand" href="/">NSD<span>.SG</span></a>`;
 
+// One header for all three shells: brand · desktop links · CTAs · hamburger. The drawer repeats links + CTAs
+// for phones (app.js toggles .open; every link still works without JS).
+function header({ links, ctas, extra = '', cls = '' }) {
+  const linkHtml = links.map(([href, label, active, extraCls]) => html`<a href="${href}" class="${active ? 'active' : ''} ${extraCls ?? ''}">${label}</a>`);
+  return html`<header class="site-header ${cls}"><div class="container nav">${brand}${raw(extra)}
+<nav class="nav-links" aria-label="Primary">${linkHtml}</nav>
+<div class="nav-cta">${raw(ctas)}</div>
+<button class="hamburger" type="button" aria-label="Open menu" aria-expanded="false" data-drawer-open><span></span><span></span><span></span></button>
+</div></header>
+<div class="drawer" data-drawer aria-hidden="true"><button class="drawer-close" type="button" aria-label="Close menu" data-drawer-close>×</button>
+<nav class="drawer-links" aria-label="Menu">${linkHtml}</nav><div class="drawer-cta">${raw(ctas)}</div></div>`;
+}
+
 function flashBox(flash) {
   if (!flash) return '';
   return html`<div class="flash flash-${flash.type}" role="status">${flash.message}</div>`;
@@ -22,12 +35,12 @@ function head(title, { description = '' } = {}) {
 
 export function marketingLayout({ title, description, body, user, flash }) {
   return html`${head(title, { description })}<body class="marketing">
-<header class="site-header"><div class="container nav">${brand}
-<nav><a href="/#how">How it works</a><a href="/#why">Why NSD.SG</a><a href="/pricing">Pricing</a><a href="/faq">FAQ</a></nav>
-<div class="nav-cta">${user
-    ? html`<a class="btn btn-primary" href="/dashboard">Dashboard</a>`
-    : html`<a class="btn btn-ghost" href="/login">Log in</a><a class="btn btn-primary" href="/signup">Get started</a>`}</div>
-</div></header>
+${raw(header({
+    links: [['/#how', 'How it works'], ['/#why', 'Why NSD.SG'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']],
+    ctas: user
+      ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
+      : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Get started</a>`,
+  }))}
 <main>${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
@@ -49,12 +62,12 @@ export function appLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/billing', 'Plan & billing', 'billing'],
   ];
   return html`${head(title)}<body class="app">
-<header class="site-header app-header"><div class="container nav">${brand}
-<nav>${nav.map(([href, label, key]) => html`<a href="${href}" class="${active === key ? 'active' : ''}">${label}</a>`)}
-${user?.role === 'admin' ? html`<a href="/admin" class="admin-link">Admin</a>` : ''}</nav>
-<div class="nav-cta"><span class="muted hide-sm">${user.email}</span>
-<form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost" type="submit">Log out</button></form></div>
-</div></header>
+${raw(header({
+    cls: 'app-header',
+    links: [...nav.map(([href, label, key]) => [href, label, active === key]), ...(user?.role === 'admin' ? [['/admin', 'Admin', false, 'admin-link']] : [])],
+    ctas: html`<span class="muted small nav-email">${user.email}</span>
+<form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Log out</button></form>`,
+  }))}
 <main class="container app-main">${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer slim"><div class="container"><span>NSD.SG · a NasarDigital product</span><span><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
@@ -73,11 +86,13 @@ export function adminLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/admin/health', 'System health', 'health'],
   ];
   return html`${head(title ? `Admin · ${title}` : 'Admin')}<body class="app admin">
-<header class="site-header app-header"><div class="container nav">${brand}<span class="pill pill-admin">ADMIN</span>
-<nav class="admin-nav">${nav.map(([href, label, key]) => html`<a href="${href}" class="${active === key ? 'active' : ''}">${label}</a>`)}</nav>
-<div class="nav-cta"><a class="btn btn-ghost" href="/dashboard">My dashboard</a>
-<form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost" type="submit">Log out</button></form></div>
-</div></header>
+${raw(header({
+    cls: 'app-header admin-header',
+    extra: html`<span class="pill pill-admin">ADMIN</span>`,
+    links: nav.map(([href, label, key]) => [href, label, active === key]),
+    ctas: html`<a class="btn btn-ghost btn-sm" href="/dashboard">My dashboard</a>
+<form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Log out</button></form>`,
+  }))}
 <main class="container app-main">${flashBox(flash)}${raw(body)}</main>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();

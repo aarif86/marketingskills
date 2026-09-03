@@ -24,6 +24,32 @@
     });
   });
 
+  // ---- mobile drawer ----
+  var drawer = document.querySelector('[data-drawer]');
+  var opener = document.querySelector('[data-drawer-open]');
+  if (drawer && opener) {
+    var setOpen = function (on) {
+      drawer.classList.toggle('open', on);
+      drawer.setAttribute('aria-hidden', on ? 'false' : 'true');
+      opener.setAttribute('aria-expanded', on ? 'true' : 'false');
+      document.body.classList.toggle('drawer-open', on);
+    };
+    opener.addEventListener('click', function () { setOpen(!drawer.classList.contains('open')); });
+    drawer.querySelectorAll('[data-drawer-close], a').forEach(function (el) { el.addEventListener('click', function () { setOpen(false); }); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  }
+
+  // ---- reveal on scroll (marketing only; respects reduced motion) ----
+  if (document.body.classList.contains('marketing') && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var targets = document.querySelectorAll('.section .card, .section h2, .section-lead, .features li, .cta > .container > *');
+    var i = 0;
+    targets.forEach(function (el) { el.classList.add('reveal'); if (el.classList.contains('card') || el.tagName === 'LI') el.style.transitionDelay = ((i++ % 3) * 0.08) + 's'; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('on'); io.unobserve(en.target); } });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    targets.forEach(function (el) { io.observe(el); });
+  }
+
   // ---- confirmations ----
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault(); });
