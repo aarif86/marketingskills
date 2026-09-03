@@ -11,7 +11,7 @@ import {
 import {
   getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
 } from '../../services/sites.js';
-import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents } from '../../services/plans.js';
+import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents, listPromoCodes, createPromoCode, deletePromoCode } from '../../services/plans.js';
 import { listReleases, listReleaseFiles, diskUsage } from '../../storage/releases.js';
 import { adminLayout } from '../views/layout.js';
 import * as V from '../views/admin.js';
@@ -264,6 +264,22 @@ export async function registerAdminRoutes(app) {
   });
 
   // ---- reserved names ----
+  app.get('/admin/promo', opts, async (req, reply) => render(req, reply, { title: 'Promo codes', active: 'promo', body: V.promoPage({ codes: listPromoCodes(), plans: listPlans(), csrf: csrfTokenFor(req) }) }));
+  app.post('/admin/promo', opts, async (req, reply) => {
+    const b = req.body ?? {};
+    if (b.action === 'delete') {
+      deletePromoCode(String(b.code ?? ''));
+      audit({ req, action: 'admin.promo.delete', targetType: 'promo', targetId: String(b.code ?? '') });
+      flash(reply, 'success', 'Deleted.');
+    } else {
+      const days = Number(b.expires_days) || 0;
+      const r = createPromoCode({ code: b.code, planId: String(b.plan_id ?? 'beta'), maxUses: b.max_uses, expiresAt: days > 0 ? new Date(Date.now() + days * 86400000).toISOString() : null, note: b.note, actorId: req.user.id });
+      audit({ req, action: 'admin.promo.create', targetType: 'promo', targetId: r.code ?? String(b.code ?? ''), details: { ok: r.ok, plan: b.plan_id } });
+      flash(reply, r.ok ? 'success' : 'error', r.ok ? `Code ${r.code} created.` : r.reason);
+    }
+    return reply.redirect('/admin/promo');
+  });
+
   app.get('/admin/reserved', opts, async (req, reply) => render(req, reply, { title: 'Reserved names', active: 'reserved', body: V.reservedPage({ names: listReserved(), csrf: csrfTokenFor(req) }) }));
   app.post('/admin/reserved', opts, async (req, reply) => {
     const b = req.body ?? {};

@@ -76,11 +76,12 @@ export function createSite({ user, subdomain, title = '' }) {
   return { ok: true, site };
 }
 
-export function updateSiteSettings(siteId, { title, allow_framing }) {
+export function updateSiteSettings(siteId, { title, allow_framing, listed }) {
   const db = getDb();
   const sets = [];
   const vals = [];
   if (title !== undefined) { sets.push('title = ?'); vals.push(String(title).trim().slice(0, 100)); }
+  if (listed !== undefined) { sets.push('listed = ?'); vals.push(listed ? 1 : 0); }
   if (allow_framing !== undefined) { sets.push('allow_framing = ?'); vals.push(allow_framing ? 1 : 0); }
   if (!sets.length) return;
   sets.push('updated_at = ?');
@@ -132,6 +133,14 @@ export function deleteSite(siteId) {
 
 export function storageUsedByUser(userId) {
   return getDb().prepare("SELECT COALESCE(SUM(total_storage_bytes), 0) AS n FROM sites WHERE user_id = ? AND status != 'deleted'").get(userId).n;
+}
+
+/** Public showcase: live sites whose owner is active and who have not opted out. */
+export function listShowcaseSites(limit = 500) {
+  return getDb().prepare(`
+    SELECT s.subdomain, s.title, s.last_deployed_at FROM sites s JOIN users u ON u.id = s.user_id
+    WHERE s.status = 'live' AND s.listed = 1 AND u.status = 'active'
+    ORDER BY s.last_deployed_at DESC LIMIT ?`).all(limit);
 }
 
 // ---- reserved names (admin) ------------------------------------------------------

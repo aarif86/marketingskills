@@ -4,7 +4,8 @@ import { limiter } from '../../lib/ratelimit.js';
 import { audit } from '../../lib/audit.js';
 import { validatePasswordStrength } from '../../lib/password.js';
 import { sendMail } from '../../lib/mailer.js';
-import { normalizeSubdomain } from '../../lib/subdomain.js';
+import { normalizeSubdomain, blockedTermIn } from '../../lib/subdomain.js';
+import { watchdog } from '../../lib/audit.js';
 import {
   normalizeEmail, validateEmail, findUserByEmail, createUser, authenticate, createSession, destroySession,
   issueToken, consumeToken, markEmailVerified, changePassword,
@@ -39,7 +40,7 @@ export async function registerAuthRoutes(app) {
     const errors = [];
     const e1 = validateEmail(email); if (e1) errors.push(e1);
     const e2 = validatePasswordStrength(password); if (e2) errors.push(e2);
-    if (subdomain) { const e3 = subdomainUnavailableReason(subdomain); if (e3) errors.push(`Site name: ${e3}`); }
+    if (subdomain) { const e3 = subdomainUnavailableReason(subdomain); if (e3) errors.push(`Site name: ${e3}`); const t = blockedTermIn(subdomain); if (t) watchdog(req, subdomain, t); }
     if (!b.agree) errors.push('Please accept the Terms of Service.');
     if (!errors.length && findUserByEmail(email)) errors.push('An account with that email already exists. Try logging in.');
     if (errors.length) {

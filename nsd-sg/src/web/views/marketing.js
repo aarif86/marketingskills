@@ -1,5 +1,5 @@
 // Marketing pages. Copy is deliberately plain: the audience is non-technical.
-import { html } from '../../lib/html.js';
+import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
@@ -60,7 +60,7 @@ export function homePage({ baseDomain, plans }) {
         <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB storage</li>
         <li>${p.limits.max_releases} versions kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge' : 'Small “Powered by NasarDigital” badge'}</li>
-        <li>${p.features.custom_domains ? 'Custom domain' : 'name.' + config.baseDomain + ' address'}</li>
+        <li>${p.features.custom_domains ? 'Bring your own domain (add-on)' : 'name.' + config.baseDomain + ' address'}</li>
         ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then extend or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>
@@ -91,7 +91,7 @@ export function pricingPage({ plans }) {
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
     <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB storage</li>
     <li>${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB max per file</li><li>${p.limits.max_releases} versions kept</li>
-    <li>${p.features.branding_removable ? 'No badge' : 'Powered-by badge'}</li><li>${p.features.custom_domains ? 'Custom domain' : 'Subdomain only'}</li>
+    <li>${p.features.branding_removable ? 'No badge' : html`<a href="/badge">Powered-by badge</a>`}</li><li>${p.features.custom_domains ? 'Bring your own domain (add-on)' : 'Subdomain only'}</li><li>${p.features.hide_from_showcase ? 'Can hide from the showcase' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
     <li>${p.features.priority_support ? 'Priority support' : 'Email support'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
@@ -153,4 +153,29 @@ export function reportPage({ csrf, site }) {
     <label>Your email (optional) <input type="email" name="email" maxlength="200"></label>
     <button class="btn btn-primary" type="submit">Send report</button>
   </form></div></section>`.toString();
+}
+
+export function showcasePage({ sites, baseDomain }) {
+  return html`<section class="section"><div class="container">
+  <p class="eyebrow">Live on NSD.SG</p>
+  <h1>${sites.length} site${sites.length === 1 ? '' : 's'} hosted right now</h1>
+  <p class="section-lead">Every one of these was generated with an AI tool and uploaded as plain files. Free-plan sites are listed automatically; Plus lets you opt out.</p>
+  ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
+  <p class="muted small mt">Something here breaks our <a href="/terms">terms</a>? <a href="/report">Report it</a>.</p>
+</div></section>`.toString();
+}
+
+export function badgePage({ badgeHtml, baseDomain }) {
+  return html`<section class="section"><div class="container narrow">
+  <p class="eyebrow">The badge</p>
+  <h1>What the “Powered by NasarDigital” badge looks like</h1>
+  <p class="section-lead">Free sites carry this small pill in the bottom-right corner of every page. It is how the free tier pays for itself. It never covers your content, never tracks your visitors, and disappears the moment you move to Plus.</p>
+  <div class="badge-demo"><div class="bd-bar"><span></span><span></span><span></span><em>yourname.${baseDomain}</em></div>
+    <div class="bd-page"><div class="bd-line w60"></div><div class="bd-line w90"></div><div class="bd-line w80"></div><div class="bd-block"></div><div class="bd-line w70"></div><div class="bd-line w50"></div>
+    <div class="bd-badge">${raw(badgeHtml)}</div></div></div>
+  <div class="grid two mt">
+    <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 3 months, extendable when you ask.</p></div>
+    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, hide from the showcase, bring your own domain as an add-on. <a href="/pricing">See pricing →</a></p></div>
+  </div>
+</div></section>`.toString();
 }

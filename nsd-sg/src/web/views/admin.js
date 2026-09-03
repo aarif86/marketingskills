@@ -244,3 +244,24 @@ ${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root
   <li>Backups: see <code>deploy/scripts/backup.sh</code> — verify the latest archive exists off-box.</li>
 </ul></div>`.toString();
 }
+
+export function promoPage({ codes, plans, csrf }) {
+  return html`<h1>Promo codes <span class="muted">(${codes.length})</span></h1>
+<p class="muted">A code moves the user onto the chosen plan with a fresh trial (the plan's <code>trial_days</code>). Beta = 3 sites, no badge, 90 days free, then S$6/mo via HitPay.</p>
+<form method="post" action="/admin/promo" class="card form">${hidden(csrf, { action: 'create' })}
+  <div class="grid three tight">
+    <label>Code <input name="code" placeholder="ASATIZAH-2026" maxlength="32" required style="text-transform:uppercase"></label>
+    <label>Plan <select name="plan_id">${plans.map((p) => html`<option value="${p.id}" ${p.id === 'beta' ? 'selected' : ''}>${p.name} (${p.id})</option>`)}</select></label>
+    <label>Max uses <input name="max_uses" type="number" min="1" value="20"></label>
+  </div>
+  <div class="grid two tight">
+    <label>Expires in days <input name="expires_days" type="number" min="0" value="60"><small>0 = never</small></label>
+    <label>Note <input name="note" placeholder="asatizah group / business team" maxlength="200"></label>
+  </div>
+  <button class="btn btn-primary btn-tiny">Create code</button></form>
+<div class="card"><table class="table"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody>
+${codes.map((c) => html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses}</td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td class="muted small">${c.note}</td>
+  <td><form method="post" action="/admin/promo" class="inline" data-confirm="Delete ${c.code}?">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">Delete</button></form></td></tr>`)}
+${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td></tr>`}
+</tbody></table></div>`.toString();
+}

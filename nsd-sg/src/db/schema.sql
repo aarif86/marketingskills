@@ -177,3 +177,21 @@ CREATE TABLE IF NOT EXISTS plan_events (
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_plan_events_user ON plan_events(user_id, created_at DESC);
+
+-- Promo codes: redeeming assigns the plan (trial from the plan's trial_days). Created in admin.
+CREATE TABLE IF NOT EXISTS promo_codes (
+  code        TEXT PRIMARY KEY,                       -- upper-case
+  plan_id     TEXT NOT NULL REFERENCES plans(id),
+  max_uses    INTEGER NOT NULL DEFAULT 1,
+  uses        INTEGER NOT NULL DEFAULT 0,
+  expires_at  TEXT,
+  note        TEXT NOT NULL DEFAULT '',
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS promo_redemptions (
+  code        TEXT NOT NULL REFERENCES promo_codes(code),
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (code, user_id)
+);

@@ -50,6 +50,14 @@ ${planBanner(ent)}
   <div class="actions">${site.status === 'live' ? html`<a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open site ↗</a>` : ''}<a class="btn btn-ghost" href="/sites/${site.id}/settings">Settings</a></div>
 </div>
 ${site.status === 'suspended' ? html`<div class="flash flash-error"><strong>This site is suspended.</strong> ${site.suspended_reason || 'Contact support for details.'}</div>` : ''}
+${site.status !== 'suspended' ? html`<section class="card steps-card"><h2>${site.current_release_id ? 'Your site is live' : 'Three steps to go live'}</h2>
+<ol class="steps">
+  <li class="done"><strong>Claim your address</strong><span class="muted">${site.subdomain}.${config.baseDomain} is yours.</span></li>
+  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Publish your files</strong><span class="muted">Drop a ZIP or your HTML/CSS/image files below. Every upload is a new version you can roll back to.</span></li>
+  <li class="${site.current_release_id ? 'now' : ''}"><strong>Open and share it</strong><span class="muted">${site.current_release_id ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : 'The Open button appears here once something is published.'}</span></li>
+</ol>
+${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class="notice"><strong>New address:</strong> the security certificate for <code>${site.subdomain}.${config.baseDomain}</code> can take 5–15 minutes to be issued. If your browser shows a connection or SSL error, wait a little and refresh — nothing is wrong.</p>` : ''}
+</section>` : ''}
 
 <section class="card upload-card" id="upload">
   <h2>${site.current_release_id ? 'Publish a new version' : 'Publish your site'}</h2>
@@ -118,9 +126,10 @@ export function siteSettings({ site, csrf, ent }) {
   <label>Address <div class="domain-input"><input value="${site.subdomain}" disabled><span>.${config.baseDomain}</span></div><small>Addresses cannot be renamed. Create a new site for a different name.</small></label>
   <label>Title <input name="title" value="${site.title}" maxlength="100"></label>
   <label class="check"><input type="checkbox" name="allow_framing" value="1" ${site.allow_framing ? 'checked' : ''}> Allow other websites to embed this site in an iframe <small>(off by default to prevent click-jacking)</small></label>
+  ${(ent.features.hide_from_showcase ?? ent.features.branding_removable) ? html`<label class="check"><input type="checkbox" name="listed" value="1" ${site.listed ? 'checked' : ''}> List this site on the public <a href="/showcase">showcase</a> <small>(untick to keep it off the list)</small></label>` : html`<p class="muted small">Live sites on the free plan appear on the public <a href="/showcase">showcase</a>. Plus lets you hide yours.</p>`}
   <button class="btn btn-primary" type="submit">Save</button>
 </form>
-${ent.features.custom_domains ? html`<div class="card"><h2>Custom domain</h2><p class="muted">Connect <code>www.yourdomain.sg</code>. Coming soon for Plus — email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> and we will set it up for you today.</p></div>` : ''}
+${ent.features.custom_domains ? html`<div class="card"><h2>Custom domain</h2><p class="muted">Bring your own domain (an add-on — the domain itself is bought separately from any registrar, ~S$20–60/yr for .sg). Connecting it is done by hand for now — email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> and we will set it up for you today.</p></div>` : ''}
 <div class="card danger">
   <h2>Delete this site</h2>
   <p class="muted">Removes all files and versions. The address becomes available to anyone.</p>
@@ -176,13 +185,20 @@ ${planBanner(ent)}
     <li>Expires: <strong>${ent.expiresAt ? formatDate(ent.expiresAt) : 'never'}</strong>${ent.daysLeft !== null && !ent.expired ? html` <span class="muted">(${ent.daysLeft} days left)</span>` : ''}</li>
   </ul>
   ${ent.plan.trial_days ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
-    <label>Need more time? Ask for another ${Math.round(ent.plan.trial_days / 30)} months free <textarea name="note" rows="2" maxlength="500" placeholder="Optional: tell us what your site is for"></textarea></label>
+    <h3>Need more time?</h3><p class="muted small">Ask for another ${Math.round(ent.plan.trial_days / 30)} months free. Tell us why — we say yes to most real projects.</p>
+    <label>Reason <select name="reason" required><option value="">Choose one…</option>
+      <option>Still building my site</option><option>Showing it to clients or an employer</option><option>Student or learning project</option>
+      <option>Community, mosque or non-profit site</option><option>Waiting for budget approval to upgrade</option><option>Something else</option></select></label>
+    <label>In your own words <textarea name="note" rows="3" maxlength="500" minlength="20" required placeholder="What is the site for, and what happens in the next 3 months?"></textarea></label>
     <button class="btn btn-ghost" type="submit">Request free extension</button></form>` : ''}
+  <hr><h3>Have a promo code?</h3>
+  <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. ASATIZAH-2026" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
 </div>
 <div class="card"><h2>Upgrade</h2>
   ${plans.filter((p) => p.id !== ent.plan.id && p.price_cents_month > 0).map((p) => html`
     <div class="plan-line"><div><strong>${p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.description}</div></div>
-    <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">Choose ${p.name}</button></form></div>`)}
+    <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.payLinks[p.id] ? `Choose ${p.name} — pay with HitPay` : `Choose ${p.name}`}</button></form></div>`)}
+  <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Custom domains are an add-on on top of Plus — you buy the domain, we connect it.</p>
   <hr><h3>Want a real domain and a professional website?</h3><p class="muted"><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds and grows websites for Singapore businesses. Ask us about moving from ${config.baseDomain} to your own domain.</p>
 </div>
 </div>

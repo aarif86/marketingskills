@@ -7,10 +7,12 @@ import { limiter } from '../../lib/ratelimit.js';
 import { validatePasswordStrength } from '../../lib/password.js';
 import { sanitizeRelativePath } from '../../lib/paths.js';
 import { contentTypeFor, extensionOf } from '../../lib/mime.js';
+import { blockedTermIn } from '../../lib/subdomain.js';
+import { watchdog } from '../../lib/audit.js';
 import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite,
 } from '../../services/sites.js';
-import { entitlementsFor, requestExtension, listPlanEvents, listPlans } from '../../services/plans.js';
+import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode } from '../../services/plans.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser, setUserStatus } from '../../services/users.js';
 import {
   deployZip, deployFiles, deleteFileFromSite, rollbackTo, listReleases, listReleaseFiles, readReleaseFile, tempFile, StorageError,
@@ -44,6 +46,7 @@ export async function registerDashboardRoutes(app) {
 
   app.post('/sites', { preHandler: [requireUser, limiter('siteCreate', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
     const r = createSite({ user: req.user, subdomain: req.body?.subdomain, title: req.body?.title });
+    { const t = blockedTermIn(String(req.body?.subdomain ?? '').toLowerCase()); if (t) watchdog(req, req.body?.subdomain, t); }
     if (!r.ok) { flash(reply, 'error', r.reason); return reply.redirect('/sites/new'); }
     audit({ req, action: 'site.create', targetType: 'site', targetId: r.site.id, details: { subdomain: r.site.subdomain } });
     flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours. Upload your files to go live.`);
@@ -181,7 +184,9 @@ export async function registerDashboardRoutes(app) {
 
   app.post('/sites/:id/settings', { preHandler: requireUser }, async (req, reply) => {
     const site = loadSite(req, reply); if (!site) return;
-    updateSiteSettings(site.id, { title: req.body?.title, allow_framing: req.body?.allow_framing === '1' });
+    const ent = entitlementsFor(req.user);
+    const canHide = ent.features.hide_from_showcase ?? ent.features.branding_removable;
+    updateSiteSettings(site.id, { title: req.body?.title, allow_framing: req.body?.allow_framing === '1', listed: canHide ? req.body?.listed === '1' : undefined });
     audit({ req, action: 'site.settings', targetType: 'site', targetId: site.id });
     flash(reply, 'success', 'Settings saved.');
     return reply.redirect(`/sites/${site.id}/settings`);
@@ -247,7 +252,10 @@ export async function registerDashboardRoutes(app) {
     render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user: req.user, ent: entitlementsFor(req.user), plans: listPlans({ publicOnly: true }), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) }));
 
   app.post('/billing/extend', { preHandler: requireUser }, async (req, reply) => {
-    const r = requestExtension({ userId: req.user.id, note: String(req.body?.note ?? '').slice(0, 500) });
+    const reason = String(req.body?.reason ?? '').slice(0, 60);
+    const note = String(req.body?.note ?? '').trim().slice(0, 500);
+    if (!reason || note.length < 20) { flash(reply, 'error', 'Pick a reason and tell us a little more (at least 20 characters) so we can say yes.'); return reply.redirect('/billing'); }
+    const r = requestExtension({ userId: req.user.id, note: `${reason}: ${note}` });
     audit({ req, action: 'plan.extension_requested', targetType: 'user', targetId: req.user.id });
     flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Extension requested. We will confirm by email, usually within a day.' : r.reason);
     return reply.redirect('/billing');
@@ -262,7 +270,16 @@ export async function registerDashboardRoutes(app) {
     const { newId } = await import('../../lib/ids.js');
     getDb().prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(newId(), req.user.id, 'upgrade_requested', req.user.plan_id, planId, '{}', req.user.id);
-    flash(reply, 'success', 'Thanks! Online payment is coming soon. We have logged your request and will email you a payment link.');
+    const link = config.payLinks[planId];
+    if (link) return reply.redirect(link); // HitPay hosted page; admin assigns the plan once payment lands
+    flash(reply, 'success', 'Thanks! We have logged your request and will email you a payment link.');
+    return reply.redirect('/billing');
+  });
+
+  app.post('/billing/redeem', { preHandler: requireUser }, async (req, reply) => {
+    const r = redeemPromoCode({ userId: req.user.id, code: req.body?.code });
+    audit({ req, action: r.ok ? 'plan.promo_redeemed' : 'plan.promo_failed', targetType: 'user', targetId: req.user.id, details: { code: String(req.body?.code ?? '').slice(0, 40), ok: r.ok } });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? `Welcome to the ${r.plan.name} plan${r.expires ? ` — free until ${r.expires.slice(0, 10)}` : ''}.` : r.reason);
     return reply.redirect('/billing');
   });
 }

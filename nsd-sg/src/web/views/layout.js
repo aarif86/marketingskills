@@ -36,7 +36,7 @@ function head(title, { description = '' } = {}) {
 export function marketingLayout({ title, description, body, user, flash }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#how', 'How it works'], ['/#why', 'Why NSD.SG'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']],
+    links: [['/#how', 'How it works'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']],
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Get started</a>`,
@@ -81,6 +81,7 @@ export function adminLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/admin/sites', 'Sites', 'sites'],
     ['/admin/plans', 'Plans', 'plans'],
     ['/admin/reserved', 'Reserved names', 'reserved'],
+    ['/admin/promo', 'Promo codes', 'promo'],
     ['/admin/abuse', 'Abuse reports', 'abuse'],
     ['/admin/audit', 'Audit log', 'audit'],
     ['/admin/health', 'System health', 'health'],

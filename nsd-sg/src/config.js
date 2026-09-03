@@ -115,6 +115,8 @@ export const config = Object.freeze({
     from: env('SMTP_FROM', `NSD.SG <no-reply@${baseDomain}>`),
   },
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
+  // HitPay (or any) hosted payment links per plan id: PAY_LINK_PLUS, PAY_LINK_BETA, ... Upgrade buttons open them.
+  payLinks: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('PAY_LINK_') && v).map(([k, v]) => [k.slice(9).toLowerCase(), v])),
   hostinger: {
     tenantRoot: tenantRoot ? path.resolve(tenantRoot) : '',
     publicHtml: path.resolve(env('PUBLIC_HTML', tenantRoot ? path.dirname(path.resolve(tenantRoot)) : path.join(__dirname, '..', 'data', 'public_html'))),

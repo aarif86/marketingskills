@@ -114,6 +114,49 @@ export function extendPlan({ userId, days, actorId = null, type = 'extension_gra
   return next;
 }
 
+// ---- promo codes ------------------------------------------------------------------
+
+export function listPromoCodes() {
+  return getDb().prepare('SELECT p.*, (SELECT COUNT(*) FROM promo_redemptions r WHERE r.code = p.code) AS redeemed FROM promo_codes p ORDER BY created_at DESC').all();
+}
+
+export function createPromoCode({ code, planId, maxUses = 10, expiresAt = null, note = '', actorId = null }) {
+  const c = String(code ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  if (c.length < 4 || c.length > 32) return { ok: false, reason: 'Code must be 4–32 letters/numbers.' };
+  if (!getPlan(planId)) return { ok: false, reason: 'Unknown plan.' };
+  try {
+    getDb().prepare('INSERT INTO promo_codes (code, plan_id, max_uses, expires_at, note, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(c, planId, Math.max(1, Number(maxUses) || 1), expiresAt, String(note ?? '').slice(0, 200), actorId);
+  } catch (e) {
+    if (String(e.message).includes('UNIQUE')) return { ok: false, reason: 'That code already exists.' };
+    throw e;
+  }
+  return { ok: true, code: c };
+}
+
+export function deletePromoCode(code) {
+  getDb().prepare('DELETE FROM promo_codes WHERE code = ?').run(String(code).toUpperCase());
+}
+
+/** Redeem a code for a user: assigns the code's plan (fresh trial) and records the redemption. */
+export function redeemPromoCode({ userId, code }) {
+  const db = getDb();
+  const c = String(code ?? '').trim().toUpperCase();
+  const row = db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(c);
+  if (!row) return { ok: false, reason: 'That code is not valid.' };
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return { ok: false, reason: 'That code has expired.' };
+  if (row.uses >= row.max_uses) return { ok: false, reason: 'That code has already been used up.' };
+  if (db.prepare('SELECT 1 FROM promo_redemptions WHERE code = ? AND user_id = ?').get(c, userId)) return { ok: false, reason: 'You have already used this code.' };
+  const user = db.prepare('SELECT plan_id FROM users WHERE id = ?').get(userId);
+  if (user?.plan_id === row.plan_id) return { ok: false, reason: 'You are already on that plan.' };
+  db.transaction(() => {
+    db.prepare('INSERT INTO promo_redemptions (code, user_id) VALUES (?, ?)').run(c, userId);
+    db.prepare('UPDATE promo_codes SET uses = uses + 1 WHERE code = ?').run(c);
+  })();
+  const expires = assignPlan({ userId, planId: row.plan_id, actorId: userId, reason: `promo:${c}` });
+  return { ok: true, plan: getPlan(row.plan_id), expires };
+}
+
 export function requestExtension({ userId, note = '' }) {
   const db = getDb();
   const recent = db

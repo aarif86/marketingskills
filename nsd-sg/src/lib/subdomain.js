@@ -7,10 +7,26 @@ export const SUBDOMAIN_MAX = 40;
 const LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
 // Substrings that are common phishing bait when used as a hostname.
-const BLOCKED_SUBSTRINGS = [
+// Also the ToS categories (adult, gambling, scams, malware, drugs, weapons, hate). Matched as substrings, so
+// "freeporn" and "casino88" are refused too. Short words that are common inside innocent names are NOT here
+// (e.g. "bet" would block "alphabet"); those live in the exact-match reserved list instead.
+export const BLOCKED_SUBSTRINGS = [
   'singpass', 'paynow', 'govsg', 'gov-sg', 'bank', 'wallet', 'crypto', 'verify', 'secure-login',
   'account-update', 'password', 'signin', 'sign-in', 'login', 'appleid', 'icloud', 'paypal', 'dbs-', 'ocbc-', 'uob-',
+  'porn', 'xxx', 'sexy', 'sex-', '-sex', 'nude', 'escort', 'hentai', 'onlyfans', 'fetish', 'milf', 'camgirl', 'hooker', 'brothel',
+  'casino', 'gambl', 'betting', 'jackpot', 'lottery', 'toto4d', '4dtoto', 'sportsbook', 'slots88', 'baccarat', 'roulette',
+  'phish', 'scam', 'malware', 'ransom', 'hacker', 'hacking', 'warez', 'torrent', 'crack', 'keygen', 'carding', 'cvv',
+  'cocaine', 'heroin', 'cannabis', 'marijuana', 'weed-', '-weed', 'ganja', 'vape', 'ketamine', 'ecstasy',
+  'firearm', 'weapon', 'explosive', 'bomb', 'terror', 'jihad', 'isis-', 'nazi', 'hitler', 'kkk',
+  'nigger', 'chink', 'keling', 'apu-neh',
+  'official-', '-official', 'support-', 'helpdesk', 'customer-service', 'giveaway', 'airdrop', 'free-money', 'get-rich', 'forex-signal',
 ];
+
+/** Which blocked term (if any) a name contains. Used by the registration watchdog to log attempts. */
+export function blockedTermIn(name) {
+  const n = String(name ?? '').toLowerCase();
+  return BLOCKED_SUBSTRINGS.find((s) => n.includes(s)) ?? null;
+}
 
 export function normalizeSubdomain(input) {
   return String(input ?? '')

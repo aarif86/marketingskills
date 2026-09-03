@@ -24,3 +24,8 @@ export function audit({ req, actor, action, targetType = '', targetId = '', deta
     req.log[logFn]({ audit: action, actor: user?.id, targetType, targetId, ...details }, 'audit');
   }
 }
+
+/** Registration watchdog: someone tried to claim a name on the ToS blocklist. Shows in admin security events. */
+export function watchdog(req, name, term) {
+  audit({ req, action: 'security.blocked_name', targetType: 'subdomain', targetId: String(name).slice(0, 60), details: { term, email: req?.user?.email ?? req?.body?.email ?? null }, severity: 'warn' });
+}

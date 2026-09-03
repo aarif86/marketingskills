@@ -128,3 +128,30 @@ test('admin health page renders the publisher block with orphan removal forms ca
   assert.equal(rm.statusCode, 302);
   assert.deepEqual(listOrphanDirs(), []);
 });
+
+test('promo code moves a user to the beta plan; showcase lists live sites; badge demo renders', async () => {
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const admin = cookiesFrom(login);
+  let r = await post('/admin/promo', admin, { action: 'create', code: 'beta-test', plan_id: 'beta', max_uses: '2', expires_days: '30', note: 't' }, '/admin/promo');
+  assert.equal(r.statusCode, 302);
+  const signup = await post('/signup', '', { email: 'dave@example.com', name: 'Dave', password: 'correct-horse-battery', subdomain: 'dave', agree: '1' });
+  const dave = cookiesFrom(signup);
+  r = await post('/billing/redeem', dave, { code: 'BETA-TEST' }, '/billing');
+  assert.equal(r.statusCode, 302);
+  const bill = await get('/billing', dave);
+  assert.match(bill.body, /Current plan: Beta/);
+  r = await post('/billing/redeem', dave, { code: 'BETA-TEST' }, '/billing');
+  assert.equal(getDb().prepare("SELECT uses FROM promo_codes WHERE code = 'BETA-TEST'").get().uses, 1, 'second redeem refused');
+  // showcase + badge pages are public
+  const sc = await get('/showcase');
+  assert.equal(sc.statusCode, 200);
+  const badge = await get('/badge');
+  assert.equal(badge.statusCode, 200);
+  assert.match(badge.body, /data-nsd="badge"/);
+  assert.doesNotMatch(badge.body, /MutationObserver/);
+  // blocked-name watchdog
+  const bad = await post('/signup', '', { email: 'eve@example.com', name: 'Eve', password: 'correct-horse-battery', subdomain: 'freeporn', agree: '1' });
+  assert.equal(bad.statusCode, 200);
+  assert.match(bad.body, /not available/);
+  assert.ok(getDb().prepare("SELECT 1 FROM audit_log WHERE action = 'security.blocked_name'").get());
+});

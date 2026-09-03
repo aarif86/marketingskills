@@ -8,7 +8,9 @@ import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
-import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage } from '../views/marketing.js';
+import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage } from '../views/marketing.js';
+import { listShowcaseSites } from '../../services/sites.js';
+import { brandingMarkup } from '../../serve/branding.js';
 
 export async function registerMarketingRoutes(app) {
   const render = (req, reply, { title, description, body }) =>
@@ -17,6 +19,12 @@ export async function registerMarketingRoutes(app) {
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }) }) }));
   app.get('/pricing', async (req, reply) => render(req, reply, { title: 'Pricing', body: pricingPage({ plans: listPlans({ publicOnly: true }) }) }));
   app.get('/faq', async (req, reply) => render(req, reply, { title: 'FAQ', body: faqPage() }));
+  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
+  app.get('/badge', async (req, reply) => {
+    // The real badge markup minus its guard <script> (platform CSP forbids inline scripts; the demo does not need it).
+    const badgeHtml = brandingMarkup().replace(/<script>[\s\S]*<\/script>/, '').replace('position:fixed !important', 'position:absolute !important');
+    return render(req, reply, { title: 'The badge', description: 'What the Powered by NasarDigital badge on free sites looks like.', body: badgePage({ badgeHtml, baseDomain: config.baseDomain }) });
+  });
   app.get('/terms', async (req, reply) => render(req, reply, { title: 'Terms of Service', body: termsPage() }));
   app.get('/privacy', async (req, reply) => render(req, reply, { title: 'Privacy', body: privacyPage() }));
 
