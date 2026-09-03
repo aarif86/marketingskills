@@ -281,3 +281,17 @@ export function listOrphanDirs() {
   const live = new Set(getDb().prepare("SELECT subdomain FROM sites WHERE status != 'deleted'").all().map((r) => r.subdomain));
   return fs.readdirSync(tenantRoot()).filter((d) => !live.has(d.replace(/\.(new|old)$/, '')));
 }
+
+/** Delete one orphan directory (only names returned by listOrphanDirs are accepted). */
+export function removeOrphanDir(name) {
+  if (!listOrphanDirs().includes(name)) return false;
+  fs.rmSync(path.join(tenantRoot(), name), { recursive: true, force: true });
+  return true;
+}
+
+/** Key names (never values) found in DATA_DIR/.env, or null when the file is absent. */
+export function envFileKeys() {
+  const file = path.join(config.dataDir, '.env');
+  if (!fs.existsSync(file)) return null;
+  return fs.readFileSync(file, 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && l.includes('=')).map((l) => l.slice(0, l.indexOf('=')).trim());
+}

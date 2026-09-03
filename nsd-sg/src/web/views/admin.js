@@ -218,14 +218,15 @@ export function healthPage(h) {
 <div class="stats">
   ${stat('Version', h.version, `Node ${h.node} · ${h.env}`)}
   ${stat('Uptime', `${Math.floor(h.uptimeSec / 3600)}h ${Math.floor((h.uptimeSec % 3600) / 60)}m`)}
-  ${stat('Disk used', `${pct}%`, `${formatBytes(h.disk.freeBytes)} free of ${formatBytes(h.disk.totalBytes)}`)}
+  ${stat('Server disk', `${formatBytes(h.disk.freeBytes)} free`, `${pct}% of ${formatBytes(h.disk.totalBytes)} used (whole server)`)}
+  ${stat('NSD.SG storage', formatBytes(h.siteBytes), `${h.siteCount} site${h.siteCount === 1 ? '' : 's'} · ${h.releaseCount} release${h.releaseCount === 1 ? '' : 's'}`)}
   ${stat('Process RSS', formatBytes(h.mem.rss), `heap ${formatBytes(h.mem.heapUsed)}`)}
   ${stat('System memory', formatBytes(h.totalMem - h.freeMem), `of ${formatBytes(h.totalMem)}`)}
   ${stat('Load (1/5/15)', h.load.map((l) => l.toFixed(2)).join(' / '), `${h.cpus} CPU`)}
-  ${stat('Database', formatBytes(h.dbSize), h.dataDir)}
-  ${stat('Email', h.smtp ? 'SMTP configured' : 'console only', h.smtp ? '' : 'set SMTP_* in .env')}
+  ${stat('Database', formatBytes(h.dbSize), html`<span title="${h.dataDir}">…/${h.dataDir.split('/').slice(-2).join('/')}</span>`)}
+  ${stat('Email', h.smtp ? 'SMTP' : 'Console', h.smtp ? 'configured' : 'no SMTP_* set — mails are logged')}
 </div>
-${pct > 85 ? html`<div class="flash flash-error">Disk is ${pct}% full. Prune releases (node src/cli.js prune) or grow the volume.</div>` : ''}
+${h.disk.freeBytes && h.disk.freeBytes < 10 * 1024 ** 3 ? html`<div class="flash flash-error">Only ${formatBytes(h.disk.freeBytes)} free on the server. Prune releases (node src/cli.js prune) or grow the volume.</div>` : ''}
 <div class="grid two">
 <div class="card"><h2>Top bandwidth (7d)</h2><table class="table small"><tbody>${h.top.map((t) => html`<tr><td><a href="/admin/sites/${t.id}">${t.subdomain}</a></td><td>${t.requests.toLocaleString()} req</td><td>${formatBytes(t.bytes)}</td></tr>`)}</tbody></table></div>
 <div class="card"><h2>Largest sites</h2><table class="table small"><tbody>${h.bigSites.map((s) => html`<tr><td><a href="/admin/sites/${s.id}">${s.subdomain}</a></td><td>${formatBytes(s.total_storage_bytes)}</td></tr>`)}</tbody></table></div>
@@ -234,8 +235,9 @@ ${h.hosting ? html`<div class="card"><h2>Hostinger publisher</h2>
 <p>Tenant sites are served by LiteSpeed from <code>${h.hosting.tenantRoot}/&lt;name&gt;</code>; this app rebuilds each folder on every change. API token: <strong>${h.hosting.apiToken ? 'set' : 'MISSING — subdomains will not be created'}</strong> · account <code>${h.hosting.username || '?'}</code>.</p>
 <p>${h.hosting.byState.map((r) => html`<span class="badge">${r.hosting_state}: ${r.n}</span> `)}</p>
 ${h.hosting.errors.length ? html`<table class="table small"><tbody>${h.hosting.errors.map((e) => html`<tr><td><a href="/admin/sites/${e.id}">${e.subdomain}</a></td><td>${e.hosting_error}</td></tr>`)}</tbody></table>` : ''}
-${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root: <code>${h.hosting.orphans.join(', ')}</code></p>` : ''}
-<p class="muted">Retry: <code>node src/cli.js sync-all</code> (also run by the hourly cron).</p></div>` : ''}
+<p class="muted">Secrets file <code>DATA_DIR/.env</code>: ${h.hosting.envFile ? html`present (keys: <code>${h.hosting.envFile.join(', ') || 'none'}</code>)` : 'not found'}. Read at process start — restart the Node.js app in hPanel after editing.</p>
+${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root (no site owns them): ${h.hosting.orphans.map((o) => html`<form method="post" action="/admin/health/orphan" class="inline">${hidden(h.hosting.csrf, { name: o })}<code>${o}</code> <button class="btn btn-ghost btn-sm" type="submit">remove</button></form> `)}</p>` : ''}
+<form method="post" action="/admin/health/sync" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-primary btn-sm" type="submit">Sync now</button></form> <span class="muted small">provisions pending subdomains and rebuilds every tenant folder (the hourly cron does the same)</span></div>` : ''}
 <div class="card"><h2>Checks</h2><ul class="plain">
   <li>Platform hosts: <code>${config.platformHosts.join(', ')}</code> · tenants: <code>*.${h.baseDomain}</code></li>
   <li>Health endpoint: <code>GET /healthz</code> (use for uptime monitoring)</li>

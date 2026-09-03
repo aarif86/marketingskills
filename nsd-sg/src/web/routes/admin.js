@@ -1,7 +1,7 @@
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
-import { isEnabled as hostingEnabled, listOrphanDirs } from '../../publish/hostinger.js';
+import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll } from '../../publish/hostinger.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -328,7 +328,27 @@ export async function registerAdminRoutes(app) {
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
         errors: all("SELECT id, subdomain, hosting_error FROM sites WHERE hosting_state = 'error' ORDER BY updated_at DESC LIMIT 20"),
         orphans: listOrphanDirs(),
+        envFile: envFileKeys(),
+        csrf: csrfTokenFor(req),
       } : null,
+      siteBytes: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
+      siteCount: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n,
+      releaseCount: q('SELECT COUNT(*) n FROM releases').n,
     }) });
+  });
+
+  app.post('/admin/health/sync', opts, async (req, reply) => {
+    const r = await syncAll();
+    audit({ req, action: 'hosting.sync_all', targetType: 'system', targetId: '-', details: r });
+    flash(reply, r.errors ? 'error' : 'ok', `Sync done: ${r.provisioned ?? 0} provisioned, ${r.synced ?? 0} rebuilt, ${r.errors ?? 0} errors.`);
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/orphan', opts, async (req, reply) => {
+    const name = String(req.body?.name ?? '');
+    const ok = removeOrphanDir(name);
+    audit({ req, action: 'hosting.orphan_removed', targetType: 'dir', targetId: name, details: { ok } });
+    flash(reply, ok ? 'ok' : 'error', ok ? `Removed ${name}.` : 'Not an orphan folder.');
+    return reply.redirect('/admin/health');
   });
 }

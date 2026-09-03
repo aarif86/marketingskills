@@ -114,3 +114,17 @@ test('deleting the site removes the docroot', async () => {
   await new Promise((r) => setTimeout(r, 50));
   assert.ok(!fs.existsSync(tenantDir('carol')));
 });
+
+test('admin health page renders the publisher block with orphan removal forms carrying a CSRF token', async () => {
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const cookie = cookiesFrom(login);
+  const r = await get('/admin/health', cookie);
+  assert.equal(r.statusCode, 200);
+  assert.match(r.body, /Hostinger publisher/);
+  const form = r.body.match(/<form method="post" action="\/admin\/health\/orphan"[^]*?<\/form>/)[0];
+  assert.match(form, /name="_csrf" value="[A-Za-z0-9_-]{20,}"/);
+  assert.match(form, /name="name" value="ghost"/);
+  const rm = await post('/admin/health/orphan', cookie, { name: 'ghost' }, '/admin/health');
+  assert.equal(rm.statusCode, 302);
+  assert.deepEqual(listOrphanDirs(), []);
+});
