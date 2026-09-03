@@ -66,8 +66,11 @@ https://<name>.nsd.sg ──▶ LiteSpeed static vhost ──▶ ~/domains/nsd.s
 1. `deploy/hostinger/build-archive.sh` → `nsd-sg_<date>.zip` (package.json, lockfile, `server.cjs`, `src/`, and
    `deploy/hostinger/env.hostinger` as `.env`). No `node_modules`, no data, no secrets.
 2. Upload through the Hostinger MCP (`hosting_deployJsApplication`, domain `nsd.sg`) or hPanel → Node.js →
-   Deploy from archive. Hostinger runs `npm install` and restarts the app (≈60–90 s).
-3. Check `https://nsd.sg/healthz` (version + live site count) and `/admin/health` (Hostinger publisher block).
+   Deploy from archive. Hostinger runs `npm install` and restarts the app (≈60–90 s). **Use a fresh archive
+   name each time** — the upload endpoint answers 500 when a file of the same name already sits in `public_html`
+   (pass `removeArchive: true` so it is cleaned up).
+3. Static assets are cached for a day under `/assets/x?v=<version>`: bump `package.json` version whenever CSS/JS changes.
+4. Check `https://nsd.sg/healthz` (version + live site count) and `/admin/health` (Hostinger publisher block).
 
 ## Secrets and first boot
 
