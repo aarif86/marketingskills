@@ -13,6 +13,7 @@ import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite,
 } from '../../services/sites.js';
 import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode } from '../../services/plans.js';
+import * as hitpay from '../../services/hitpay.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser, setUserStatus } from '../../services/users.js';
 import {
   deployZip, deployFiles, deleteFileFromSite, rollbackTo, listReleases, listReleaseFiles, readReleaseFile, tempFile, StorageError,
@@ -270,10 +271,48 @@ export async function registerDashboardRoutes(app) {
     const { newId } = await import('../../lib/ids.js');
     getDb().prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(newId(), req.user.id, 'upgrade_requested', req.user.plan_id, planId, '{}', req.user.id);
+    if (hitpay.enabled() && hitpay.planConfigured(planId)) {
+      try {
+        const { url } = await hitpay.startSubscription({ user: req.user, planId, returnUrl: `${config.publicScheme}://${config.platformHosts[0]}/billing/hitpay/return` });
+        return reply.redirect(url); // HitPay hosted checkout; the webhook / return handler activates the plan
+      } catch (e) {
+        req.log.error({ err: e }, 'hitpay start failed');
+        flash(reply, 'error', 'Could not start the payment page. Please try again in a minute or email us.');
+        return reply.redirect('/billing');
+      }
+    }
     const link = config.payLinks[planId];
-    if (link) return reply.redirect(link); // HitPay hosted page; admin assigns the plan once payment lands
+    if (link) return reply.redirect(link); // plain HitPay link fallback; admin assigns the plan once payment lands
     flash(reply, 'success', 'Thanks! We have logged your request and will email you a payment link.');
     return reply.redirect('/billing');
+  });
+
+  // Customer lands here after HitPay. Verify by API so the plan flips even before the webhook arrives.
+  app.get('/billing/hitpay/return', { preHandler: requireUser }, async (req, reply) => {
+    const status = String(req.query?.status ?? '').toLowerCase();
+    const reference = String(req.query?.reference ?? '');
+    const sub = reference ? hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.reference === reference) : hitpay.listSubscriptionsForUser(req.user.id)[0];
+    if (sub && hitpay.enabled()) {
+      try { await hitpay.checkSubscription(sub.id); } catch (e) { req.log.warn({ err: e }, 'hitpay check failed'); }
+    }
+    const fresh = sub ? hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === sub.id) : null;
+    if (fresh?.status === 'active') flash(reply, 'success', `Payment received — you are now on the ${fresh.plan_id === 'beta' ? 'Beta' : 'Plus'} plan. Thank you!`);
+    else if (status === 'canceled' || status === 'failed') flash(reply, 'error', 'The payment was not completed. Nothing has been charged.');
+    else flash(reply, 'success', 'Thanks! HitPay is confirming your payment; your plan updates automatically within a minute.');
+    return reply.redirect('/billing');
+  });
+
+  // HitPay webhook (no session, no CSRF). Signature = HMAC-SHA256(raw body, webhook salt).
+  app.post('/billing/hitpay/webhook', { config: { skipCsrf: true } }, async (req, reply) => {
+    const sig = req.headers['hitpay-signature'];
+    if (!hitpay.verifySignature(req.rawBody ?? '', sig)) {
+      audit({ req, action: 'hitpay.webhook_rejected', targetType: 'webhook', targetId: '-', severity: 'warn' });
+      return reply.code(401).send({ ok: false });
+    }
+    const eventType = String(req.headers['hitpay-event-type'] ?? '');
+    const r = hitpay.applyEvent({ ...hitpay.identify(req.body), eventType }, req.log);
+    audit({ req, action: 'hitpay.webhook', targetType: 'webhook', targetId: eventType, details: { ...r, ref: hitpay.identify(req.body).reference } });
+    return reply.send({ ok: true });
   });
 
   app.post('/billing/redeem', { preHandler: requireUser }, async (req, reply) => {

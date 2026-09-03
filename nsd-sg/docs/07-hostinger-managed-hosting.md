@@ -81,8 +81,16 @@ win over both:
 ```
 HOSTINGER_API_TOKEN=…        # hPanel → Account → API tokens. Needed for self-serve subdomain creation.
 ADMIN_PASSWORD=…             # optional; otherwise generated on first boot
-SMTP_HOST= SMTP_USER= SMTP_PASS=
+SMTP_HOST=smtp.hostinger.com SMTP_PORT=465 SMTP_USER=noreply@nsd.sg SMTP_PASS=…
+HITPAY_API_KEY=…             # HitPay → Developers → API keys. Enables API subscriptions + webhook activation.
+HITPAY_WEBHOOK_SALT=…        # the salt shown for the webhook endpoint https://nsd.sg/billing/hitpay/webhook
+HITPAY_PLAN_PLUS=<uuid>      # subscription plan ids from HitPay → Recurring → Plans (open the plan; id is in the URL)
+HITPAY_PLAN_BETA=<uuid>
+PAY_LINK_PLUS=… PAY_LINK_BETA=…   # fallback: plain recurring links used only when the API key is absent
 ```
+
+The app is restarted with `hosting_restartNode_jsApplicationV1` (MCP) or hPanel → Websites → nsd.sg → **Redeploy**;
+there is no separate restart button in the new hPanel.
 
 - `SESSION_SECRET` is generated once into `DATA_DIR/session-secret` (mode 600) when not set.
 - The first admin (`ADMIN_EMAIL`) is created on first boot. Without `ADMIN_PASSWORD` a random one is written to

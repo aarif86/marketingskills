@@ -116,6 +116,13 @@ export const config = Object.freeze({
   },
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
   // HitPay (or any) hosted payment links per plan id: PAY_LINK_PLUS, PAY_LINK_BETA, ... Upgrade buttons open them.
+  hitpay: {
+    apiKey: env('HITPAY_API_KEY', ''),
+    webhookSalt: env('HITPAY_WEBHOOK_SALT', ''),
+    apiBase: env('HITPAY_API_BASE', env('HITPAY_SANDBOX', '') === '1' ? 'https://api.sandbox.hit-pay.com' : 'https://api.hit-pay.com'),
+    // HITPAY_PLAN_PLUS / HITPAY_PLAN_BETA = subscription plan UUIDs from the HitPay dashboard
+    plans: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('HITPAY_PLAN_') && v).map(([k, v]) => [k.slice(12).toLowerCase(), v])),
+  },
   payLinks: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('PAY_LINK_') && v).map(([k, v]) => [k.slice(9).toLowerCase(), v])),
   hostinger: {
     tenantRoot: tenantRoot ? path.resolve(tenantRoot) : '',

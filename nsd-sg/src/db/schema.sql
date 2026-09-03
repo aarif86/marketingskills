@@ -195,3 +195,16 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   PRIMARY KEY (code, user_id)
 );
+
+-- HitPay recurring-billing subscriptions created through the API (one row per checkout attempt).
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id            TEXT PRIMARY KEY,                     -- HitPay recurring_billing id
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id       TEXT NOT NULL REFERENCES plans(id),
+  status        TEXT NOT NULL DEFAULT 'pending',      -- pending | active | canceled | failed
+  reference     TEXT NOT NULL,
+  last_event    TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);

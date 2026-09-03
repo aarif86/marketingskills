@@ -84,12 +84,12 @@ export function entitlementsFor(user) {
   return { plan, limits, features, overrides, brandingRemoved, expired, expiresAt, daysLeft };
 }
 
-export function assignPlan({ userId, planId, actorId = null, reason = '' }) {
+export function assignPlan({ userId, planId, actorId = null, reason = '', paid = false }) {
   const db = getDb();
   const plan = getPlan(planId);
   if (!plan) throw new Error('unknown plan');
   const user = db.prepare('SELECT plan_id FROM users WHERE id = ?').get(userId);
-  const expires = plan.trial_days ? isoAfterDays(plan.trial_days) : null;
+  const expires = paid ? null : plan.trial_days ? isoAfterDays(plan.trial_days) : null; // a paying subscription never expires on its own
   db.transaction(() => {
     db.prepare('UPDATE users SET plan_id = ?, plan_started_at = ?, plan_expires_at = ?, updated_at = ? WHERE id = ?')
       .run(plan.id, nowIso(), expires, nowIso(), userId);

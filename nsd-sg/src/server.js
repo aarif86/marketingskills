@@ -35,6 +35,11 @@ export async function buildApp({ logger = true } = {}) {
     routerOptions: { ignoreTrailingSlash: false },
   });
 
+  // Keep the raw JSON body around: webhook signatures (HitPay) are computed over the exact bytes.
+  app.addContentTypeParser('application/json', { parseAs: 'string', bodyLimit: 256 * 1024 }, (req, body, done) => {
+    req.rawBody = body;
+    try { done(null, body ? JSON.parse(body) : {}); } catch (e) { e.statusCode = 400; done(e); }
+  });
   await app.register(cookie, { secret: config.sessionSecret });
   await app.register(formbody, { bodyLimit: 256 * 1024 });
   await app.register(multipart, {
