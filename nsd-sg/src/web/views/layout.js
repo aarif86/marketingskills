@@ -36,7 +36,7 @@ function head(title, { description = '' } = {}) {
 export function marketingLayout({ title, description, body, user, flash }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#how', 'How it works'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']],
+    links: [['/#how', 'How it works'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/roadmap', 'Roadmap'], ['/faq', 'FAQ']],
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Get started</a>`,
@@ -45,7 +45,7 @@ ${raw(header({
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
 <div><div class="brand small">NSD<span>.SG</span></div><p>Create with AI. Deploy with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>.</p></div>
-<div><h4>Product</h4><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/faq">FAQ</a></div>
+<div><h4>Product</h4><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">Changelog</a><a href="/faq">FAQ</a></div>
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
 <div><h4>Trust</h4><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a></div>
 </div>
@@ -82,6 +82,7 @@ export function adminLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/admin/plans', 'Plans', 'plans'],
     ['/admin/reserved', 'Reserved names', 'reserved'],
     ['/admin/promo', 'Promo codes', 'promo'],
+    ['/admin/roadmap', 'Roadmap', 'roadmap'],
     ['/admin/abuse', 'Abuse reports', 'abuse'],
     ['/admin/audit', 'Audit log', 'audit'],
     ['/admin/health', 'System health', 'health'],

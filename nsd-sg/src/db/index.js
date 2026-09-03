@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { config } from '../config.js';
+import { seedRoadmap } from '../services/roadmap.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +51,7 @@ export function migrate(conn = getDb()) {
   }
   seedPlans(conn);
   seedReserved(conn);
+  seedRoadmap(conn);
 }
 
 // Default plans. Admin can edit everything about them from the admin panel afterwards.

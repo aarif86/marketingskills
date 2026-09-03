@@ -280,6 +280,29 @@ export async function registerAdminRoutes(app) {
     return reply.redirect('/admin/promo');
   });
 
+  app.get('/admin/roadmap', opts, async (req, reply) => {
+    const rm = await import('../../services/roadmap.js');
+    return render(req, reply, { title: 'Roadmap', active: 'roadmap', body: V.roadmapAdminPage({ items: rm.listRoadmap({ includeHidden: true }), entries: rm.listChangelog(200), csrf: csrfTokenFor(req), statuses: rm.STATUSES, categories: rm.CATEGORIES }) });
+  });
+  app.post('/admin/roadmap', opts, async (req, reply) => {
+    const rm = await import('../../services/roadmap.js');
+    const b = req.body ?? {};
+    if (b.action === 'delete') rm.deleteItem(String(b.id ?? ''));
+    else rm.upsertItem({ id: String(b.id ?? '') || null, title: String(b.title ?? '').trim().slice(0, 120), body: String(b.body ?? '').trim().slice(0, 2000), status: String(b.status ?? ''), category: String(b.category ?? ''), is_public: b.is_public === '1', sort_order: Number(b.sort_order) || 100 });
+    audit({ req, action: `admin.roadmap.${b.action === 'delete' ? 'delete' : 'save'}`, targetType: 'roadmap', targetId: String(b.id ?? b.title ?? '') });
+    flash(reply, 'success', 'Saved.');
+    return reply.redirect('/admin/roadmap');
+  });
+  app.post('/admin/changelog', opts, async (req, reply) => {
+    const rm = await import('../../services/roadmap.js');
+    const b = req.body ?? {};
+    if (b.action === 'delete') rm.deleteChangelog(String(b.id ?? ''));
+    else rm.upsertChangelog({ id: String(b.id ?? '') || null, version: String(b.version ?? '').trim(), title: String(b.title ?? '').trim().slice(0, 140), body: String(b.body ?? '').slice(0, 6000), tags: String(b.tags ?? '').replace(/\s/g, ''), published_at: b.published_at ? new Date(b.published_at).toISOString() : null });
+    audit({ req, action: `admin.changelog.${b.action === 'delete' ? 'delete' : 'save'}`, targetType: 'changelog', targetId: String(b.id ?? b.title ?? '') });
+    flash(reply, 'success', 'Saved.');
+    return reply.redirect('/admin/roadmap');
+  });
+
   app.get('/admin/reserved', opts, async (req, reply) => render(req, reply, { title: 'Reserved names', active: 'reserved', body: V.reservedPage({ names: listReserved(), csrf: csrfTokenFor(req) }) }));
   app.post('/admin/reserved', opts, async (req, reply) => {
     const b = req.body ?? {};

@@ -208,3 +208,33 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+
+-- Public roadmap + changelog (Featurebase-style). Items are edited in admin; users vote and suggest.
+CREATE TABLE IF NOT EXISTS roadmap_items (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('under_review','planned','in_progress','shipped','declined')),
+  category    TEXT NOT NULL DEFAULT 'platform',   -- platform | dashboard | billing | admin | design
+  is_public   INTEGER NOT NULL DEFAULT 1,
+  sort_order  INTEGER NOT NULL DEFAULT 100,
+  suggested_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  shipped_at  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS roadmap_votes (
+  item_id     TEXT NOT NULL REFERENCES roadmap_items(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (item_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS changelog (
+  id           TEXT PRIMARY KEY,
+  version      TEXT NOT NULL DEFAULT '',
+  title        TEXT NOT NULL,
+  body         TEXT NOT NULL DEFAULT '',            -- plain text; blank line = paragraph, lines starting with "- " = bullets
+  tags         TEXT NOT NULL DEFAULT '',            -- comma list: new, improved, fixed
+  published_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

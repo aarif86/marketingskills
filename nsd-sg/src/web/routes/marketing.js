@@ -8,8 +8,10 @@ import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
-import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage } from '../views/marketing.js';
+import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage } from '../views/marketing.js';
 import { listShowcaseSites } from '../../services/sites.js';
+import { listRoadmap, listChangelog, toggleVote, suggest } from '../../services/roadmap.js';
+import { requireUser } from '../middleware.js';
 import { brandingMarkup } from '../../serve/branding.js';
 
 export async function registerMarketingRoutes(app) {
@@ -19,6 +21,18 @@ export async function registerMarketingRoutes(app) {
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }) }) }));
   app.get('/pricing', async (req, reply) => render(req, reply, { title: 'Pricing', body: pricingPage({ plans: listPlans({ publicOnly: true }) }) }));
   app.get('/faq', async (req, reply) => render(req, reply, { title: 'FAQ', body: faqPage() }));
+  app.get('/roadmap', async (req, reply) => render(req, reply, { title: 'Roadmap', description: 'What NSD.SG is building next — vote and suggest.', body: roadmapPage({ items: listRoadmap({ userId: req.user?.id ?? null }), user: req.user, csrf: csrfTokenFor(req) }) }));
+  app.get('/changelog', async (req, reply) => render(req, reply, { title: 'Changelog', description: 'Every NSD.SG release in plain words.', body: changelogPage({ entries: listChangelog() }) }));
+  app.post('/roadmap/vote/:id', { preHandler: requireUser }, async (req, reply) => {
+    toggleVote({ itemId: String(req.params.id), userId: req.user.id });
+    return reply.redirect('/roadmap');
+  });
+  app.post('/roadmap/suggest', { preHandler: requireUser }, async (req, reply) => {
+    const r = suggest({ userId: req.user.id, title: req.body?.title, body: req.body?.body });
+    audit({ req, action: 'roadmap.suggest', targetType: 'roadmap', targetId: r.id ?? '-', details: { ok: r.ok } });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Thanks — your idea is in. We read every one.' : r.reason);
+    return reply.redirect('/roadmap#suggest');
+  });
   app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
   app.get('/badge', async (req, reply) => {
     // The real badge markup minus its guard <script> (platform CSP forbids inline scripts; the demo does not need it).

@@ -180,3 +180,67 @@ export function badgePage({ badgeHtml, baseDomain }) {
   </div>
 </div></section>`.toString();
 }
+
+const STATUS_LABEL = { under_review: 'Under review', planned: 'Planned', in_progress: 'In progress', shipped: 'Shipped', declined: 'Not planned' };
+const CAT_LABEL = { platform: 'Platform', dashboard: 'Dashboard', billing: 'Billing', admin: 'Trust & safety', design: 'Design' };
+export const roadmapLabels = { STATUS_LABEL, CAT_LABEL };
+
+function roadmapCard(i, { user, csrf }) {
+  return html`<article class="rm-card ${i.status}">
+    <div class="rm-top"><span class="rm-cat">${CAT_LABEL[i.category] ?? i.category}</span>${i.shipped_at ? html`<span class="muted small">${new Date(i.shipped_at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })}</span>` : ''}</div>
+    <h3>${i.title}</h3>
+    ${i.body ? html`<p class="muted">${i.body}</p>` : ''}
+    <div class="rm-foot">
+      ${user ? html`<form method="post" action="/roadmap/vote/${i.id}" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="vote ${i.voted ? 'on' : ''}" type="submit" aria-pressed="${i.voted ? 'true' : 'false'}" title="${i.voted ? 'Remove your vote' : 'Vote for this'}">▲ ${i.votes}</button></form>`
+             : html`<a class="vote" href="/login?next=/roadmap" title="Log in to vote">▲ ${i.votes}</a>`}
+      ${i.suggested_name ? html`<span class="muted small">suggested by ${i.suggested_name.split(' ')[0]}</span>` : ''}
+    </div>
+  </article>`;
+}
+
+export function roadmapPage({ items, user, csrf, flash }) {
+  const cols = [['in_progress', 'In progress', 'Being built right now'], ['planned', 'Planned', 'Next up — vote to move it up'], ['shipped', 'Shipped', 'Live on nsd.sg today']];
+  const shippedCount = items.filter((i) => i.status === 'shipped').length;
+  return html`<section class="section rm-hero"><div class="container">
+  <p class="eyebrow">Roadmap</p>
+  <h1>What we're building, in the open.</h1>
+  <p class="section-lead">NSD.SG is a small Singapore product that ships often. ${shippedCount} things shipped so far; vote on what should come next or send an idea. Full history in the <a href="/changelog">changelog</a>.</p>
+  <div class="rm-board">${cols.map(([key, label, sub]) => html`<div class="rm-col"><h2>${label} <span class="muted">${items.filter((i) => i.status === key).length}</span></h2><p class="muted small">${sub}</p>
+    ${items.filter((i) => i.status === key).map((i) => roadmapCard(i, { user, csrf }))}</div>`)}</div>
+  ${items.some((i) => i.status === 'under_review') ? html`<h2 class="mt">Under review <span class="muted">${items.filter((i) => i.status === 'under_review').length}</span></h2><p class="muted small">Ideas from users we are looking at.</p><div class="rm-grid">${items.filter((i) => i.status === 'under_review').map((i) => roadmapCard(i, { user, csrf }))}</div>` : ''}
+  <div class="card mt rm-suggest" id="suggest"><h2>Have an idea?</h2>
+  ${user ? html`<form method="post" action="/roadmap/suggest" class="form"><input type="hidden" name="_csrf" value="${csrf}">
+    <label>Title <input name="title" maxlength="120" required placeholder="e.g. Let me schedule a publish for later"></label>
+    <label>Why it would help <small>(optional)</small> <textarea name="body" rows="3" maxlength="2000"></textarea></label>
+    <button class="btn btn-primary" type="submit">Send idea</button> <span class="muted small">It shows up under review once we've read it.</span></form>`
+   : html`<p class="muted"><a href="/login?next=/roadmap#suggest">Log in</a> or <a href="/signup">create a free account</a> to vote and suggest ideas.</p>`}
+  </div>
+</div></section>`.toString();
+}
+
+function renderBody(body) {
+  const lines = String(body ?? '').split('\n');
+  const out = [];
+  let list = [];
+  const flush = () => { if (list.length) { out.push(html`<ul>${list.map((l) => html`<li>${l}</li>`)}</ul>`); list = []; } };
+  for (const l of lines) {
+    if (l.startsWith('- ')) list.push(l.slice(2));
+    else { flush(); if (l.trim()) out.push(html`<p>${l}</p>`); }
+  }
+  flush();
+  return out;
+}
+
+export function changelogPage({ entries }) {
+  return html`<section class="section"><div class="container narrow">
+  <p class="eyebrow">Changelog</p>
+  <h1>Every release, in plain words.</h1>
+  <p class="section-lead">What changed on nsd.sg and when. Want something that isn't here? <a href="/roadmap">Vote on the roadmap</a>.</p>
+  <div class="cl-list">${entries.map((e) => html`<article class="cl-entry" id="v${e.version.replace(/\./g, '-')}">
+    <div class="cl-meta"><time datetime="${e.published_at}">${new Date(e.published_at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })}</time>${e.version ? html`<code>v${e.version}</code>` : ''}
+      ${e.tags.split(',').filter(Boolean).map((t) => html`<span class="tag tag-${t.trim()}">${t.trim()}</span>`)}</div>
+    <h2>${e.title}</h2>
+    <div class="cl-body">${renderBody(e.body)}</div>
+  </article>`)}</div>
+</div></section>`.toString();
+}

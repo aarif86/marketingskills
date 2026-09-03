@@ -182,3 +182,24 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   assert.equal(u.plan_id, 'plus');
   assert.ok(u.plan_expires_at && new Date(u.plan_expires_at) > new Date(), 'grace period set');
 });
+
+test('roadmap and changelog: public pages render seed content; logged-in user can vote and suggest', async () => {
+  let r = await get('/roadmap');
+  assert.equal(r.statusCode, 200);
+  assert.match(r.body, /Card payments through HitPay/);
+  r = await get('/changelog');
+  assert.equal(r.statusCode, 200);
+  assert.match(r.body, /NSD.SG goes live/);
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const c = cookiesFrom(login);
+  r = await post('/roadmap/vote/rm-google-login', c, {}, '/roadmap');
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare("SELECT COUNT(*) n FROM roadmap_votes WHERE item_id = 'rm-google-login'").get().n, 1);
+  r = await post('/roadmap/suggest', c, { title: 'Scheduled publishing', body: 'Publish at 9am' }, '/roadmap');
+  assert.equal(r.statusCode, 302);
+  const item = getDb().prepare("SELECT * FROM roadmap_items WHERE title = 'Scheduled publishing'").get();
+  assert.equal(item.status, 'under_review');
+  assert.equal(item.is_public, 0);
+  const pub = await get('/roadmap');
+  assert.doesNotMatch(pub.body, /Scheduled publishing/, 'hidden until admin approves');
+});

@@ -268,3 +268,35 @@ ${codes.map((c) => html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td>
 ${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td></tr>`}
 </tbody></table></div>`.toString();
 }
+
+export function roadmapAdminPage({ items, entries, csrf, statuses, categories }) {
+  const opt = (list, cur) => list.map((v) => html`<option value="${v}" ${v === cur ? 'selected' : ''}>${v}</option>`);
+  const itemForm = (i = {}) => html`<form method="post" action="/admin/roadmap" class="form card rm-admin-item">${hidden(csrf, { action: 'save', id: i.id ?? '' })}
+    <div class="grid three tight">
+      <label>Title <input name="title" value="${i.title ?? ''}" maxlength="120" required></label>
+      <label>Status <select name="status">${opt(statuses, i.status ?? 'planned')}</select></label>
+      <label>Category <select name="category">${opt(categories, i.category ?? 'platform')}</select></label>
+    </div>
+    <label>Description <textarea name="body" rows="2" maxlength="2000">${i.body ?? ''}</textarea></label>
+    <div class="row-gap"><label class="check"><input type="checkbox" name="is_public" value="1" ${(i.is_public ?? 1) ? 'checked' : ''}> Public</label>
+      <label>Sort <input name="sort_order" type="number" value="${i.sort_order ?? 100}" style="width:90px"></label>
+      <span class="muted small">${i.votes !== undefined ? `${i.votes} votes` : ''}${i.suggested_name ? ` · suggested by ${i.suggested_name}` : ''}</span>
+      <button class="btn btn-primary btn-tiny" type="submit">${i.id ? 'Save' : 'Add item'}</button>
+      ${i.id ? html`</form><form method="post" action="/admin/roadmap" class="inline" data-confirm="Delete this item?">${hidden(csrf, { action: 'delete', id: i.id })}<button class="btn btn-danger btn-tiny">Delete</button>` : ''}
+    </div></form>`;
+  const clForm = (e = {}) => html`<form method="post" action="/admin/changelog" class="form card">${hidden(csrf, { action: 'save', id: e.id ?? '' })}
+    <div class="grid three tight"><label>Version <input name="version" value="${e.version ?? ''}" maxlength="20"></label><label>Title <input name="title" value="${e.title ?? ''}" maxlength="140" required></label><label>Tags <input name="tags" value="${e.tags ?? 'new'}" placeholder="new,improved,fixed"></label></div>
+    <label>Body <small>lines starting with "- " become bullets</small><textarea name="body" rows="4" maxlength="6000">${e.body ?? ''}</textarea></label>
+    <div class="row-gap"><label>Published <input name="published_at" value="${e.published_at ? e.published_at.slice(0, 10) : ''}" placeholder="YYYY-MM-DD"></label>
+      <button class="btn btn-primary btn-tiny" type="submit">${e.id ? 'Save' : 'Publish entry'}</button>
+      ${e.id ? html`</form><form method="post" action="/admin/changelog" class="inline" data-confirm="Delete this entry?">${hidden(csrf, { action: 'delete', id: e.id })}<button class="btn btn-danger btn-tiny">Delete</button>` : ''}
+    </div></form>`;
+  const pending = items.filter((i) => i.status === 'under_review');
+  return html`<h1>Roadmap &amp; changelog</h1>
+<p class="muted">Public pages: <a href="/roadmap" target="_blank">/roadmap</a> · <a href="/changelog" target="_blank">/changelog</a>. User ideas arrive as <em>under_review</em> and hidden; set a status and tick Public to show them.</p>
+${pending.length ? html`<h2>Ideas waiting (${pending.length})</h2>${pending.map(itemForm)}` : ''}
+<h2>New item</h2>${itemForm()}
+<h2>All items (${items.length})</h2>${items.filter((i) => i.status !== 'under_review').map(itemForm)}
+<hr><h2>New changelog entry</h2>${clForm()}
+<h2>Entries (${entries.length})</h2>${entries.map(clForm)}`.toString();
+}
