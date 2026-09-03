@@ -8,7 +8,7 @@
   Milestone log:
   [2–3 Sep 2026] — v0.1.0 born in a remote Claude Code session (VPS design,
                    nothing deployed; see previous handover).
-  [3 Sep 2026]   — v0.2.0 → v0.2.2. Discovered the account has no VPS,
+  [3 Sep 2026]   — v0.2.0 → v0.2.3. Discovered the account has no VPS,
                    re-platformed onto Hostinger Cloud Startup managed
                    Node.js, moved nsd.sg to the aarif.sg account, deployed,
                    and verified every tenant lifecycle step on the live
@@ -20,8 +20,8 @@
 
 # HANDOVER · NSD.SG · 3 Sep 2026 · v01
 
-**Project slug:** `poc-hosting-platform` · **Live:** https://nsd.sg (`/healthz` → version 0.2.2) · test tenant https://hello.nsd.sg
-**Repo / branch:** `aarif86/marketingskills` → `claude/nsd-sg-platform-build-6u10hd`, folder `nsd-sg/` — 3 local commits this session (`76a88e9`, `c3dba9e`, + 0.2.2) **not pushed** (session lacked repo authorisation); patch for the first is in `Downloads\nsd-deploy\`.
+**Project slug:** `poc-hosting-platform` · **Live:** https://nsd.sg (`/healthz` → version 0.2.3) · test tenant https://hello.nsd.sg
+**Repo / branch:** `aarif86/marketingskills` → `claude/nsd-sg-platform-build-6u10hd`, folder `nsd-sg/` — 4 local commits this session (`76a88e9`, `c3dba9e`, `ed18a08`, + 0.2.3) **not pushed** (session lacked repo authorisation); patch series 0001–0004 in `Downloads\nsd-deploy\patches\` (`git am *.patch` on the branch).
 **Deploy target:** Hostinger Cloud Startup, account `u162210766` (the one with aarif.sg), managed Node.js under LiteSpeed lsnode. **Status:** live, self-serve provisioning working, admin logged in, no SMTP yet.
 
 ## What shipped this session
@@ -73,7 +73,7 @@
 
 ## PRIORITIZED PLAN FOR NEXT SESSION
 
-1. **★ Push the code.** Start a session with `aarif86/marketingskills` attached (or `git am` the patch + commit 0.2.1/0.2.2 by hand) and push `claude/nsd-sg-platform-build-6u10hd`. Then decide: own repo for `nsd-sg/` (README says so). Depends on: repo access.
+1. **★ Push the code.** Start a session with `aarif86/marketingskills` attached (or `git am` the four patches) and push `claude/nsd-sg-platform-build-6u10hd`. Then decide: own repo for `nsd-sg/` (README says so). Depends on: repo access.
 2. **SMTP** — pick provider, put `SMTP_*` in `nsd-data/.env`, restart, test signup verification + reset. Before any real user is invited.
 3. **Delete the test user's `hello` site or keep it as the showcase** — either way decide; the `+test` account exists.
 4. **Public Suffix List submission** for nsd.sg (cookie isolation between tenants) — weeks of lead time, start now.

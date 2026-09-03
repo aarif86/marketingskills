@@ -1,6 +1,6 @@
 {
   "name": "nsd-sg",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "NSD.SG — upload your AI-generated website, host it on name.nsd.sg",
   "private": true,
   "type": "module",
