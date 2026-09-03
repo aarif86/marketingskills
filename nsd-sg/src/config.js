@@ -11,9 +11,11 @@ function loadDotEnv() {
   const candidates = [process.env.NSD_ENV_FILE, path.join(__dirname, '..', '.env')].filter(Boolean);
   // Second pass: DATA_DIR/.env holds operator secrets on managed hosting (never inside the build archive).
   const fromData = () => (process.env.DATA_DIR ? path.join(process.env.DATA_DIR, '.env') : null);
+  const fromFiles = new Set(); // keys that came from a file (not the real environment)
   for (const file of candidates.concat(() => fromData())) {
     const resolved = typeof file === 'function' ? file() : file; // DATA_DIR may come from an earlier file
     if (!resolved || !fs.existsSync(resolved)) continue;
+    const isOperatorFile = typeof file === 'function'; // DATA_DIR/.env overrides the archive's defaults
     for (const raw of fs.readFileSync(resolved, 'utf8').split('\n')) {
       const line = raw.trim();
       if (!line || line.startsWith('#')) continue;
@@ -24,7 +26,7 @@ function loadDotEnv() {
       if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
         val = val.slice(1, -1);
       }
-      if (process.env[key] === undefined) process.env[key] = val;
+      if (process.env[key] === undefined || (isOperatorFile && fromFiles.has(key))) { process.env[key] = val; fromFiles.add(key); }
     }
   }
 }
@@ -112,7 +114,7 @@ export const config = Object.freeze({
     port: int('SMTP_PORT', 587),
     user: env('SMTP_USER', ''),
     pass: env('SMTP_PASS', ''),
-    from: env('SMTP_FROM', `NSD.SG <no-reply@${baseDomain}>`),
+    from: env('SMTP_FROM', `NSD.SG <${env('SMTP_USER', `no-reply@${baseDomain}`)}>`), // Hostinger rejects senders other than the mailbox
   },
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
   // HitPay (or any) hosted payment links per plan id: PAY_LINK_PLUS, PAY_LINK_BETA, ... Upgrade buttons open them.
