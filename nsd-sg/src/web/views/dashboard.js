@@ -169,7 +169,9 @@ ${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><
 <input type="password" name="password" placeholder="password" required><input name="confirm" placeholder="type DELETE" required autocomplete="off"><button class="btn btn-danger" type="submit">Delete my account</button></form></div>` : ''}`.toString();
 }
 
-export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf }) {
+export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [] }) {
+  const activeSub = subscriptions.find((s) => s.status === 'active');
+  const pendingSub = subscriptions.find((s) => s.status === 'pending');
   const pct = Math.min(100, Math.round((storageUsed / ent.limits.max_storage_bytes) * 100));
   return html`<h1>Plan &amp; billing</h1>
 ${planBanner(ent)}
@@ -194,8 +196,12 @@ ${planBanner(ent)}
   <hr><h3>Have a promo code?</h3>
   <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. ASATIZAH-2026" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
 </div>
-<div class="card"><h2>Upgrade</h2>
-  ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public)).map((p) => html`
+<div class="card"><h2>${activeSub ? 'Subscription' : 'Upgrade'}</h2>
+  ${activeSub ? html`<div class="sub-box"><p><strong>${activeSub.plan_id === 'beta' ? 'Beta' : 'Plus'} · paid monthly by card via HitPay.</strong> Started ${formatDate(activeSub.created_at)}. Receipts come from HitPay by email.</p>
+    <form method="post" action="/billing/hitpay/cancel" class="inline" data-confirm="Cancel your subscription? No more charges; your plan stays active for 30 days, then returns to Free."><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="id" value="${activeSub.id}"><button class="btn btn-danger btn-sm" type="submit">Cancel subscription</button></form>
+    <p class="muted small">Need a refund? Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> within 7 days of a charge.</p></div><hr>` : ''}
+  ${pendingSub && !activeSub ? html`<div class="flash flash-warn">A payment was started ${timeAgo(pendingSub.created_at)} but HitPay has not confirmed it yet. If you paid, reload this page in a minute — it checks automatically.</div>` : ''}
+  ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public) && !(activeSub && activeSub.plan_id === p.id)).map((p) => html`
     <div class="plan-line"><div><strong>${p.id === ent.plan.id ? `Keep ${p.name} after your free period` : p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.id === ent.plan.id ? `Same plan, no expiry. Your card is charged from today — do this any time before ${ent.expiresAt ? formatDate(ent.expiresAt) : 'your trial ends'}.` : p.description}</div></div>
     <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.hitpay.plans[p.id] || config.payLinks[p.id] ? `${p.id === ent.plan.id ? 'Keep' : 'Choose'} ${p.name} — pay with HitPay` : `Choose ${p.name}`}</button></form></div>`)}
   <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Custom domains are an add-on on top of Plus — you buy the domain, we connect it.</p>

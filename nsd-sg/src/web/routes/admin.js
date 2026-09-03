@@ -70,7 +70,23 @@ export async function registerAdminRoutes(app) {
     if (!user) return reply.code(404).send('No such user');
     const sites = all("SELECT * FROM sites WHERE user_id = ? AND status != 'deleted' ORDER BY created_at DESC", user.id);
     const auditRows = all('SELECT * FROM audit_log WHERE actor_id = ? OR (target_type = ? AND target_id = ?) ORDER BY at DESC LIMIT 50', user.id, 'user', user.id);
-    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), isLastAdmin: user.role === 'admin' && countAdmins() <= 1 }) });
+    const subscriptions = all('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC', user.id);
+    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), isLastAdmin: user.role === 'admin' && countAdmins() <= 1, subscriptions }) });
+  });
+
+  app.post('/admin/users/:id/subscription', opts, async (req, reply) => {
+    const hitpay = await import('../../services/hitpay.js');
+    const b = req.body ?? {};
+    const id = String(b.id ?? '');
+    try {
+      if (b.action === 'cancel') { await hitpay.cancelSubscription(id); flash(reply, 'success', 'Cancelled at HitPay; 30-day grace applied.'); }
+      else if (b.action === 'refund') { await hitpay.refundLastPayment(id); flash(reply, 'success', 'Refund requested at HitPay.'); }
+      else if (b.action === 'recheck') { const r = await hitpay.checkSubscription(id); flash(reply, r.ok ? 'success' : 'error', `Re-checked: ${JSON.stringify(r)}`); }
+      audit({ req, action: `admin.subscription.${b.action}`, targetType: 'subscription', targetId: id, details: { user: req.params.id } });
+    } catch (e) {
+      flash(reply, 'error', `HitPay: ${String(e.message).slice(0, 300)}`);
+    }
+    return reply.redirect(`/admin/users/${req.params.id}`);
   });
 
   app.post('/admin/users/:id/action', opts, async (req, reply) => {

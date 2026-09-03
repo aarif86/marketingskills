@@ -50,12 +50,29 @@ export async function startSubscription({ user, planId, returnUrl }) {
   return { id, url, reference };
 }
 
-export function verifySignature(rawBody, signature) {
-  if (!config.hitpay.webhookSalt || !signature) return false;
-  const expected = crypto.createHmac('sha256', config.hitpay.webhookSalt).update(rawBody).digest('hex');
-  const a = Buffer.from(String(signature).trim().toLowerCase());
-  const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+function safeEq(a, b) {
+  const x = Buffer.from(String(a ?? '').trim().toLowerCase());
+  const y = Buffer.from(String(b ?? '').trim().toLowerCase());
+  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+/**
+ * Two HitPay webhook flavours:
+ *  - v2 event webhooks: JSON body + `Hitpay-Signature` header = HMAC-SHA256(raw body, webhook endpoint salt)
+ *  - v1 payment webhooks: form-encoded body with an `hmac` field = HMAC-SHA256(sorted key+value concatenation, API salt)
+ * Accept either; try both salts because operators mix them up.
+ */
+export function verifySignature(rawBody, signature, body = null) {
+  const salts = [config.hitpay.webhookSalt, config.hitpay.apiSalt].filter(Boolean);
+  if (signature && rawBody) {
+    for (const salt of salts) if (safeEq(crypto.createHmac('sha256', salt).update(rawBody).digest('hex'), signature)) return true;
+  }
+  if (body && typeof body === 'object' && body.hmac) {
+    const keys = Object.keys(body).filter((k) => k !== 'hmac').sort();
+    const concat = keys.map((k) => `${k}${body[k]}`).join('');
+    for (const salt of salts) if (safeEq(crypto.createHmac('sha256', salt).update(concat).digest('hex'), body.hmac)) return true;
+  }
+  return false;
 }
 
 const ACTIVE = new Set(['succeeded', 'completed', 'active', 'paid']);
@@ -70,11 +87,12 @@ export function identify(payload) {
     reference: String(p.reference ?? rb.reference ?? p.order?.reference ?? ''),
     status: String(p.status ?? rb.status ?? '').toLowerCase(),
     email: String(p.customer?.email ?? p.customer_email ?? rb.customer_email ?? '').toLowerCase(),
+    paymentId: String(p.payment_id ?? p.payment_request_id ?? (p.object === 'recurring_billing' ? '' : p.id) ?? ''),
   };
 }
 
 /** Apply a HitPay event (webhook or return-check) to our records. Idempotent. */
-export function applyEvent({ subscriptionId, reference, status, email, eventType = '' }, log = console) {
+export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '' }, log = console) {
   const db = getDb();
   let sub = subscriptionId ? db.prepare('SELECT * FROM subscriptions WHERE id = ?').get(subscriptionId) : null;
   if (!sub && reference) sub = db.prepare('SELECT * FROM subscriptions WHERE reference = ?').get(reference);
@@ -94,7 +112,7 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'payment_received', null, sub.plan_id, JSON.stringify({ subscription: sub.id, status, eventType }));
     }
-    db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ? WHERE id = ?").run(eventType || status, now, sub.id);
+    db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id) WHERE id = ?").run(eventType || status, now, paymentId, sub.id);
     return { ok: true, activated: sub.status !== 'active' };
   }
   if (DEAD.has(status)) {
@@ -134,4 +152,33 @@ export async function diagnose() {
     }
   }
   return out;
+}
+
+/** Re-check every pending subscription of a user against HitPay (billing page load + admin re-check). */
+export async function reconcileUser(userId, { maxAgeHours = 72 } = {}) {
+  if (!enabled()) return [];
+  const rows = getDb().prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'pending' AND created_at > datetime('now', ?)").all(userId, `-${maxAgeHours} hours`);
+  const out = [];
+  for (const sub of rows) {
+    try { out.push({ id: sub.id, ...(await checkSubscription(sub.id)) }); } catch (e) { out.push({ id: sub.id, ok: false, error: e.message }); }
+  }
+  return out;
+}
+
+/** Cancel at HitPay (stops future charges) and apply the cancellation locally (30-day grace). */
+export async function cancelSubscription(id) {
+  try { await api('DELETE', `/v1/recurring-billing/${encodeURIComponent(id)}`); }
+  catch (e) { if (!/404/.test(e.message)) throw e; }
+  return applyEvent({ subscriptionId: id, reference: '', status: 'canceled', email: '', eventType: 'manual.cancel' });
+}
+
+/** Refund the last charge of a subscription (full amount unless given). Admin only. */
+export async function refundLastPayment(id, amount = null) {
+  const sub = getDb().prepare('SELECT * FROM subscriptions WHERE id = ?').get(id);
+  if (!sub?.last_payment_id) throw new Error('No payment id recorded for this subscription yet — refund from the HitPay dashboard.');
+  const body = { payment_id: sub.last_payment_id };
+  if (amount) body.amount = amount;
+  const r = await api('POST', '/v1/refund', body);
+  getDb().prepare("UPDATE subscriptions SET last_event = 'refunded', updated_at = ? WHERE id = ?").run(nowIso(), id);
+  return r;
 }

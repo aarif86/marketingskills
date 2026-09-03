@@ -121,6 +121,7 @@ export const config = Object.freeze({
   hitpay: {
     apiKey: env('HITPAY_API_KEY', ''),
     webhookSalt: env('HITPAY_WEBHOOK_SALT', ''),
+    apiSalt: env('HITPAY_API_SALT', ''), // salt shown next to the API key: used by the older form-encoded webhooks (hmac field)
     apiBase: env('HITPAY_API_BASE', env('HITPAY_SANDBOX', '') === '1' ? 'https://api.sandbox.hit-pay.com' : 'https://api.hit-pay.com'),
     // HITPAY_PLAN_PLUS / HITPAY_PLAN_BETA = subscription plan UUIDs from the HitPay dashboard
     plans: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('HITPAY_PLAN_') && v).map(([k, v]) => [k.slice(12).toLowerCase(), v])),

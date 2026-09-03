@@ -49,7 +49,7 @@ ${users.map((u) => html`<tr><td><a href="/admin/users/${u.id}">${u.email}</a>${u
 </tbody></table>`.toString();
 }
 
-export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin }) {
+export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin, subscriptions = [] }) {
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/users/${user.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const o = ent.overrides;
   return html`<p class="crumb"><a href="/admin/users">Users</a> / ${user.email}</p>
@@ -93,6 +93,10 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
 <div class="grid two">
 <form method="post" action="/admin/users/${user.id}/action" class="card form">${hidden(csrf, { action: 'notes' })}<h2>Admin notes</h2><textarea name="notes" rows="4">${user.notes}</textarea><button class="btn btn-tiny">Save notes</button></form>
 <div class="card"><h2>Sessions (${sessions.length})</h2><table class="table small"><tbody>${sessions.map((s) => html`<tr><td>${s.ip}</td><td class="muted">${s.user_agent.slice(0, 50)}</td><td class="muted">${timeAgo(s.last_seen_at)}</td></tr>`)}</tbody></table>
+  ${subscriptions.length ? html`<h2 class="mt">HitPay subscriptions</h2><table class="table small"><tbody>${subscriptions.map((s) => html`<tr><td><code>${s.id}</code></td><td>${s.plan_id}</td><td>${pill(s.status)}</td><td class="muted">${s.last_event} · ${formatDate(s.updated_at)}${s.last_payment_id ? html` · pay <code>${s.last_payment_id}</code>` : ''}</td>
+    <td class="row-gap"><form method="post" action="/admin/users/${user.id}/subscription" class="inline">${hidden(csrf, { action: 'recheck', id: s.id })}<button class="btn btn-tiny btn-ghost">Re-check</button></form>
+    ${s.status === 'active' ? html`<form method="post" action="/admin/users/${user.id}/subscription" class="inline" data-confirm="Cancel this subscription at HitPay?">${hidden(csrf, { action: 'cancel', id: s.id })}<button class="btn btn-tiny btn-danger">Cancel</button></form>` : ''}
+    ${s.last_payment_id ? html`<form method="post" action="/admin/users/${user.id}/subscription" class="inline" data-confirm="Refund the last charge in full?">${hidden(csrf, { action: 'refund', id: s.id })}<button class="btn btn-tiny btn-danger">Refund last charge</button></form>` : ''}</td></tr>`)}</tbody></table>` : ''}
   <h2 class="mt">Plan history</h2><table class="table small"><tbody>${events.map((e) => html`<tr><td>${formatDate(e.created_at)}</td><td>${e.type}</td><td class="muted">${e.from_plan ?? ''}${e.to_plan ? ' → ' + e.to_plan : ''} ${e.details !== '{}' ? e.details : ''}</td></tr>`)}</tbody></table></div>
 </div>
 <div class="card"><h2>Audit trail</h2><table class="table small"><tbody>${auditRows.map((a) => html`<tr><td>${pill(a.severity)}</td><td>${a.action}</td><td class="muted">${a.target_type} ${a.target_id}</td><td class="muted">${a.details !== '{}' ? a.details : ''}</td><td class="muted">${a.ip}</td><td class="muted">${formatDate(a.at)}</td></tr>`)}</tbody></table></div>`.toString();

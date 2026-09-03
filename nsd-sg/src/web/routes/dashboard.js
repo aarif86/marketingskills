@@ -249,8 +249,29 @@ export async function registerDashboardRoutes(app) {
   });
 
   // ---- plan & billing ----
-  app.get('/billing', { preHandler: requireUser }, async (req, reply) =>
-    render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user: req.user, ent: entitlementsFor(req.user), plans: listPlans(), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) }));
+  app.get('/billing', { preHandler: requireUser }, async (req, reply) => {
+    // Self-healing: if a checkout is still 'pending' (webhook missed, user closed the HitPay tab), ask HitPay now.
+    let user = req.user;
+    try {
+      const r = await hitpay.reconcileUser(req.user.id);
+      if (r.some((x) => x.activated)) { const { findUserById } = await import('../../services/users.js'); user = findUserById(req.user.id); }
+    } catch (e) { req.log.warn({ err: e }, 'hitpay reconcile failed'); }
+    return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
+  });
+
+  app.post('/billing/hitpay/cancel', { preHandler: requireUser }, async (req, reply) => {
+    const sub = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === String(req.body?.id ?? '') && s.status === 'active');
+    if (!sub) { flash(reply, 'error', 'No active subscription found.'); return reply.redirect('/billing'); }
+    try {
+      await hitpay.cancelSubscription(sub.id);
+      audit({ req, action: 'hitpay.cancel', targetType: 'subscription', targetId: sub.id });
+      flash(reply, 'success', 'Subscription cancelled. No further charges; your plan stays active for 30 days.');
+    } catch (e) {
+      req.log.error({ err: e }, 'hitpay cancel failed');
+      flash(reply, 'error', 'Could not cancel automatically — email us and we will do it by hand.');
+    }
+    return reply.redirect('/billing');
+  });
 
   app.post('/billing/extend', { preHandler: requireUser }, async (req, reply) => {
     const reason = String(req.body?.reason ?? '').slice(0, 60);
@@ -306,8 +327,10 @@ export async function registerDashboardRoutes(app) {
   // HitPay webhook (no session, no CSRF). Signature = HMAC-SHA256(raw body, webhook salt).
   app.post('/billing/hitpay/webhook', { config: { skipCsrf: true } }, async (req, reply) => {
     const sig = req.headers['hitpay-signature'];
-    if (!hitpay.verifySignature(req.rawBody ?? '', sig)) {
-      audit({ req, action: 'hitpay.webhook_rejected', targetType: 'webhook', targetId: '-', severity: 'warn' });
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!hitpay.verifySignature(req.rawBody ?? '', sig, body)) {
+      audit({ req, action: 'hitpay.webhook_rejected', targetType: 'webhook', targetId: String(req.headers['hitpay-event-type'] ?? ''), severity: 'warn',
+        details: { hasHeader: !!sig, hasHmacField: !!body.hmac, contentType: String(req.headers['content-type'] ?? ''), keys: Object.keys(body).slice(0, 20), status: body.status ?? null, reference: body.reference ?? null } });
       return reply.code(401).send({ ok: false });
     }
     const eventType = String(req.headers['hitpay-event-type'] ?? '');
