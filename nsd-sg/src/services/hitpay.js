@@ -38,8 +38,7 @@ export async function startSubscription({ user, planId, returnUrl }) {
     reference,
     redirect_url: returnUrl,
     payment_methods: ['card'],
-    save_payment_method: 'true',   // keep the card on file for the monthly charge
-    start_date_method: 'sign_up_date', // first charge on sign-up
+    start_date: new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10), // today in SGT; plan-based billing needs a start date (save_card is not allowed with plan_id)
     send_email: 'true',
   });
   const id = String(r.id ?? r.recurring_billing_id ?? '');
