@@ -74,7 +74,9 @@ https://<name>.nsd.sg ──▶ LiteSpeed static vhost ──▶ ~/domains/nsd.s
 
 ## Secrets and first boot
 
-The archive carries no secrets. Put them in **`DATA_DIR/.env`** (`~/domains/nsd.sg/nsd-data/.env`, via hPanel File
+The archive carries no secrets. Put them in **`DATA_DIR/.env`**. In hPanel → Websites → nsd.sg → **File manager**, the
+root you land on already shows `public_html`, `hbuilds` and `nsd-data` side by side: open `nsd-data/.env` (turn on
+"show hidden files"). Do not go looking for a `domains/nsd.sg/` folder — you are already inside it. (Loaded via hPanel File
 manager) — loaded after the archive's `.env`; real environment variables (hPanel → Node.js → Environment variables)
 win over both:
 
