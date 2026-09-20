@@ -11,7 +11,7 @@ import { contentTypeFor, extensionOf } from '../../lib/mime.js';
 import { blockedTermIn } from '../../lib/subdomain.js';
 import { watchdog } from '../../lib/audit.js';
 import {
-  createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite,
+  createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite, checkSiteReady, knownReady,
 } from '../../services/sites.js';
 import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
@@ -23,6 +23,8 @@ import { appLayout } from '../views/layout.js';
 import * as V from '../views/dashboard.js';
 import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCookie } from '../middleware.js';
 import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
+
+const liveWord = (site) => (knownReady(site) ? 'is online' : 'is saved and will be online as soon as your address is ready (see below)');
 
 const TEXT_PREVIEW = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'txt', 'md', 'xml', 'svg', 'webmanifest', 'csv', 'vtt', 'map']);
 
@@ -57,7 +59,7 @@ export async function registerDashboardRoutes(app) {
       try {
         const k = await claimPreview({ id: preview, site: r.site, user: req.user, limits: entitlementsFor(req.user).limits });
         audit({ req, action: 'site.deploy', targetType: 'site', targetId: r.site.id, details: { source: 'try', preview, version: k.version } });
-        flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours, and your test page is live on it.`);
+        flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours, and your test page is on it${knownReady(r.site) ? '' : '. The address itself is still being set up, see below'}.`);
         return reply.redirect(`/sites/${r.site.id}`);
       } catch (e) {
         if (!(e instanceof TryError)) throw e;
@@ -73,10 +75,19 @@ export async function registerDashboardRoutes(app) {
     const site = loadSite(req, reply); if (!site) return;
     const ent = entitlementsFor(req.user);
     const files = site.current_release_id ? listReleaseFiles(site.id, site.current_release_id) : [];
+    const ready = await checkSiteReady(site);
     return render(req, reply, {
       title: site.subdomain, active: 'sites',
-      body: V.siteDetail({ site, ent, files, releases: listReleases(site.id), traffic: trafficForSite(site.id, 30), monthBytes: monthlyBytesForSite(site.id), csrf: csrfTokenFor(req), url: publicUrlForSubdomain(site.subdomain) }),
+      body: V.siteDetail({ site, ent, files, releases: listReleases(site.id), traffic: trafficForSite(site.id, 30), monthBytes: monthlyBytesForSite(site.id), csrf: csrfTokenFor(req), url: publicUrlForSubdomain(site.subdomain), ready }),
     });
+  });
+
+  // Polled by the site page until the address really answers.
+  app.get('/sites/:id/status', { preHandler: requireUser }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    reply.header('Cache-Control', 'no-store');
+    const r = await checkSiteReady(site);
+    return { ready: r.ready, reason: r.reason ?? null, url: r.url };
   });
 
   // ---- uploads (multipart) ----
@@ -121,7 +132,7 @@ export async function registerDashboardRoutes(app) {
       if (zipFile) {
         result = await deployZip({ site, zipPath: zipFile.tmpPath, user: req.user, limits: ent.limits, note: `ZIP: ${zipFile.filename}`.slice(0, 120) });
         audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'zip', version: result.version, files: result.count, bytes: result.bytes, rejected: result.rejected.length } });
-        const msgParts = [`Version ${result.version} is live: ${result.count} files.`];
+        const msgParts = [`Version ${result.version} ${liveWord(site)}: ${result.count} files.`];
         if (result.rejected.length) msgParts.push(`${result.rejected.length} file${result.rejected.length === 1 ? ' was' : 's were'} skipped (not a supported type): ${result.rejected.slice(0, 5).map((r) => r.path).join(', ')}${result.rejected.length > 5 ? '…' : ''}.`);
         if (wantsJson) return reply.send({ ok: true, version: result.version, files: result.count, rejected: result.rejected, skipped: result.skipped });
         flash(reply, result.rejected.length ? 'warn' : 'success', msgParts.join(' '));
@@ -139,7 +150,7 @@ export async function registerDashboardRoutes(app) {
       result = await deployFiles({ site, files: list, user: req.user, limits: ent.limits, replaceAll: mode === 'replace', note: `${mode === 'replace' ? 'Replace' : 'Upload'} ${list.length} file${list.length === 1 ? '' : 's'}` });
       audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: mode, version: result.version, files: result.count, bytes: result.bytes } });
       if (wantsJson) return reply.send({ ok: true, version: result.version, files: result.count, problems });
-      flash(reply, problems.length ? 'warn' : 'success', `Version ${result.version} is live.${problems.length ? ` Skipped: ${problems.slice(0, 3).join('; ')}` : ''}`);
+      flash(reply, problems.length ? 'warn' : 'success', `Version ${result.version} ${liveWord(site)}.${problems.length ? ` Skipped: ${problems.slice(0, 3).join('; ')}` : ''}`);
       return reply.redirect(`/sites/${site.id}`);
     } catch (e) {
       if (e instanceof StorageError) return fail(400, e.message);
@@ -168,7 +179,7 @@ export async function registerDashboardRoutes(app) {
       fs.writeFileSync(tmp, htmlText, { mode: 0o600 });
       const result = await deployFiles({ site, files: [{ relPath, tmpPath: tmp, size: bytes }], user: req.user, limits: ent.limits, replaceAll: false, note: `Pasted ${relPath}` });
       audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'paste', path: relPath, version: result.version, bytes } });
-      flash(reply, 'success', `Version ${result.version} is live: ${relPath === 'index.html' ? publicUrlForSubdomain(site.subdomain) : `${publicUrlForSubdomain(site.subdomain)}/${page}`}`);
+      flash(reply, 'success', `Version ${result.version} ${liveWord(site)}: ${relPath === 'index.html' ? publicUrlForSubdomain(site.subdomain) : `${publicUrlForSubdomain(site.subdomain)}/${page}`}`);
     } catch (e) {
       if (!(e instanceof StorageError)) throw e;
       flash(reply, 'error', e.message);
@@ -184,7 +195,7 @@ export async function registerDashboardRoutes(app) {
     try {
       const r = deleteFileFromSite({ site, relPath: String(req.body?.path ?? ''), user: req.user, limits: ent.limits });
       audit({ req, action: 'site.file_delete', targetType: 'site', targetId: site.id, details: { path: req.body?.path, version: r.version } });
-      flash(reply, 'success', `Deleted. Version ${r.version} is live.`);
+      flash(reply, 'success', `Deleted. Version ${r.version} ${liveWord(site)}.`);
     } catch (e) {
       if (!(e instanceof StorageError)) throw e;
       flash(reply, 'error', e.message);
@@ -213,7 +224,7 @@ export async function registerDashboardRoutes(app) {
     try {
       const r = rollbackTo({ site, releaseId: String(req.body?.release_id ?? ''), user: req.user, limits: ent.limits });
       audit({ req, action: 'site.rollback', targetType: 'site', targetId: site.id, details: { to: req.body?.release_id, version: r.version } });
-      flash(reply, 'success', `Rolled back. Version ${r.version} is live.`);
+      flash(reply, 'success', `Rolled back. Version ${r.version} ${liveWord(site)}.`);
     } catch (e) {
       if (!(e instanceof StorageError)) throw e;
       flash(reply, 'error', e.message);

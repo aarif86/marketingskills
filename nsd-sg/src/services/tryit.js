@@ -18,6 +18,7 @@ import { deployFiles, tempFile, StorageError } from '../storage/releases.js';
 import { isEnabled as hostingEnabled, provisionSubdomain, tenantDir, htaccess, TRY_LABEL } from '../publish/hostinger.js';
 import { holdPreview } from './evidence.js';
 import { pageTitle, socialTags } from '../serve/social.js';
+import { probeUrl, setProbe } from '../lib/probe.js';
 
 export const TRY_TTL_MS = 3 * 60 * 60_000;
 export const TRY_MAX_BYTES = 1024 * 1024;
@@ -162,11 +163,7 @@ export async function createPreview({ html, ip = '' }) {
 // On Hostinger the app never serves try.<baseDomain> itself, so "it is online" is only true once LiteSpeed answers
 // over HTTPS. The result page shows the link only after this probe succeeds (a brand-new `try` host waits on its
 // certificate for up to ~15 minutes the first time; after that every preview is ready in seconds).
-let probeImpl = async (url) => {
-  const res = await fetch(url, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(6000) });
-  return res.status === 200;
-};
-export function setReadyProbe(fn) { probeImpl = fn ?? probeImpl; }
+export const setReadyProbe = setProbe; // kept for older tests
 
 /** { ready, reason, url } for a live preview. Marks ready_at the first time the probe succeeds. */
 export async function checkReady(id) {
@@ -176,9 +173,7 @@ export async function checkReady(id) {
   if (row.ready_at) return { ready: true, url };
   if (row.error) return { ready: false, reason: 'error', detail: row.error, url };
   if (!hostingEnabled()) return { ready: true, url };
-  let ok = false;
-  let detail = '';
-  try { ok = await probeImpl(url); } catch (e) { detail = String(e.cause?.code ?? e.code ?? e.message).slice(0, 120); }
+  const { ok, detail } = await probeUrl(url);
   if (ok) {
     getDb().prepare('UPDATE previews SET ready_at = ? WHERE id = ? AND ready_at IS NULL').run(nowIso(), id);
     return { ready: true, url };
@@ -239,7 +234,7 @@ export async function tryHostStatus() {
     detail: '',
   };
   if (hostingEnabled()) {
-    try { out.answers = await probeImpl(out.url); } catch (e) { out.answers = false; out.detail = String(e.cause?.code ?? e.code ?? e.message).slice(0, 120); }
+    const r = await probeUrl(out.url); out.answers = r.ok; out.detail = r.detail;
   }
   return out;
 }

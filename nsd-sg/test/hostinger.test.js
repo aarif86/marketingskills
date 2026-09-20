@@ -14,6 +14,9 @@ process.env.HOSTINGER_USERNAME = 'u000000000';
 const { buildApp } = await import('../src/server.js');
 const { syncSite, listOrphanDirs, tenantDir } = await import('../src/publish/hostinger.js');
 const { getDb } = await import('../src/db/index.js');
+const { setProbe } = await import('../src/lib/probe.js');
+let answers = false;
+setProbe(async () => answers);
 
 let app;
 const user = { cookie: '', siteId: '' };
@@ -43,6 +46,25 @@ test('signup provisions a docroot with the coming-soon page', async () => {
   assert.match(read('carol', '.htaccess'), /Options -Indexes/);
   const row = getDb().prepare('SELECT hosting_state FROM sites WHERE id = ?').get(user.siteId);
   assert.equal(row.hosting_state, 'pending'); // no API token in tests: stays pending, docroot still built
+});
+
+test('the site page waits until the address answers over HTTPS, then remembers it', async () => {
+  answers = false;
+  let page = await get(`/sites/${user.siteId}`, user.cookie);
+  assert.match(page.body, /Setting up your address/);
+  assert.match(page.body, new RegExp(`data-site-status="/sites/${user.siteId}/status"`));
+  assert.doesNotMatch(page.body, /Open site ↗/);
+  let st = await get(`/sites/${user.siteId}/status`, user.cookie);
+  assert.equal(st.json().ready, false);
+  answers = true;
+  st = await get(`/sites/${user.siteId}/status`, user.cookie);
+  assert.equal(st.json().ready, true);
+  assert.ok(getDb().prepare('SELECT hosting_ready_at FROM sites WHERE id = ?').get(user.siteId).hosting_ready_at, 'remembered');
+  answers = false; // never asked again once known
+  page = await get(`/sites/${user.siteId}`, user.cookie);
+  assert.match(page.body, /Your address is ready/);
+  assert.doesNotMatch(page.body, /data-site-status/);
+  answers = true;
 });
 
 test('deploying a ZIP materialises files with the badge injected; dotfiles dropped; custom 404 wired', async () => {

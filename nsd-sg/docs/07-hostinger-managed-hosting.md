@@ -120,6 +120,10 @@ there is no separate restart button in the new hPanel.
   users are not capped. Reachable test pages are listed (latest 12) at the bottom of `/showcase`, marked temporary.
   The result page embeds the live preview: platform CSP allows `frame-src` for `try.<domain>`, and the app-served
   preview answers `frame-ancestors 'self' <platform hosts>` (LiteSpeed-served previews set no frame header).
+- **Readiness (0.9.4):** the site page polls `/sites/<id>/status`, which HEAD-requests `https://<name>.nsd.sg/` from
+  the app (`src/lib/probe.js`) and, on the first 200, sets `sites.hosting_ready_at`; until then the page shows
+  “Putting your site online…” with the steps and no Open button, and publish messages say “saved” rather than
+  “online”. Same mechanism as test pages. Without the publisher (VPS/local) a site is ready at once.
 - **Without an API token** the app still builds docroots; subdomains stay `pending` and must be created from the
   MCP (`hosting_createWebsiteSubdomainV1`, directory `tenants/<name>`) or hPanel. `/admin/health` lists them.
 - **Backups:** `DATA_DIR` is the whole state (SQLite + releases). hPanel backups cover the account; for an off-box

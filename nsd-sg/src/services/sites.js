@@ -5,6 +5,8 @@ import { normalizeSubdomain, validateSubdomainSyntax } from '../lib/subdomain.js
 import { entitlementsFor } from './plans.js';
 import { deleteSiteStorage } from '../storage/releases.js';
 import { holdSite } from './evidence.js';
+import { probeUrl } from '../lib/probe.js';
+import { publicUrlForSubdomain } from '../config.js';
 import { syncSite as resync, provisionSubdomain, deprovisionSubdomain, isEnabled as hostingEnabled } from '../publish/hostinger.js';
 
 export function isReserved(name) {
@@ -75,6 +77,28 @@ export function createSite({ user, subdomain, title = '' }) {
       .catch((e) => db.prepare("UPDATE sites SET hosting_state = 'error', hosting_error = ? WHERE id = ?").run(String(e.message).slice(0, 500), id));
   }
   return { ok: true, site };
+}
+
+// ---- "is it really online?" ------------------------------------------------------------------------
+// Same-process serving (VPS/local) answers as soon as the row exists. On Hostinger the address is only real once
+// LiteSpeed answers 200 over HTTPS, which for a new subdomain waits on its certificate (5-15 min). The site page
+// shows "setting up" until this says ready, then remembers it (hosting_ready_at) so it is never asked again.
+export async function checkSiteReady(site) {
+  const url = publicUrlForSubdomain(site.subdomain);
+  if (!hostingEnabled()) return { ready: true, url };
+  if (site.hosting_ready_at) return { ready: true, url };
+  if (site.hosting_state === 'error') return { ready: false, reason: 'error', detail: site.hosting_error, url };
+  const { ok, detail } = await probeUrl(url);
+  if (ok) {
+    getDb().prepare('UPDATE sites SET hosting_ready_at = ? WHERE id = ? AND hosting_ready_at IS NULL').run(nowIso(), site.id);
+    return { ready: true, url };
+  }
+  return { ready: false, reason: 'waiting', detail, url, waitedMs: Date.now() - Date.parse(site.created_at) };
+}
+
+/** Cheap, no network: what we already know. Used to word flash messages honestly right after a publish. */
+export function knownReady(site) {
+  return !hostingEnabled() || !!site.hosting_ready_at;
 }
 
 export function updateSiteSettings(siteId, { title, allow_framing, listed }) {

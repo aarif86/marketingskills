@@ -131,9 +131,9 @@
   }
 
   // ---- try it result page: ask the server until the link really answers, then show it ----
-  var waiting = document.querySelector('[data-try-status]');
+  var waiting = document.querySelector('[data-try-status],[data-site-status]');
   if (waiting) {
-    var statusUrl = waiting.getAttribute('data-try-status');
+    var statusUrl = waiting.getAttribute('data-try-status') || waiting.getAttribute('data-site-status');
     var tick = function () {
       fetch(statusUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
         if (d.ready) window.location.reload(); else setTimeout(tick, 3000);

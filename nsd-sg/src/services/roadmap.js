@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-4', '0.9.4', 'Your site page checks before it says “online”', `- Changed: after you publish, the site page shows “Putting your site online…” with three steps and only shows the Open button once your address really answers with the padlock. New addresses take 5 to 15 minutes; the page updates by itself, and says so plainly if it is taking longer.
+- Changed: the message after a publish says “saved and will be online as soon as your address is ready” instead of “live” while that is still true.`, 'improved', '2026-09-21T04:00:00Z'],
   ['cl-0-9-3', '0.9.3', 'Paid plans: no NSD.SG in link previews either', `- Changed: on Plus, Beta or any plan without the badge, link previews on WhatsApp and Telegram carry no NSD.SG image or wording. Just your title, your description and your address. The promise that removes the badge now covers previews too.
 - Fixed: the NasarDigital name in both footers is now a link.`, 'improved,fix', '2026-09-21T03:30:00Z'],
   ['cl-0-9-2', '0.9.2', 'Test-page bar no longer covers your header; nicer link previews', `- Fixed: the test-page bar now sits above the page instead of over it, so a page with its own menu at the top is not cut off. There is an × to hide the bar; it comes back on the next load.

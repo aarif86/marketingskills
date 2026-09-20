@@ -40,8 +40,10 @@ ${preview ? html`<p class="muted">Your test page moves here as the home page the
 </form>`.toString();
 }
 
-export function siteDetail({ site, ent, files, releases, traffic, monthBytes, csrf, url }) {
+export function siteDetail({ site, ent, files, releases, traffic, monthBytes, csrf, url, ready = { ready: true } }) {
   const reqs = traffic.reduce((a, t) => a + t.requests, 0);
+  const isReady = !!ready.ready;
+  const slow = (ready.waitedMs ?? 0) > 20 * 60_000;
   const brandingOn = !(site.branding_removed || ent.brandingRemoved);
   return html`
 ${planBanner(ent)}
@@ -49,16 +51,16 @@ ${planBanner(ent)}
   <div><p class="crumb"><a href="/dashboard">Sites</a> / ${site.subdomain}</p>
   <h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${statusPill(site.status)}</h1>
   <p class="muted">${site.title} · ${files.length} file${files.length === 1 ? '' : 's'} · ${formatBytes(site.storage_bytes)} · ${site.last_deployed_at ? `changed ${timeAgo(site.last_deployed_at)}` : 'nothing online yet'}</p></div>
-  <div class="actions">${site.status === 'live' ? html`<a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open site ↗</a>` : ''}<a class="btn btn-ghost" href="/sites/${site.id}/settings">Settings</a></div>
+  <div class="actions">${site.status === 'live' ? (isReady ? html`<a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open site ↗</a>` : html`<span class="btn btn-ghost is-wait" title="Your address is still being set up">Setting up…</span>`) : ''}<a class="btn btn-ghost" href="/sites/${site.id}/settings">Settings</a></div>
 </div>
 ${site.status === 'suspended' ? html`<div class="flash flash-error"><strong>This site has been switched off by NSD.SG.</strong> ${site.suspended_reason || 'Email us to find out why.'}</div>` : ''}
-${site.status !== 'suspended' ? html`<section class="card steps-card"><h2>${site.current_release_id ? 'Your site is online' : 'Three steps to get online'}</h2>
-<ol class="steps">
-  <li class="done"><strong>Pick your address</strong><span class="muted">${site.subdomain}.${config.baseDomain} is yours.</span></li>
-  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Put your page on it</strong><span class="muted">Paste the code from Claude, ChatGPT or Gemini below. Or drop in files if you have them. Every change is kept, so you can always go back.</span></li>
-  <li class="${site.current_release_id ? 'now' : ''}"><strong>Open it and send the link</strong><span class="muted">${site.current_release_id ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : 'The Open button appears here once your page is on.'}</span></li>
+${site.status !== 'suspended' ? html`<section class="card steps-card" ${!isReady ? html`data-site-status="/sites/${site.id}/status"` : ''}><h2>${site.current_release_id ? (isReady ? 'Your site is online' : 'Putting your site online…') : 'Three steps to get online'}</h2>
+<ol class="steps ${!isReady ? 'waiting' : ''}">
+  <li class="${isReady ? 'done' : 'now'}"><strong>${isReady ? 'Your address is ready' : 'Setting up your address'}</strong><span class="muted">${isReady ? `${site.subdomain}.${config.baseDomain} is yours and answers with the padlock (secure connection).` : ready.reason === 'error' ? 'Something went wrong on our side. It has been logged and we are on it.' : `${site.subdomain}.${config.baseDomain} is yours. We are checking that it answers with the padlock (secure connection). This page updates by itself.`}</span></li>
+  <li class="${site.current_release_id ? 'done' : isReady ? 'now' : ''}"><strong>Put your page on it</strong><span class="muted">${site.current_release_id ? 'Your page is saved. Paste again any time to change it; every change is kept.' : 'Paste the code from Claude, ChatGPT or Gemini below. Or drop in files if you have them. Every change is kept, so you can always go back.'}</span></li>
+  <li class="${site.current_release_id && isReady ? 'now' : ''}"><strong>Open it and send the link</strong><span class="muted">${site.current_release_id && isReady ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : site.current_release_id ? 'The Open button appears here the moment your address answers.' : 'The Open button appears here once your page is on and the address answers.'}</span></li>
 </ol>
-${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class="notice"><strong>New address:</strong> the padlock (secure connection) for <code>${site.subdomain}.${config.baseDomain}</code> can take 5 to 15 minutes to switch on. If your browser shows a warning or “cannot connect” at first, wait a little and try again. Nothing is wrong.</p>` : ''}
+${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<strong>Taking longer than usual.</strong> A new address normally needs 5 to 15 minutes for its padlock. It has been longer; we keep checking. If it is still not ready in an hour, email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> and a person will look.` : html`<strong>New address:</strong> the padlock (secure connection) for <code>${site.subdomain}.${config.baseDomain}</code> usually takes 5 to 15 minutes to switch on. You can leave this page open or come back later; nothing else is needed from you.`}</p>` : ''}
 </section>` : ''}
 
 <section class="card upload-card" id="upload">

@@ -67,6 +67,14 @@ test('signup creates user + site and logs in', async () => {
   assert.match(dash.body, /alice<span class="muted">\.nsd\.test/);
 });
 
+test('without the Hostinger publisher a site is ready at once and the page says online', async () => {
+  const page = await get('/dashboard', alice.cookie);
+  const siteId = page.body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const st = await get(`/sites/${siteId}/status`, alice.cookie);
+  assert.equal(st.json().ready, true);
+  assert.match((await get(`/sites/${siteId}`, alice.cookie)).body, /Your address is ready/);
+});
+
 test('signup rejects weak password, bad email, reserved name', async () => {
   const csrf = csrfFrom((await get('/signup')).body);
   const r = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
