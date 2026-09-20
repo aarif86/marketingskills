@@ -248,3 +248,40 @@ test('roadmap and changelog: public pages render seed content; logged-in user ca
   const pub = await get('/roadmap');
   assert.doesNotMatch(pub.body, /Scheduled publishing/, 'hidden until admin approves');
 });
+
+test('HitPay charge webhooks (no reference) link by customer email; refund is recorded, payment id stored', async () => {
+  const crypto = await import('node:crypto');
+  const { config } = await import('../src/config.js');
+  config.hitpay.webhookSalt = 'test-salt';
+  const { getDb: db } = await import('../src/db/index.js');
+  const signup = await post('/signup', '', { email: 'gus@example.com', name: 'Gus', password: 'correct-horse-battery', subdomain: 'gus', agree: '1' });
+  assert.equal(signup.statusCode, 302);
+  const gus = db().prepare("SELECT id FROM users WHERE email = 'gus@example.com'").get();
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_g', ?, 'beta', 'pending', ?)").run(gus.id, `${gus.id}:beta:g1`);
+  const send = async (payload, type) => {
+    const body = JSON.stringify(payload);
+    const sig = crypto.createHmac('sha256', 'test-salt').update(body).digest('hex');
+    return app.inject({ method: 'POST', url: '/billing/hitpay/webhook', headers: { host: H, 'content-type': 'application/json', 'hitpay-signature': sig, 'hitpay-event-type': type }, body });
+  };
+  // Real shape seen in production: payment "created" event, no reference, no recurring_billing_id, customer email only.
+  const charge = { id: 'pay_123', business_id: 'b', channel: 'card', status: 'succeeded', customer: { email: 'gus@example.com' }, currency: 'SGD', amount: 6, refunded_amount: 0, order_id: null, payment_request_id: 'pr_1' };
+  let r = await send(charge, 'created');
+  assert.equal(r.statusCode, 200);
+  let s = db().prepare("SELECT status, last_payment_id FROM subscriptions WHERE id = 'rb_g'").get();
+  assert.equal(s.status, 'active');
+  assert.equal(s.last_payment_id, 'pr_1');
+  assert.equal(db().prepare('SELECT plan_id FROM users WHERE id = ?').get(gus.id).plan_id, 'beta');
+  // Refund of that charge: same shape with refunded_amount > 0. Must not re-activate anything, must be recorded.
+  r = await send({ ...charge, refunded_amount: 6, refunded_at: '2026-09-20T01:00:00Z' }, 'updated');
+  assert.equal(r.statusCode, 200);
+  s = db().prepare("SELECT status, last_event FROM subscriptions WHERE id = 'rb_g'").get();
+  assert.equal(s.last_event, 'refunded');
+  const ev = db().prepare("SELECT type, details FROM plan_events WHERE user_id = ? AND type = 'refund'").get(gus.id);
+  assert.ok(ev, 'refund plan event recorded');
+  assert.equal(JSON.parse(ev.details).amount, 6);
+  // Unknown customer still lands as unknown subscription (no crash, no side effects).
+  r = await send({ ...charge, customer: { email: 'nobody@example.com' } }, 'created');
+  assert.equal(r.statusCode, 200);
+  const last = db().prepare("SELECT details FROM audit_log WHERE action = 'hitpay.webhook' ORDER BY id DESC LIMIT 1").get();
+  assert.match(last.details, /unknown subscription/);
+});

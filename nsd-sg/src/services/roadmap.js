@@ -129,6 +129,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-5-4', '0.5.4', 'Payments: refunds and charges now show in your history', `- Fixed: HitPay payment and refund notifications are now matched to your subscription, so a refund appears in Plan & billing history and admins can refund a charge from the dashboard.`, 'fix', '2026-09-20T02:00:00Z'],
   ['cl-0-5-3', '0.5.3', 'Feedback from the dashboard, clearer promo plans', `- New: a Feedback link in the dashboard — send an idea or a bug with screenshots or a PDF attached.
 - New: Plan & billing shows exactly what your promo code unlocked next to the Free plan, and lets you remove the code yourself.
 - Improved: after you ask for a free extension, the page shows it was submitted and that we answer within 3–5 working days.`, 'new,improved', '2026-09-03T15:10:00Z'],

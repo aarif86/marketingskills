@@ -88,11 +88,12 @@ export function identify(payload) {
     status: String(p.status ?? rb.status ?? '').toLowerCase(),
     email: String(p.customer?.email ?? p.customer_email ?? rb.customer_email ?? '').toLowerCase(),
     paymentId: String(p.payment_id ?? p.payment_request_id ?? (p.object === 'recurring_billing' ? '' : p.id) ?? ''),
+    refundedAmount: Number(p.refunded_amount ?? 0) || 0,
   };
 }
 
 /** Apply a HitPay event (webhook or return-check) to our records. Idempotent. */
-export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '' }, log = console) {
+export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '', refundedAmount = 0 }, log = console) {
   const db = getDb();
   let sub = subscriptionId ? db.prepare('SELECT * FROM subscriptions WHERE id = ?').get(subscriptionId) : null;
   if (!sub && reference) sub = db.prepare('SELECT * FROM subscriptions WHERE reference = ?').get(reference);
@@ -103,9 +104,24 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       db.prepare('INSERT OR IGNORE INTO subscriptions (id, user_id, plan_id, status, reference) VALUES (?, ?, ?, ?, ?)').run(sub.id, userId, planId, 'pending', reference);
     }
   }
+  // Charge-level webhooks (payment created / refunded) carry the customer but no reference or recurring_billing id.
+  // Link them to the customer's live subscription so the payment id is recorded and refunds show up.
+  if (!sub && email) {
+    const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (u) {
+      sub = db.prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status IN ('active', 'pending')
+        ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`).get(u.id);
+    }
+  }
   if (!sub) { log.warn?.({ subscriptionId, reference, email }, 'hitpay: event for unknown subscription'); return { ok: false, reason: 'unknown subscription' }; }
 
   const now = nowIso();
+  if (refundedAmount > 0) {
+    db.prepare("UPDATE subscriptions SET last_event = 'refunded', updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id) WHERE id = ?").run(now, paymentId, sub.id);
+    db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
+      .run(newId(), sub.user_id, 'refund', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, amount: refundedAmount, paymentId }));
+    return { ok: true, refunded: true, amount: refundedAmount };
+  }
   if (ACTIVE.has(status) || eventType === 'charge.created') {
     if (sub.status !== 'active') {
       assignPlan({ userId: sub.user_id, planId: sub.plan_id, actorId: null, reason: `hitpay:${sub.id}`, paid: true });
