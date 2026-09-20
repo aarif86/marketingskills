@@ -21,6 +21,7 @@ import { esc } from '../lib/html.js';
 import { extensionOf, HTML_EXTENSIONS } from '../lib/mime.js';
 import { injectBranding } from '../serve/branding.js';
 import { injectSocial } from '../serve/social.js';
+import { readListing, listingPage } from '../serve/listing.js';
 import { platformUrl, publicUrlForSubdomain } from '../config.js';
 import { entitlementsFor } from '../services/plans.js';
 import { releaseDir } from '../storage/releases.js';
@@ -193,6 +194,20 @@ function materialise(srcRoot, dstRoot, { badge, social = null }) {
   return count;
 }
 
+/** Every folder without an index.html (root included) gets a branded file list, so nothing 404s by accident. */
+function writeListings(build, { host, badge, social }) {
+  (function walk(dir, rel) {
+    const names = fs.readdirSync(dir);
+    if (!names.includes('index.html') && !names.includes('index.htm')) {
+      let buf = Buffer.from(listingPage({ host, dir: rel, entries: readListing(dir) }), 'utf8');
+      if (badge) buf = injectBranding(buf);
+      buf = injectSocial(buf, { ...social, url: `${social.base}/${rel ? `${rel}/` : ''}` });
+      fs.writeFileSync(path.join(dir, 'index.html'), buf, { mode: 0o644 });
+    }
+    for (const n of names) { const p = path.join(dir, n); if (fs.statSync(p).isDirectory()) walk(p, rel ? `${rel}/${n}` : n); }
+  })(build, '');
+}
+
 /** Replace TENANT_ROOT/<label> with the contents of `build` in one rename. */
 function swapIn(label, build) {
   const live = tenantDir(label);
@@ -237,7 +252,9 @@ export function syncSite(siteId) {
       const src = releaseDir(site.id, site.current_release_id);
       if (!fs.existsSync(src)) throw new PublishError(`release directory missing: ${site.current_release_id}`);
       const badge = !brandingRemovedFor(site, owner);
-      files = materialise(src, build, { badge, social: { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain: !badge } });
+      const social = { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain: !badge };
+      files = materialise(src, build, { badge, social });
+      writeListings(build, { host: social.siteName, badge, social });
       const has404 = fs.existsSync(path.join(build, '404.html'));
       fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404 }));
     }

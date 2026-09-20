@@ -130,7 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
-  ['cl-0-9-4', '0.9.4', 'Your site page checks before it says “online”', `- Changed: after you publish, the site page shows “Putting your site online…” with three steps and only shows the Open button once your address really answers with the padlock. New addresses take 5 to 15 minutes; the page updates by itself, and says so plainly if it is taking longer.
+  ['cl-0-9-4', '0.9.4', 'Your site page checks before it says “online”; a file list when there is no home page', `- New: a site (or folder) without a home page now shows a tidy NSD.SG-style list of its files instead of “page not found”. Upload two PDFs and nothing else, and the link just works.
+- Changed: after you publish, the site page shows “Putting your site online…” with three steps and only shows the Open button once your address really answers with the padlock. New addresses take 5 to 15 minutes; the page updates by itself, and says so plainly if it is taking longer.
 - Changed: the message after a publish says “saved and will be online as soon as your address is ready” instead of “live” while that is still true.`, 'improved', '2026-09-21T04:00:00Z'],
   ['cl-0-9-3', '0.9.3', 'Paid plans: no NSD.SG in link previews either', `- Changed: on Plus, Beta or any plan without the badge, link previews on WhatsApp and Telegram carry no NSD.SG image or wording. Just your title, your description and your address. The promise that removes the badge now covers previews too.
 - Fixed: the NasarDigital name in both footers is now a link.`, 'improved,fix', '2026-09-21T03:30:00Z'],

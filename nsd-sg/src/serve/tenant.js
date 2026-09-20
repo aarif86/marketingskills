@@ -18,6 +18,7 @@ import { esc } from '../lib/html.js';
 import { TRY_LABEL } from '../publish/hostinger.js';
 import { getPreview, readPreviewHtml, renderPreviewPage, renderPreviewShell, PAGES as TRY_PAGES } from '../services/tryit.js';
 import { injectSocial } from './social.js';
+import { readListing, listingPage } from './listing.js';
 import { platformUrl, publicUrlForSubdomain } from '../config.js';
 
 const MAX_HTML_INJECT_BYTES = 5 * 1024 * 1024;
@@ -112,6 +113,20 @@ export async function serveTenant(req, reply, label) {
     if (abs) { chosen = c; break; }
   }
   if (!abs) {
+    // A folder without an index.html gets a branded file list instead of "page not found".
+    const dirAbs = path.join(root, ...parsed.parts);
+    let isDir = false;
+    try { isDir = dirAbs.startsWith(root) && fs.lstatSync(dirAbs).isDirectory(); } catch { /* not a dir */ }
+    if (isDir && !parsed.parts.some((p) => p.startsWith('.'))) {
+      if (!parsed.trailingSlash) return reply.code(301).header('Cache-Control', 'no-store').redirect(`/${rel}/`);
+      const host = `${site.subdomain}.${config.baseDomain}`;
+      let body = Buffer.from(listingPage({ host, dir: rel, entries: readListing(dirAbs) }), 'utf8');
+      if (!brandingRemovedFor(site)) body = injectBranding(body);
+      body = injectSocial(body, { url: `${publicUrlForSubdomain(site.subdomain)}/${rel ? `${rel}/` : ''}`, siteName: host, image: platformUrl('/assets/social-site.png'), plain: brandingRemovedFor(site) });
+      reply.header('Cache-Control', 'no-store').header('Content-Type', 'text/html; charset=utf-8').header('Content-Length', String(body.length)).code(200);
+      recordTraffic(site.id, body.length);
+      return req.method === 'HEAD' ? reply.send() : reply.send(body);
+    }
     // Custom 404 page support: /404.html in the release.
     const custom = resolveWithin(root, '404.html');
     if (custom) return sendHtml(req, reply, site, custom, 404);

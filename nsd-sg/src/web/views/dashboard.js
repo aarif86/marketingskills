@@ -77,7 +77,7 @@ ${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<s
         <label class="btn btn-ghost">Choose files<input type="file" name="files" multiple hidden data-pick="files"></label>
         <label class="btn btn-ghost">Choose folder<input type="file" name="files" webkitdirectory multiple hidden data-pick="folder"></label>
       </div>
-      <p class="muted small">Your home page must be a file called <code>index.html</code>. Web pages, pictures, fonts, video and PDF are fine. Programs that run on a server are not.</p>
+      <p class="muted small">Web pages, pictures, fonts, video and PDF are fine; programs that run on a server are not. A file called <code>index.html</code> becomes your home page. No home page? Visitors get a tidy list of your files.</p>
     </div>
     <div class="dz-progress" hidden><div class="bar"><span></span></div><p class="dz-status">Uploading…</p></div>
     <noscript><button class="btn btn-primary" type="submit">Upload</button></noscript>
@@ -108,7 +108,7 @@ ${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<s
         <input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="path" value="${f.path}">
         <button class="btn btn-tiny btn-danger" type="submit" aria-label="Delete ${f.path}">✕</button></form>
     </div>`)}</div>`}
-  ${!files.some((f) => f.path === 'index.html') && files.length ? html`<p class="flash flash-warn">There is no home page yet (a file called <code>index.html</code>), so visitors to ${site.subdomain}.${config.baseDomain} see “page not found”. Paste your page with the “Which page?” box left empty.</p>` : ''}
+  ${!files.some((f) => f.path === 'index.html') && files.length ? html`<p class="flash flash-info">No home page yet, so visitors to ${site.subdomain}.${config.baseDomain} see a simple list of these files, in NSD.SG style. Fine for sharing a few PDFs. Want a proper page instead? Paste one above with the “Which page?” box left empty (a file called <code>index.html</code>).</p>` : ''}
 </section>
 
 <section class="card">

@@ -14,6 +14,7 @@ process.env.HOSTINGER_USERNAME = 'u000000000';
 const { buildApp } = await import('../src/server.js');
 const { syncSite, listOrphanDirs, tenantDir } = await import('../src/publish/hostinger.js');
 const { getDb } = await import('../src/db/index.js');
+const { reset: resetLimit } = await import('../src/lib/ratelimit.js');
 const { setProbe } = await import('../src/lib/probe.js');
 let answers = false;
 setProbe(async () => answers);
@@ -378,4 +379,20 @@ test('promo: a redeemed code is retired not deleted; an unused code is deleted; 
   const page = await app.inject({ method: 'GET', url: '/billing', headers: { host: H, cookie } });
   assert.doesNotMatch(page.body, /unlocked Beta/);
   assert.match(page.body, /Subscription/);
+});
+
+test('Hostinger docroot: folders without index.html get a generated file list', async () => {
+  resetLimit('signup:127.0.0.1');
+  const su = await post('/signup', '', { email: 'dana@example.com', name: 'Dana', password: 'correct-horse-battery', subdomain: 'dana', agree: '1' });
+  assert.equal(su.statusCode, 302, su.body.slice(0, 200));
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const zip = buildZip([{ name: 'a.pdf', data: '%PDF-1.4 x' }, { name: 'docs/b.pdf', data: '%PDF-1.4 y' }]);
+  const csrf = csrfFrom((await get(`/sites/${siteId}`, cookie)).body);
+  const mp = multipart({ _csrf: csrf, mode: 'replace' }, [{ name: 'files.zip', data: zip, type: 'application/zip' }]);
+  const r = await app.inject({ method: 'POST', url: `/sites/${siteId}/upload`, headers: { host: H, cookie, accept: 'application/json', origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.statusCode, 200, r.body);
+  assert.match(read('dana', 'index.html'), /docs\/[\s\S]*a\.pdf/, 'folders first, then files');
+  assert.match(read('dana', 'index.html'), /data-nsd="badge"/);
+  assert.match(read('dana', 'docs/index.html'), /b\.pdf/);
 });

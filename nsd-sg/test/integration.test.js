@@ -6,6 +6,7 @@ import { buildZip } from './helpers/zipwriter.js';
 import { multipart, cookiesFrom, csrfFrom, cleanup } from './helpers/env.js';
 
 const { buildApp } = await import('../src/server.js');
+const { reset: resetLimit } = await import('../src/lib/ratelimit.js');
 const { listHoldsForSite, purgeEvidence } = await import('../src/services/evidence.js');
 const { getDb } = await import('../src/db/index.js');
 import fs from 'node:fs';
@@ -314,4 +315,28 @@ test('suspending a site keeps a copy of its files; admin can download the hold a
   fs.writeFileSync(meta, JSON.stringify({ ...JSON.parse(fs.readFileSync(meta, 'utf8')), keep_until: '2000-01-01T00:00:00.000Z' }));
   assert.ok(purgeEvidence() >= 1);
   assert.equal(listHoldsForSite(alice.siteId).length, before);
+});
+
+test('a site without index.html shows a branded file list; folders too', async () => {
+  resetLimit('signup:127.0.0.1');
+  const su = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/signup')).body), email: 'listy@example.com', name: 'Listy', password: 'correct-horse-battery', subdomain: 'listy', agree: '1' }).toString() });
+  assert.equal(su.statusCode, 302);
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const r = await upload(cookie, siteId, [{ name: 'Book 1.pdf', data: '%PDF-1.4 fake', type: 'application/pdf' }, { name: 'notes/readme.txt', data: 'hello world notes' }], 'replace');
+  assert.equal(r.statusCode, 200, r.body);
+  const home = await get('/', '', 'listy.nsd.test');
+  assert.equal(home.statusCode, 200);
+  assert.match(home.body, /Book 1\.pdf/);
+  assert.match(home.body, /href="Book%201\.pdf"/);
+  assert.match(home.body, /notes\//);
+  assert.match(home.body, /data-nsd="badge"/, 'badge still applies');
+  assert.match(home.body, /og:site_name" content="listy\.nsd\.test"/);
+  const folder = await get('/notes/', '', 'listy.nsd.test');
+  assert.match(folder.body, /readme\.txt/);
+  assert.match(folder.body, /Back/);
+  assert.equal((await get('/notes', '', 'listy.nsd.test')).statusCode, 301);
+  const detail = await get(`/sites/${siteId}`, cookie);
+  assert.match(detail.body, /simple list of these files/);
 });

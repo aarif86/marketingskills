@@ -152,6 +152,7 @@ export function faqPage() {
     ['Do I need to know how to code?', 'No. If you can copy and paste, you can use NSD.SG.'],
     ['Which AI tools work with NSD.SG?', 'Any tool that gives you a web page: Claude, ChatGPT, Gemini, Cursor, v0, Lovable, Bolt and more. Files from Framer, Webflow and similar tools work too.'],
     ['What kind of files can I put on my site?', 'Web pages, pictures, fonts, videos, sounds and PDFs. Programs and scripts that run on a server are not allowed, which keeps every page safe.'],
+    ['Can I just share a few PDFs, with no page?', 'Yes. Upload the files and leave out the home page. Visitors get a tidy list of your files in NSD.SG style, and each one opens with a click.'],
     ['How do I change my page after it is online?', 'Open your site in NSD.SG and paste the new code, or drop in the new files. The link stays the same. The old copy is kept so you can go back.'],
     ['What happens after 3 months on the Free plan?', 'Ask for more time from your Plan page (we say yes to most real projects), or move to Plus. Your site stays online while we look at your request.'],
     ['Can I remove the “Powered by NasarDigital” badge?', 'Yes, on the Plus plan. On the Free plan it stays. Changing your code will not remove it, because it is added when the page is shown.'],
