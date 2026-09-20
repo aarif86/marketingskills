@@ -13,6 +13,7 @@ export function overview({ stats, alerts, recentUsers, recentDeploys, extensions
   ${stat('Storage', formatBytes(stats.storage))}
   ${stat('Deploys (7d)', stats.deploys7d)}
   ${stat('Requests (7d)', stats.requests7d.toLocaleString(), formatBytes(stats.bytes7d) + ' served')}
+  ${stat('Monthly recurring', `S$${(stats.mrrCents / 100).toFixed(0)}`, `${stats.payers} paying · active HitPay subscriptions`)}
   ${stat('Open abuse', stats.openAbuse)}
   ${stat('Plans expiring ≤14d', stats.expiringSoon, `${stats.expired} already expired`)}
 </div>
@@ -269,6 +270,12 @@ ${h.hosting.unready?.length ? html`<table class="table small mt"><thead><tr><th>
 ${h.tryHost.lastError ? html`<p class="muted small">Last error (${formatDate(h.tryHost.lastError.created_at)}): <code>${h.tryHost.lastError.error}</code></p>` : ''}
 ${h.tryHost.enabled ? html`<form method="post" action="/admin/health/try-host" class="inline">${hidden(h.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Set up / repair the try address</button></form>` : ''}
 ${h.tryHost.pages.length ? html`<table class="table small mt"><thead><tr><th>Link</th><th>From</th><th>Size</th><th>Made</th><th>Gone at</th><th>Reachable</th><th></th></tr></thead><tbody>${h.tryHost.pages.map((p) => html`<tr><td><a href="${p.url}" target="_blank" rel="noopener nofollow">${p.id}</a></td><td class="muted">${p.ip}</td><td>${formatBytes(p.bytes)}</td><td>${timeAgo(p.created_at)}</td><td>${formatDate(p.expires_at)}</td><td>${p.ready_at ? 'yes' : 'not yet'}</td><td><form method="post" action="/admin/health/try-remove" class="inline" data-confirm="Take this test page down now?">${hidden(h.csrf, { id: p.id })}<button class="btn btn-tiny btn-danger" type="submit">Remove</button></form></td></tr>`)}</tbody></table><p class="muted small">Test pages also appear on the public <a href="/showcase">showcase</a> (latest 12) once reachable. Remove anything that breaks the terms.</p>` : ''}
+</div>
+<div class="card"><h2>Custom domains</h2>
+${h.domains.waiting.length ? html`<table class="table small"><thead><tr><th>Domain</th><th>Site</th><th>Owner</th><th>Records</th><th>Status</th><th></th></tr></thead><tbody>${h.domains.waiting.map((d) => html`<tr><td>${d.hostname}</td><td>${d.subdomain}</td><td class="muted">${d.email}</td><td>${d.owner_ok ? '✓ owner' : '· owner'} ${d.dns_ok ? '✓ dns' : '· dns'}</td><td>${d.status}${d.host_note ? html` <span class="muted small" title="${d.host_note}">(needs you)</span>` : ''}</td>
+  <td class="row-gap">${d.status === 'verified' ? html`<form method="post" action="/admin/health/domain" class="inline">${hidden(h.csrf, { id: d.id, action: 'connected' })}<button class="btn btn-tiny btn-primary" type="submit">Mark connected</button></form>` : ''}<form method="post" action="/admin/health/domain" class="inline">${hidden(h.csrf, { id: d.id, action: 'disable' })}<button class="btn btn-tiny btn-ghost" type="submit">Disable</button></form></td></tr>`)}</tbody></table>
+<p class="muted small">“verified” means both DNS records are in place. If the app could not add the domain to Hostinger by itself, do it in hPanel → Websites → Add website → existing domain, custom folder <code>public_html/tenants/&lt;site&gt;</code>, wait for the SSL, then press Mark connected.</p>` : html`<p class="muted small">No domains waiting.</p>`}
+${h.domains.active.length ? html`<p class="muted small">Connected: ${h.domains.active.map((d) => html`<code>${d.hostname}</code> → ${d.subdomain} `)}</p>` : ''}
 </div>
 <div class="card"><h2>Checks</h2><ul class="plain">
   <li>Platform hosts: <code>${config.platformHosts.join(', ')}</code> · tenants: <code>*.${h.baseDomain}</code></li>

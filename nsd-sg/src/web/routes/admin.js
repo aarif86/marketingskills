@@ -5,6 +5,7 @@ import { config, publicUrlForSubdomain } from '../../config.js';
 import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { listHoldsForUser, holdSite, holdZip, evidencePack, evidenceStats } from '../../services/evidence.js';
+import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -45,6 +46,8 @@ export async function registerAdminRoutes(app) {
       requests7d: q("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       bytes7d: q("SELECT COALESCE(SUM(bytes),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       openAbuse: q("SELECT COUNT(*) n FROM abuse_reports WHERE status IN ('open','reviewing')").n,
+      mrrCents: q("SELECT COALESCE(SUM(p.price_cents_month),0) n FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.status = 'active'").n,
+      payers: q("SELECT COUNT(DISTINCT user_id) n FROM subscriptions WHERE status = 'active'").n,
       expiringSoon: q("SELECT COUNT(*) n FROM users WHERE plan_expires_at IS NOT NULL AND plan_expires_at BETWEEN datetime('now') AND datetime('now','+14 days')").n,
       expired: q("SELECT COUNT(*) n FROM users WHERE plan_expires_at IS NOT NULL AND plan_expires_at < datetime('now')").n,
     };
@@ -456,7 +459,7 @@ export async function registerAdminRoutes(app) {
         envFile: envFileKeys(),
         csrf: csrfTokenFor(req),
       } : null,
-      tryHost, evidence: evidenceStats(), csrf: csrfTokenFor(req),
+      tryHost, evidence: evidenceStats(), csrf: csrfTokenFor(req), domains: { waiting: listDomainsWaiting(), active: listDomainsActive() },
       siteBytes: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
       siteCount: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n,
       releaseCount: q('SELECT COUNT(*) n FROM releases').n,
@@ -492,6 +495,15 @@ export async function registerAdminRoutes(app) {
     const r = await repairPending({ force: true });
     audit({ req, action: 'hosting.repair_all', targetType: 'system', targetId: '-', details: { checked: r.checked, repaired: r.repaired, failed: r.failed } });
     flash(reply, r.failed ? 'error' : 'success', r.checked ? `Checked ${r.checked} site${r.checked === 1 ? '' : 's'} without a confirmed address: ${r.repaired} re-asked at Hostinger, ${r.failed} failed${r.failed ? ` (${r.details.filter((d) => d.error).map((d) => `${d.subdomain}: ${d.error}`).join('; ').slice(0, 400)})` : ''}.` : 'Every site already answers. Nothing to repair.');
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/domain', opts, async (req, reply) => {
+    const id = String(req.body?.id ?? ''); const action = String(req.body?.action ?? '');
+    if (action === 'connected') setDomainStatus(id, 'active', 'connected by admin');
+    else if (action === 'disable') setDomainStatus(id, 'disabled', 'disabled by admin');
+    audit({ req, action: `admin.domain.${action}`, targetType: 'domain', targetId: id, severity: 'warn' });
+    flash(reply, 'success', action === 'connected' ? 'Marked connected. The owner sees it on their settings page.' : 'Domain disabled.');
     return reply.redirect('/admin/health');
   });
 

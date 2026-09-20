@@ -208,3 +208,4 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .try-result .try-link{padding:16px}.try-result .try-link .btn{width:100%;text-align:center}.try-frame{height:60vh}.try-result .keep .btn-lg{width:100%;text-align:center}.try-result .keep .form-inline select{width:100%}
 .page-head .actions{width:100%;display:flex;gap:8px}.page-head .actions .btn{flex:1;text-align:center}
 .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+.domain-box{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:14px 0}.domain-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.domain-head form{margin-left:auto}.table.dns code{overflow-wrap:anywhere}.flash.small{padding:10px 14px;font-size:.88rem}

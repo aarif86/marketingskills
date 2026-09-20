@@ -134,7 +134,7 @@ ${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<s
 </div>`.toString();
 }
 
-export function siteSettings({ site, csrf, ent }) {
+export function siteSettings({ site, csrf, ent, domains = [] }) {
   return html`<p class="crumb"><a href="/dashboard">Sites</a> / <a href="/sites/${site.id}">${site.subdomain}</a> / Settings</p>
 <h1>Settings</h1>
 <form method="post" action="/sites/${site.id}/settings" class="form card">
@@ -145,7 +145,24 @@ export function siteSettings({ site, csrf, ent }) {
   ${(ent.features.hide_from_showcase ?? ent.features.branding_removable) ? html`<label class="check"><input type="checkbox" name="listed" value="1" ${site.listed_choice === 1 ? 'checked' : ''}> Show this site on the public <a href="/showcase">showcase</a> <small>(off by default on your plan; tick to be listed)</small></label>` : html`<p class="muted small">Live sites on the free plan appear on the public <a href="/showcase">showcase</a>. On Plus your site is off the list unless you switch it on.</p>`}
   <button class="btn btn-primary" type="submit">Save</button>
 </form>
-${ent.features.custom_domains ? html`<div class="card"><h2>Custom domain</h2><p class="muted">Bring your own domain (an add-on — the domain itself is bought separately from any registrar, ~S$20–60/yr for .sg). Connecting it is done by hand for now — email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> and we will set it up for you today.</p></div>` : ''}
+${ent.features.custom_domains ? html`<div class="card" id="domains"><h2>Your own domain name</h2>
+<p class="muted">Bought a name like <strong>mybusiness.sg</strong> somewhere? Point it at this site. Your ${site.subdomain}.${config.baseDomain} address keeps working too. We do not sell domains yet; any registrar works.</p>
+${domains.map((d) => html`<div class="domain-box">
+  <div class="domain-head"><strong>${d.hostname}</strong> ${d.status === 'active' ? html`<span class="pill pill-live">connected</span>` : d.status === 'verified' ? html`<span class="pill pill-resolved">verified · connecting</span>` : html`<span class="pill pill-empty">waiting for records</span>`}
+    <form method="post" action="/sites/${site.id}/domains/${d.id}/delete" class="inline" data-confirm="Remove ${d.hostname} from this site?"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-ghost" type="submit">Remove</button></form></div>
+  ${d.status === 'active' ? html`<p class="muted small">Visitors can open <a href="https://${d.hostname}" target="_blank" rel="noopener">${d.hostname}</a> and <a href="https://www.${d.hostname}" target="_blank" rel="noopener">www.${d.hostname}</a>. The padlock appears within 15 minutes of connecting.</p>`
+  : html`<p class="muted small">Log in where you bought the domain, find <strong>DNS records</strong> (sometimes “DNS zone” or “Manage DNS”), and add these. Copy each value exactly.</p>
+    <table class="table small dns"><thead><tr><th>Type</th><th>Name / host</th><th>Value / points to</th><th></th></tr></thead><tbody>
+      <tr><td>TXT</td><td><code>${d.ins.verify.host}</code></td><td><code>${d.ins.verify.value}</code></td><td>${d.owner_ok ? html`<span class="ok">✓ found</span>` : html`<span class="muted">proves it is yours</span>`}</td></tr>
+      <tr><td>CNAME</td><td><code>www</code></td><td><code>${d.ins.www.value}</code></td><td>${d.dns_ok ? html`<span class="ok">✓ found</span>` : html`<span class="muted">sends www.${d.hostname} here</span>`}</td></tr>
+      ${d.ins.apex ? html`<tr><td>A</td><td><code>@</code></td><td><code>${d.ins.apex.value}</code></td><td><span class="muted">sends ${d.hostname} (no www) here</span></td></tr>` : html`<tr><td colspan="4" class="muted small">For the bare name without www, some registrars offer “ALIAS” or “ANAME” to <code>${d.ins.target}</code>; add it if you can. Otherwise send people to www.${d.hostname}.</td></tr>`}
+    </tbody></table>
+    ${d.check_note ? html`<p class="flash flash-warn small">Last check ${timeAgo(d.last_checked_at)}: ${d.check_note}</p>` : ''}
+    ${d.status === 'verified' ? html`<p class="flash flash-info small">Both records found. We are connecting it on our side; you will get an email. Nothing more to do.</p>` : ''}
+    <form method="post" action="/sites/${site.id}/domains/${d.id}/check" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-primary btn-sm" type="submit">Check the records</button></form> <span class="muted small">New records can take up to an hour to show up.</span>`}
+</div>`)}
+${domains.filter((d) => d.status !== 'disabled').length < 2 ? html`<form method="post" action="/sites/${site.id}/domains" class="form-inline mt"><input type="hidden" name="_csrf" value="${csrf}"><input name="hostname" placeholder="mybusiness.sg" maxlength="253" required autocomplete="off"><button class="btn btn-ghost" type="submit">Add this domain</button></form>` : ''}
+</div>` : html`<div class="card"><h2>Your own domain name</h2><p class="muted">On Plus or Beta you can point a name you bought, like mybusiness.sg, at this site. <a href="/billing">See plans →</a></p></div>`}
 <div class="card danger">
   <h2>Delete this site</h2>
   <p class="muted">Removes every file and every older copy. Anyone can then take the address.</p>
@@ -242,7 +259,7 @@ ${planBanner(ent)}
   ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public) && !(activeSub && activeSub.plan_id === p.id)).map((p) => html`
     <div class="plan-line"><div><strong>${p.id === ent.plan.id ? `Keep ${p.name} after your free period` : p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.id === ent.plan.id ? `Same plan, no expiry. Your card is charged from today — do this any time before ${ent.expiresAt ? formatDate(ent.expiresAt) : 'your trial ends'}.` : p.description}</div></div>
     <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.hitpay.plans[p.id] || config.payLinks[p.id] ? `${p.id === ent.plan.id ? 'Keep' : 'Choose'} ${p.name} — pay with HitPay` : `Choose ${p.name}`}</button></form></div>`)}
-  <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Custom domains are an add-on on top of Plus — you buy the domain, we connect it.</p>
+  <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Your own domain name is included on Plus and Beta: buy it anywhere, connect it from your site’s Settings.</p>
   <hr><h3>Want a real domain and a professional website?</h3><p class="muted"><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds and grows websites for Singapore businesses. Ask us about moving from ${config.baseDomain} to your own domain.</p>
 </div>
 </div>

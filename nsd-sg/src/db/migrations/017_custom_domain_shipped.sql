@@ -1,0 +1,1 @@
+UPDATE roadmap_items SET status = 'shipped', shipped_at = COALESCE(shipped_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), body = 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Plus and Beta.' WHERE id = 'rm-custom-domain';

@@ -23,6 +23,7 @@ import { appLayout } from '../views/layout.js';
 import * as V from '../views/dashboard.js';
 import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCookie } from '../middleware.js';
 import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
+import { listDomainsForSite, getDomainForSite, addDomain, removeDomain, checkDomain, instructionsFor } from '../../services/domains.js';
 
 const liveWord = (site) => (knownReady(site) ? 'is online' : 'is saved and will be online as soon as your address is ready (see below)');
 
@@ -234,7 +235,34 @@ export async function registerDashboardRoutes(app) {
 
   app.get('/sites/:id/settings', { preHandler: requireUser }, async (req, reply) => {
     const site = loadSite(req, reply); if (!site) return;
-    return render(req, reply, { title: `${site.subdomain} · settings`, active: 'sites', body: V.siteSettings({ site, csrf: csrfTokenFor(req), ent: entitlementsFor(req.user) }) });
+    const domains = listDomainsForSite(site.id).map((d) => ({ ...d, ins: instructionsFor(d, site) }));
+    return render(req, reply, { title: `${site.subdomain} · settings`, active: 'sites', body: V.siteSettings({ site, csrf: csrfTokenFor(req), ent: entitlementsFor(req.user), domains }) });
+  });
+
+  // ---- custom domains ----
+  app.post('/sites/:id/domains', { preHandler: [requireUser, limiter('siteCreate', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    const r = addDomain({ site, user: req.user, hostname: req.body?.hostname });
+    audit({ req, action: r.ok ? 'domain.add' : 'domain.add_failed', targetType: 'site', targetId: site.id, details: { hostname: String(req.body?.hostname ?? '').slice(0, 100), ok: r.ok } });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? `${r.domain.hostname} added. Now add the two records below at the place you bought the domain, then press Check.` : r.reason);
+    return reply.redirect(`/sites/${site.id}/settings#domains`);
+  });
+  app.post('/sites/:id/domains/:did/check', { preHandler: [requireUser, limiter('suggest', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    const d = getDomainForSite(String(req.params.did), site.id);
+    if (!d) { flash(reply, 'error', 'No such domain.'); return reply.redirect(`/sites/${site.id}/settings#domains`); }
+    const r = await checkDomain(d, site);
+    audit({ req, action: 'domain.check', targetType: 'site', targetId: site.id, details: { hostname: d.hostname, ...r, notes: undefined } });
+    if (r.status === 'active') flash(reply, 'success', `${d.hostname} is connected. The padlock can take up to 15 minutes; after that your site answers on both addresses.`);
+    else if (r.status === 'verified') flash(reply, 'success', `${d.hostname} is verified. We connect it on our side within one working day and email you. Nothing more to do.`);
+    else flash(reply, 'warn', `Not yet. ${r.notes.join(' ')} Records can take up to an hour to spread; press Check again later.`);
+    return reply.redirect(`/sites/${site.id}/settings#domains`);
+  });
+  app.post('/sites/:id/domains/:did/delete', { preHandler: requireUser }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    const d = getDomainForSite(String(req.params.did), site.id);
+    if (d && removeDomain(d.id, site.id)) { audit({ req, action: 'domain.remove', targetType: 'site', targetId: site.id, details: { hostname: d.hostname } }); flash(reply, 'success', `${d.hostname} removed. Your ${site.subdomain}.${config.baseDomain} address is unaffected.`); }
+    return reply.redirect(`/sites/${site.id}/settings#domains`);
   });
 
   app.post('/sites/:id/settings', { preHandler: requireUser }, async (req, reply) => {

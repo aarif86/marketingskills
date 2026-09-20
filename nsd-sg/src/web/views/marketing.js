@@ -156,7 +156,7 @@ export function faqPage() {
     ['How do I change my page after it is online?', 'Open your site in NSD.SG and paste the new code, or drop in the new files. The link stays the same. The old copy is kept so you can go back.'],
     ['What happens after 3 months on the Free plan?', 'Ask for more time from your Plan page (we say yes to most real projects), or move to Plus. Your site stays online while we look at your request.'],
     ['Can I remove the “Powered by NasarDigital” badge?', 'Yes, on the Plus plan. On the Free plan it stays. Changing your code will not remove it, because it is added when the page is shown.'],
-    ['Can I use my own domain name, like mybusiness.sg?', 'Yes, on Plus. You buy the name from any seller, we connect it to your site and take care of the padlock (secure connection).'],
+    ['Can I use my own domain name, like mybusiness.sg?', 'Yes, on Plus and Beta. Buy the name from any seller, open your site’s Settings, type the name, and add the two records we show you where you bought it. Press Check and it connects, padlock included.'],
     ['Are there names I cannot use?', 'Names that look like banks, government services or well-known brands are blocked, so nobody can trick your visitors. Rude names are blocked too.'],
     ['What if someone puts something bad on a page?', 'Every page is checked and kept separate from the others. Anyone can report a page at /report, and we take bad pages down quickly.'],
     ['Where are the pages kept?', 'On NasarDigital servers in Singapore and Asia, with the padlock (secure connection) on every page. Copies are made every day.'],

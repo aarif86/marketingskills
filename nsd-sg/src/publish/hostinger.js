@@ -348,6 +348,23 @@ export async function repairPending({ force = false } = {}) {
   return out;
 }
 
+/**
+ * Add a customer's domain to the hosting account, document root = the site's tenant folder. Hostinger's public API
+ * documents subdomains but, as far as we could verify, not addon domains on managed hosting; we try the obvious
+ * endpoint once and fall back to the admin queue ("Mark connected" after doing it in hPanel). Never throws.
+ */
+export async function addDomainToHosting(hostname, label) {
+  if (!isEnabled()) return { ok: false, reason: 'publisher off' };
+  if (!config.hostinger.apiToken) return { ok: false, reason: 'no API token: add the domain in hPanel > Websites > Add website (existing domain), folder public_html/tenants/' + label };
+  const rel = path.relative(config.hostinger.publicHtml, tenantDir(label)).split(path.sep).join('/');
+  try {
+    await api('POST', `/api/hosting/v1/accounts/${config.hostinger.username}/websites`, { domain: hostname, directory: rel });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: `Hostinger API could not add it (${String(e.message).slice(0, 160)}). Add it in hPanel > Websites > Add website (existing domain), folder public_html/${rel}, then press Mark connected.` };
+  }
+}
+
 /** Is the Hostinger API token alive? Lists subdomains; returns count or the error text. */
 export async function checkApi() {
   if (!isEnabled()) return { ok: false, reason: 'publisher off' };

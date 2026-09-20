@@ -122,6 +122,9 @@ export const config = Object.freeze({
     clientSecret: env('GOOGLE_CLIENT_SECRET', ''),
     redirectUri: env('GOOGLE_REDIRECT_URI', `${env('PUBLIC_SCHEME', isProd ? 'https' : 'http')}://${env('PLATFORM_HOSTS', `${baseDomain},www.${baseDomain}`).split(',')[0].trim()}/auth/google/callback`),
   },
+  // Public IP of the box that serves tenant hosts (Hostinger: hPanel > Hosting > Plan details). Used in the
+  // custom-domain instructions for the bare domain (A record). Leave empty and only the www CNAME is offered.
+  serverIp: env('SERVER_IP', ''),
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
   // HitPay (or any) hosted payment links per plan id: PAY_LINK_PLUS, PAY_LINK_BETA, ... Upgrade buttons open them.
   hitpay: {

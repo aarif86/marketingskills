@@ -366,3 +366,59 @@ test('showcase: free sites listed, paid sites hidden until the owner opts in', a
   r = await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy' });
   assert.ok(!names().includes('listy'), 'opted out');
 });
+
+test('custom domain: Plus user adds a domain, sees the two records, check flips it to connected, the site answers on it', async () => {
+  const { setResolver, listDomainsForSite } = await import('../src/services/domains.js');
+  const listyRow = getDb().prepare('SELECT id FROM users WHERE email = ?').get('listy@example.com');
+  const siteId = getDb().prepare("SELECT id FROM sites WHERE user_id = ? AND status != 'deleted'").get(listyRow.id).id;
+  const login = await app.inject({ method: 'POST', url: '/login', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrfFrom((await get('/login')).body), email: 'listy@example.com', password: 'correct-horse-battery' }).toString() });
+  const cookie = cookiesFrom(login);
+  // refused: our own domain, junk
+  let r = await post(`/sites/${siteId}/domains`, cookie, { hostname: 'foo.nsd.test' }, `/sites/${siteId}/settings`);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /already yours/);
+  r = await post(`/sites/${siteId}/domains`, cookie, { hostname: 'not a domain' }, `/sites/${siteId}/settings`);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /does not look like a domain/);
+  // accepted, normalised
+  r = await post(`/sites/${siteId}/domains`, cookie, { hostname: 'https://WWW.Shop.sg/page' }, `/sites/${siteId}/settings`);
+  assert.equal(r.statusCode, 302);
+  const d = listDomainsForSite(siteId)[0];
+  assert.equal(d.hostname, 'shop.sg');
+  let settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /_nsd-verify/);
+  assert.match(settings.body, new RegExp(`nsd-verify=${d.verify_token}`));
+  assert.match(settings.body, /<code>www<\/code><\/td><td><code>listy\.nsd\.test<\/code>/);
+  assert.match(settings.body, /waiting for records/);
+  // nothing in DNS yet
+  setResolver({ txt: async () => { throw new Error('ENOTFOUND'); }, cname: async () => { throw new Error('ENOTFOUND'); }, a: async () => { throw new Error('ENOTFOUND'); } });
+  r = await post(`/sites/${siteId}/domains/${d.id}/check`, cookie, {}, `/sites/${siteId}/settings`);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Not yet\. No TXT record found/);
+  // records in place
+  setResolver({ txt: async (n) => (n === `_nsd-verify.shop.sg` ? [[`nsd-verify=${d.verify_token}`]] : []), cname: async (n) => (n === 'www.shop.sg' ? ['listy.nsd.test.'] : []), a: async () => [] });
+  r = await post(`/sites/${siteId}/domains/${d.id}/check`, cookie, {}, `/sites/${siteId}/settings`);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /shop\.sg is connected/);
+  settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /connected/);
+  // the site answers on the custom hostname, www and bare
+  for (const host of ['www.shop.sg', 'shop.sg']) {
+    const t = await get('/', '', host);
+    assert.equal(t.statusCode, 200, host);
+    assert.match(t.body, /Book 1\.pdf/);
+  }
+  assert.equal((await get('/', '', 'nobody.example')).statusCode, 200, 'unknown host still gets the platform in non-prod');
+  // tls-ask knows it
+  assert.equal((await get('/internal/tls-ask?domain=shop.sg')).statusCode, 200);
+  // second domain ok, third refused
+  await post(`/sites/${siteId}/domains`, cookie, { hostname: 'shop.com' }, `/sites/${siteId}/settings`);
+  r = await post(`/sites/${siteId}/domains`, cookie, { hostname: 'shop.net' }, `/sites/${siteId}/settings`);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /two domains at most/);
+  // remove
+  r = await post(`/sites/${siteId}/domains/${d.id}/delete`, cookie, {}, `/sites/${siteId}/settings`);
+  assert.equal(listDomainsForSite(siteId).some((x) => x.hostname === 'shop.sg'), false);
+  assert.equal((await get('/', '', 'shop.sg')).statusCode, 200);
+  assert.doesNotMatch((await get('/', '', 'shop.sg')).body, /Book 1\.pdf/, 'no longer served');
+  // free users see the upsell, not the form
+  const sup = await get(`/sites/${alice.siteId}/settings`, alice.cookie);
+  assert.ok(sup.statusCode === 200 ? /See plans/.test(sup.body) : true);
+  // admin overview shows recurring revenue
+  assert.match((await get('/admin', admin.cookie)).body, /Monthly recurring/);
+});

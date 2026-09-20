@@ -115,7 +115,7 @@ export function deleteChangelog(id) { getDb().prepare('DELETE FROM changelog WHE
 const SEED_ROADMAP = [
   ['rm-try-it', 'Try it before you sign up', 'Paste the code on the home page, no account, and get a link that works for 3 hours. Sign up to keep it at your own address.', 'shipped', 'platform', 9],
   ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'shipped', 'platform', 10],
-  ['rm-custom-domain', 'Connect your own domain', 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Add-on for Plus and Beta.', 'planned', 'platform', 20],
+  ['rm-custom-domain', 'Connect your own domain', 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Plus and Beta.', 'shipped', 'platform', 20],
   ['rm-expiry-emails', 'Reminder emails before your free period ends', 'A heads-up at day 76, a grace period, and a clear path to extend or upgrade — no surprises.', 'planned', 'billing', 30],
   ['rm-analytics', 'Simple visitor stats per site', 'Visits and top pages for each site, privacy-friendly, no cookies.', 'planned', 'dashboard', 40],
   ['rm-demo-video', 'A 60-second "upload to live" walkthrough', 'Short video on the home page showing claim → upload → open.', 'planned', 'design', 50],
@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-10-0', '0.10.0', 'Connect your own domain name, by yourself', `- New: on Plus and Beta, open your site’s Settings, type a domain you bought (like mybusiness.sg), and we show the two records to add where you bought it, in plain words. Press “Check the records” and the site connects, padlock included. Your name.nsd.sg address keeps working.
+- Admin: a queue of domains waiting to be connected, and a monthly-recurring revenue figure on the overview.`, 'new', '2026-09-21T08:00:00Z'],
   ['cl-0-9-8', '0.9.8', 'Test-page bar fits on a phone', `- Fixed: on phones the bar above a test page cut its words off. It now wraps onto two lines with shorter labels, and the × is always reachable. Older test links get the new bar too.
 - Fixed: the try box, the result page, site page buttons and admin tables now fit a phone screen.`, 'fix', '2026-09-21T07:00:00Z'],
   ['cl-0-9-7', '0.9.7', 'Admin menu no longer hides its last links', `- Fixed: on a normal laptop width the admin menu silently cut off Abuse reports, Audit log and System health. It now switches to the menu button earlier instead of clipping.`, 'fix', '2026-09-21T06:30:00Z'],

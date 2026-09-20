@@ -35,6 +35,15 @@ page or `/sites/new?preview=<id>`. The preview is deleted once kept or expired.
 6. **Admin daily loop** — Overview: extension requests, upgrade requests, security events, new
    users, recent deploys → act inline.
 
+## Custom domains (0.10.0)
+
+`src/services/domains.js`. Plus/Beta only, two per site. Owner adds `mybusiness.sg` in Settings; the page shows a
+TXT record (`_nsd-verify.<domain>` = `nsd-verify=<token>`) and a CNAME (`www` → `<name>.nsd.sg`), plus an A record
+to `SERVER_IP` when set. "Check the records" resolves them (injectable resolver in tests): both found → `verified`;
+then `active` at once on VPS/local (the app serves the hostname; Caddy `tls-ask` already allows it) or, on
+Hostinger, after `addDomainToHosting()` succeeds. If the API refuses, the domain waits in Admin → System health with
+the hPanel steps and a "Mark connected" button. Buying domains through Hostinger is not built.
+
 ## Pages
 
 | Route | Who | Purpose |
