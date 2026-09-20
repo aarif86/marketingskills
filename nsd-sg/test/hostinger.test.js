@@ -279,6 +279,17 @@ test('HitPay charge webhooks (no reference) link by customer email; refund is re
   const ev = db().prepare("SELECT type, details FROM plan_events WHERE user_id = ? AND type = 'refund'").get(gus.id);
   assert.ok(ev, 'refund plan event recorded');
   assert.equal(JSON.parse(ev.details).amount, 6);
+  // The real production payload: subscription id + reference nested under relatable.business_charge, email of a
+  // different account. Must match by the nested reference, not the email.
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('a2a7d144', ?, 'beta', 'pending', ?)").run(gus.id, `${gus.id}:beta:5G25MJ`);
+  const prod = { id: 'a2a7d1be', business_id: 'b', channel: 'recurrent', status: 'succeeded', customer: { name: 'Other', email: 'other@example.com' }, currency: 'sgd', amount: 6,
+    refunded_amount: 0, refunded_at: null, order: null, order_id: null, remark: 'NSD.SG Beta', payment_intents: [], payment_request_id: null,
+    relatable: { type: 'business_charge', business_charge: { id: 'a2a7d144', name: 'NSD.SG Beta', reference: `${gus.id}:beta:5G25MJ`, status: 'active', price: 6 } } };
+  r = await send(prod, 'created');
+  assert.equal(r.statusCode, 200);
+  s = db().prepare("SELECT status, last_payment_id FROM subscriptions WHERE id = 'a2a7d144'").get();
+  assert.equal(s.status, 'active');
+  assert.equal(s.last_payment_id, 'a2a7d1be', 'charge id stored so admin refund works');
   // Unknown customer still lands as unknown subscription (no crash, no side effects).
   r = await send({ ...charge, customer: { email: 'nobody@example.com' } }, 'created');
   assert.equal(r.statusCode, 200);

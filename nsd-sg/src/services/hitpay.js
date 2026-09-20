@@ -81,7 +81,8 @@ const DEAD = new Set(['canceled', 'cancelled', 'failed', 'expired']);
 /** Pull the identifiers we care about out of any HitPay payload shape (top-level or nested). */
 export function identify(payload) {
   const p = payload ?? {};
-  const rb = p.recurring_billing ?? p.subscription ?? {};
+  // Charge webhooks nest the subscription under relatable.business_charge (id + our reference).
+  const rb = p.recurring_billing ?? p.subscription ?? p.relatable?.business_charge ?? {};
   return {
     subscriptionId: String(p.recurring_billing_id ?? rb.id ?? (p.object === 'recurring_billing' ? p.id : '') ?? ''),
     reference: String(p.reference ?? rb.reference ?? p.order?.reference ?? ''),
