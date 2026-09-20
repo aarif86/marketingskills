@@ -25,7 +25,7 @@ function flashBox(flash) {
 function head(title, { description = '' } = {}) {
   return html`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title ? `${title} · NSD.SG` : 'NSD.SG — Create your website with AI. Host it on your own .sg address.'}</title>
+<title>${title ? `${title} · NSD.SG` : 'NSD.SG — You made it with AI. Give it a proper address.'}</title>
 <meta name="description" content="${description || 'Upload the website you generated with AI and put it live on name.nsd.sg in under a minute. Clean .sg address, free to start.'}">
 <link rel="stylesheet" href="/assets/app.css?v=${config.version}">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">

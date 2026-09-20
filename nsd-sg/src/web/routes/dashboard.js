@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { config, publicUrlForSubdomain } from '../../config.js';
+import { formatBytes } from '../../lib/html.js';
 import { audit } from '../../lib/audit.js';
 import { limiter } from '../../lib/ratelimit.js';
 import { validatePasswordStrength } from '../../lib/password.js';
@@ -133,6 +134,34 @@ export async function registerDashboardRoutes(app) {
     } finally {
       for (const t of temps) fs.rm(t, { force: true }, () => {});
     }
+  });
+
+  // Paste HTML straight from Claude / ChatGPT: the shortest path from an artifact to an address.
+  app.post('/sites/:id/paste', { preHandler: [requireUser, limiter('upload', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    const ent = entitlementsFor(req.user);
+    const back = `/sites/${site.id}`;
+    if (ent.expired) { flash(reply, 'error', 'Your plan has expired. Request an extension or upgrade before publishing.'); return reply.redirect(back); }
+    if (site.status === 'suspended') { flash(reply, 'error', 'This site is suspended.'); return reply.redirect(back); }
+    const htmlText = String(req.body?.html ?? '');
+    let page = String(req.body?.page ?? '').trim().toLowerCase().replace(/\.html?$/, '').replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+    const relPath = page && page !== 'index' ? `${page}.html` : 'index.html';
+    if (htmlText.trim().length < 20 || !/<[a-z!][^>]*>/i.test(htmlText)) { flash(reply, 'error', 'That does not look like HTML. Paste the whole file, from <!doctype html> to </html>.'); return reply.redirect(back); }
+    const bytes = Buffer.byteLength(htmlText, 'utf8');
+    if (bytes > ent.limits.max_file_bytes) { flash(reply, 'error', `That page is ${formatBytes(bytes)}; your plan allows ${formatBytes(ent.limits.max_file_bytes)} per file.`); return reply.redirect(back); }
+    const tmp = tempFile('paste');
+    try {
+      fs.writeFileSync(tmp, htmlText, { mode: 0o600 });
+      const result = await deployFiles({ site, files: [{ relPath, tmpPath: tmp, size: bytes }], user: req.user, limits: ent.limits, replaceAll: false, note: `Pasted ${relPath}` });
+      audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'paste', path: relPath, version: result.version, bytes } });
+      flash(reply, 'success', `Version ${result.version} is live: ${relPath === 'index.html' ? publicUrlForSubdomain(site.subdomain) : `${publicUrlForSubdomain(site.subdomain)}/${page}`}`);
+    } catch (e) {
+      if (!(e instanceof StorageError)) throw e;
+      flash(reply, 'error', e.message);
+    } finally {
+      fs.rm(tmp, { force: true }, () => {});
+    }
+    return reply.redirect(back);
   });
 
   app.post('/sites/:id/files/delete', { preHandler: requireUser }, async (req, reply) => {

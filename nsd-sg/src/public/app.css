@@ -169,3 +169,13 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 /* ---- Continue with Google ---- */
 .oauth{margin:0 0 18px}.btn-google{width:100%;gap:10px;background:#fff;color:#1f1f1f;border-color:#dadce0}.btn-google:hover{background:#f3f4f6;color:#1f1f1f}
 .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.85rem;margin:16px 0 0}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---- paste-to-publish ---- */
+.paste-box{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}.paste-box summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.paste-box summary::before{content:"+";color:var(--accent2);font-weight:700}.paste-box[open] summary::before{content:"–"}
+.paste-box .form{margin-top:14px}.paste-box textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;line-height:1.45}
+.page-input{border-radius:10px;padding:0}.page-input span{padding-left:14px;color:var(--muted);font-weight:500;white-space:nowrap}.page-input input{padding-left:4px}
+/* ---- who it's for ---- */
+.who .card h3{display:flex;gap:10px;align-items:center}.who .card h3 .ico{font-size:1.2rem}.who .card p{color:var(--text-2)}.who .card .eg{color:var(--muted);font-size:.88rem;margin:0}
+.loop{display:grid;gap:14px;grid-template-columns:1fr;margin:28px 0 0}@media(min-width:760px){.loop{grid-template-columns:repeat(3,1fr)}}
+.loop .card{text-align:left}.loop code{display:block;margin-top:8px;white-space:normal;overflow-wrap:anywhere}
+.ugly{font-family:ui-monospace,Menlo,monospace;font-size:.82rem;color:var(--muted);text-decoration:line-through;overflow-wrap:anywhere}.nice{font-family:ui-monospace,Menlo,monospace;font-size:.95rem;color:var(--ok);overflow-wrap:anywhere}

@@ -37,7 +37,8 @@ test('marketing pages render', async () => {
     assert.equal(r.statusCode, 200, u);
   }
   const r = await get('/');
-  assert.match(r.body, /Create your website with AI/);
+  assert.match(r.body, /Give it a proper address/);
+  assert.match(r.body, /Who this is for/);
   assert.match(r.headers['content-security-policy'], /frame-ancestors 'none'/);
 });
 
@@ -145,6 +146,24 @@ test('merge upload adds a file and creates version 2; delete creates version 3; 
   const rb = await post(`/sites/${alice.siteId}/rollback`, alice.cookie, { release_id: ids[ids.length - 1] });
   assert.equal(rb.statusCode, 302);
   assert.equal((await get('/about.html', '', 'alice.nsd.test')).statusCode, 200);
+});
+
+test('paste HTML publishes a named page and the home page; junk is refused', async () => {
+  let r = await post(`/sites/${alice.siteId}/paste`, alice.cookie, { page: 'Proposal', html: '<!doctype html><html><body><h1>Pasted proposal</h1></body></html>' });
+  assert.equal(r.statusCode, 302);
+  let t = await get('/proposal', '', 'alice.nsd.test');
+  assert.equal(t.statusCode, 200);
+  assert.match(t.body, /Pasted proposal/);
+  assert.match(t.body, /data-nsd="badge"/, 'badge injected on pasted pages too');
+  assert.equal((await get('/', '', 'alice.nsd.test')).statusCode, 200, 'other pages kept (merge)');
+  r = await post(`/sites/${alice.siteId}/paste`, alice.cookie, { page: '', html: '<html><body><h1>Alice</h1><p>New home</p></body></html>' });
+  t = await get('/', '', 'alice.nsd.test');
+  assert.match(t.body, /New home/);
+  r = await post(`/sites/${alice.siteId}/paste`, alice.cookie, { page: 'x', html: 'just some words' });
+  assert.equal((await get('/x', '', 'alice.nsd.test')).statusCode, 404, 'non-HTML refused');
+  const anon = await app.inject({ method: 'POST', url: `/sites/${alice.siteId}/paste`, headers: { ...P, 'content-type': 'application/x-www-form-urlencoded', origin: 'http://nsd.test' }, body: 'page=evil&html=%3Chtml%3Epwn%3C%2Fhtml%3E' });
+  assert.ok(anon.statusCode === 403 || /^\/login/.test(anon.headers.location ?? ''), 'anonymous paste is refused (CSRF or login)');
+  assert.equal((await get('/evil', '', 'alice.nsd.test')).statusCode, 404);
 });
 
 test('uploads with disallowed types or bad paths are refused', async () => {

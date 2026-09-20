@@ -7,56 +7,72 @@ const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/
 export function homePage({ baseDomain, plans }) {
   return html`
 <section class="hero"><div class="container">
-  <p class="eyebrow">Hosting for the AI era · Singapore</p>
-  <h1>Create your website with AI.<br><span class="grad">Host it on your own .sg address.</span></h1>
-  <p class="lead">You used Claude, ChatGPT or Cursor to build a site. Now put it online in under a minute at <strong>yourname.${baseDomain}</strong> — no servers, no configs, no <code>.vercel.app</code>.</p>
+  <p class="eyebrow">For people who make things with AI · Singapore</p>
+  <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
+  <p class="lead">Claude, ChatGPT and Gemini hand you a file. Sharing it as an artifact link looks like a scratchpad. Put it at <strong>yourname.${baseDomain}</strong> instead — live in a minute, with HTTPS, and it looks like yours.</p>
   <form class="hero-form" action="/signup" method="get">
     <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Choose your site name"><span>.${baseDomain}</span></div>
     <button class="btn btn-primary btn-lg" type="submit">Claim my address</button>
   </form>
-  <p class="hero-note" data-availability-msg>Free to start. No credit card.</p>
-  <div class="flow"><span>AI-generated website</span><i>→</i><span>Upload</span><i>→</i><span>Live on name.${baseDomain}</span></div>
+  <p class="hero-note" data-availability-msg>Free to start. No credit card. One page counts.</p>
+  <div class="loop">
+    <div class="card"><h3>Before</h3><p class="muted small">What you send today</p><span class="ugly">claude.ai/public/artifacts/9f3a1c2e-7b…</span></div>
+    <div class="card"><h3>After</h3><p class="muted small">What you send with NSD.SG</p><span class="nice">https://yourname.${baseDomain}/proposal</span></div>
+    <div class="card"><h3>How</h3><p class="muted small">Three steps, no jargon</p><code>Copy the HTML → paste it in → send the link</code></div>
+  </div>
 </div></section>
 
-<section id="how" class="section"><div class="container">
+<section id="who" class="section who"><div class="container">
+  <h2>Who this is for</h2>
+  <p class="section-lead">Not people who want “a website”. People whose work now produces web pages, and who need to hand them to someone else without looking like a test.</p>
+  <div class="grid three">
+    <div class="card"><h3><span class="ico">💼</span>Professionals who share their work</h3><p>Consultants, trainers, coaches, freelancers. A proposal page, a calculator, an interactive explainer, a checklist, a one-page pitch.</p><p class="eg">yourname.${baseDomain}/proposal</p></div>
+    <div class="card"><h3><span class="ico">📖</span>Teachers and asatizah</h3><p>A lesson page, a du‘a list, a quiz for the class, a term schedule. Sent to a WhatsApp group of parents or students and opened on a phone.</p><p class="eg">ustazname.${baseDomain}/quiz</p></div>
+    <div class="card"><h3><span class="ico">📅</span>Event and community organisers</h3><p>Programme, timings, map, registration info. Lives for three weeks and needs to look trustworthy for every one of them.</p><p class="eg">event.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🧪</span>Builders showing prototypes</h3><p>You built something last night and need a public link for feedback this morning. Replace it tonight; every version is kept.</p><p class="eg">project.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🏪</span>Small businesses with one page</h3><p>Opening hours, what you do, how to reach you. The page AI wrote for you, on a Singapore address, for free.</p><p class="eg">shopname.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🚫</span>Not for</h3><p>Apps with logins, databases or payments. NSD.SG serves pages, not servers. When you need that, <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds it.</p></div>
+  </div>
+</div></section>
+
+<section id="how" class="section alt"><div class="container">
   <h2>How it works</h2>
   <div class="grid three">
-    <div class="card"><div class="step">1</div><h3>Generate</h3><p>Ask any AI tool for a website. Download the HTML, CSS, images — or export a ZIP.</p></div>
-    <div class="card"><div class="step">2</div><h3>Upload</h3><p>Sign up, pick a name, drag the ZIP or the files into NSD.SG. We check every file for safety.</p></div>
-    <div class="card"><div class="step">3</div><h3>Live</h3><p>Your site is on <strong>https://name.${baseDomain}</strong> with SSL, instantly. Upload again any time to update it.</p></div>
+    <div class="card"><div class="step">1</div><h3>Make it</h3><p>Ask Claude, ChatGPT or any AI tool for the page. It gives you HTML. That is all you need.</p></div>
+    <div class="card"><div class="step">2</div><h3>Paste or upload</h3><p>Sign up, pick your name, then paste the HTML straight in — or upload files, a folder or a ZIP if you have more.</p></div>
+    <div class="card"><div class="step">3</div><h3>Send the link</h3><p>It is live at <strong>https://yourname.${baseDomain}</strong> with HTTPS. Paste again any time to update; the old version is kept.</p></div>
   </div>
 </div></section>
 
-<section id="why" class="section alt"><div class="container">
-  <h2>Why NSD.SG</h2>
-  <p class="section-lead">Developer platforms are built for developers. NSD.SG is built for people who have a website and just want it online.</p>
+<section id="why" class="section"><div class="container">
+  <h2>Why NSD.SG and not the link the AI gave you</h2>
   <div class="grid three">
-    <div class="card"><h3>A clean local address</h3><p><strong>name.${baseDomain}</strong> is short, memorable and says Singapore. It looks like yours, not like a deployment preview.</p></div>
-    <div class="card"><h3>Nothing to configure</h3><p>No git, no build commands, no framework detection, no DNS. If it opens in your browser, it works on NSD.SG.</p></div>
-    <div class="card"><h3>Update by re-uploading</h3><p>Regenerated your site? Upload the new version. Every publish is kept, so you can roll back with one click.</p></div>
-    <div class="card"><h3>Safe by design</h3><p>Sites are static and isolated from each other. Only web files are accepted, served with strict content types and HTTPS.</p></div>
-    <div class="card"><h3>Made in Singapore</h3><p>Built and supported by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Talk to a real person when you need help.</p></div>
-    <div class="card"><h3>A path to more</h3><p>When you outgrow a subdomain, we help with a custom domain, a professional build, SEO and growth — same team.</p></div>
+    <div class="card"><h3>It looks like yours</h3><p><strong>yourname.${baseDomain}</strong> is short, says Singapore, and carries no other company's name. Not a random id, not somebody's app.</p></div>
+    <div class="card"><h3>Nothing to learn</h3><p>No git, no deploy commands, no DNS, no “framework detection”. If it opens in your browser, it works here.</p></div>
+    <div class="card"><h3>One page is enough</h3><p>Most things people make with AI are a single file. Paste it and you are done. Grow into a full site only if you want to.</p></div>
+    <div class="card"><h3>Safe by design</h3><p>Pages are static and isolated from each other. Only web files are accepted, served with strict content types and HTTPS.</p></div>
+    <div class="card"><h3>A person in Singapore</h3><p>Built and supported by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Stuck? A real person answers.</p></div>
+    <div class="card"><h3>A path to more</h3><p>When a page becomes a business, we help with a real domain, a professional build, SEO and growth. Same team.</p></div>
   </div>
 </div></section>
 
-<section id="features" class="section"><div class="container">
+<section id="features" class="section alt"><div class="container">
   <h2>Everything you need, nothing you don't</h2>
   <ul class="features">
-    <li>ZIP or drag-and-drop upload</li><li>File manager with add, replace, delete</li><li>Version history and rollback</li>
+    <li>Paste HTML, or drag-and-drop files, folders, ZIP</li><li>Named pages: /proposal, /quiz, /menu</li><li>Version history and rollback</li>
     <li>Automatic HTTPS</li><li>Custom 404 page</li><li>Reserved-name and abuse protection</li>
-    <li>Usage and storage in your dashboard</li><li>Custom domains on Plus</li><li>Email support from NasarDigital</li>
+    <li>Usage and storage in your dashboard</li><li>Your own domain on Plus</li><li>Email support from NasarDigital</li>
   </ul>
 </div></section>
 
-<section id="pricing" class="section alt"><div class="container">
+<section id="pricing" class="section"><div class="container">
   <h2>Simple pricing</h2>
   <div class="grid pricing">${plans.map((p) => html`
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}">
       <h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div>
       <p>${p.description}</p>
       <ul>
-        <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li>
+        <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, unlimited pages each</li>
         <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB storage</li>
         <li>${p.limits.max_releases} versions kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge' : 'Small “Powered by NasarDigital” badge'}</li>
@@ -69,17 +85,18 @@ export function homePage({ baseDomain, plans }) {
   </div>
 </div></section>
 
-<section id="faq-teaser" class="section"><div class="container narrow">
+<section id="faq-teaser" class="section alt"><div class="container narrow">
   <h2>Questions people ask</h2>
-  <details><summary>What kind of websites can I host?</summary><p>Static websites: HTML, CSS, JavaScript, images, fonts, video. That is exactly what AI tools generate. Server-side code such as PHP or Node is not run, which keeps every site fast and safe.</p></details>
-  <details><summary>Can I update my site after publishing?</summary><p>Yes. Upload a new ZIP to replace everything, or change single files in the file manager. Older versions are kept so you can roll back.</p></details>
-  <details><summary>Why is there a badge on my site?</summary><p>Free sites carry a small “Powered by NasarDigital · nsd.sg” badge. It pays for the free tier. Plus removes it.</p></details>
+  <details><summary>I only have one HTML file. Is that enough?</summary><p>Yes. Paste it in and it becomes your home page. Add more pages later by pasting again with a name, like <code>/proposal</code>.</p></details>
+  <details><summary>What can I host?</summary><p>Anything that runs in a browser: HTML, CSS, JavaScript, images, fonts, video, PDF. That is what AI tools produce. Server-side code is not run, which keeps every page fast and safe.</p></details>
+  <details><summary>Can I update it after sharing the link?</summary><p>Yes. Paste or upload the new version; the link stays the same. Older versions are kept so you can roll back.</p></details>
+  <details><summary>Why is there a badge on my page?</summary><p>Free pages carry a small “Powered by NasarDigital · nsd.sg” badge. It pays for the free tier. Plus removes it.</p></details>
   <p><a href="/faq">Read the full FAQ →</a></p>
 </div></section>
 
 <section class="cta"><div class="container">
-  <h2>Your site is ready. Give it a home.</h2>
-  <a class="btn btn-primary btn-lg" href="/signup">Create my ${baseDomain} address</a>
+  <h2>Your page is ready. Give it an address.</h2>
+  <a class="btn btn-primary btn-lg" href="/signup">Claim my ${baseDomain} address</a>
   <p class="muted">Create with AI → Deploy with NSD.SG → Grow with NasarDigital</p>
 </div></section>`.toString();
 }
@@ -102,7 +119,10 @@ export function pricingPage({ plans }) {
 
 export function faqPage() {
   const qa = [
-    ['What is NSD.SG?', 'A place to put a finished website online. You upload the files, we serve them on your own name.nsd.sg address with HTTPS.'],
+    ['What is NSD.SG?', 'A place to put what you made with AI online, at your own name.nsd.sg address with HTTPS. One page or a whole site — paste the HTML or upload the files and send the link.'],
+    ['Can I paste HTML straight from Claude or ChatGPT?', 'Yes. On your site page there is a “paste HTML” box. Copy the code from the artifact or the code block, paste it, give it a page name (or leave blank for the home page) and it is live. No download, no upload.'],
+    ['Is a single page enough, or do I need a full website?', 'A single page is enough and it is what most people start with. Add pages whenever you like, each with its own address such as name.nsd.sg/proposal.'],
+    ['Can I host an app with logins, a database or payments?', 'No. NSD.SG serves pages, not servers, so those parts have nowhere to run. If your idea needs them, NasarDigital can build it properly.'],
     ['Do I need to know how to code?', 'No. If you can download a ZIP and drag it into a browser window, you can publish on NSD.SG.'],
     ['Which AI tools work with NSD.SG?', 'Any tool that produces website files: Claude, ChatGPT, Gemini, Cursor, v0, Lovable, Bolt, Framer exports, Webflow exports, Hugo/Astro/Next static exports, or a site you wrote yourself.'],
     ['What files are accepted?', 'HTML, CSS, JavaScript, JSON, images (PNG, JPG, GIF, WebP, AVIF, SVG, ICO), fonts (WOFF, WOFF2, TTF, OTF), video/audio (MP4, WebM, MP3, OGG, WAV), PDF, text. Anything executable (PHP, scripts, binaries) is rejected.'],

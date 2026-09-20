@@ -78,6 +78,18 @@ ${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class
     <div class="dz-progress" hidden><div class="bar"><span></span></div><p class="dz-status">Uploading…</p></div>
     <noscript><button class="btn btn-primary" type="submit">Upload</button></noscript>
   </form>
+  <details class="paste-box" ${!site.current_release_id ? 'open' : ''}>
+    <summary><strong>Or paste HTML straight from Claude or ChatGPT</strong> <span class="muted">— no download, no upload</span></summary>
+    <form method="post" action="/sites/${site.id}/paste" class="form">
+      <input type="hidden" name="_csrf" value="${csrf}">
+      <label>Page <span class="muted">(leave blank for the home page)</span>
+        <div class="domain-input page-input"><span>${site.subdomain}.${config.baseDomain}/</span><input name="page" placeholder="proposal" maxlength="60" pattern="[A-Za-z0-9-]*" autocomplete="off"></div>
+        <small>Blank publishes as your home page. A name like <code>proposal</code> becomes <code>${site.subdomain}.${config.baseDomain}/proposal</code>.</small></label>
+      <label>HTML <textarea name="html" rows="8" placeholder="&lt;!doctype html&gt; … paste the whole file … &lt;/html&gt;" required spellcheck="false" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}></textarea>
+        <small>In Claude: open the artifact → ⋯ → Copy code. In ChatGPT: the copy button on the code block. Pasting replaces that one page and keeps everything else.</small></label>
+      <button class="btn btn-primary" type="submit" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}>Publish this page</button>
+    </form>
+  </details>
 </section>
 
 <div class="grid two">
