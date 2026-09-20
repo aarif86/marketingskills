@@ -145,4 +145,8 @@ test('share tags: added from the page title/description when missing, left alone
   const o2 = injectSocial(Buffer.from(ownImage), { siteName: 'a.nsd.sg', image: 'https://nsd.sg/i.png' }).toString();
   assert.doesNotMatch(o2, /nsd\.sg\/i\.png/, 'never overrides a page that brings its own image');
   assert.match(o2, /og:title" content="T"/);
+  const plain = injectSocial(Buffer.from('<html><head><title>T</title></head><body></body></html>'), { siteName: 'a.nsd.sg', image: 'https://nsd.sg/i.png', plain: true }).toString();
+  assert.doesNotMatch(plain, /nsd\.sg\/i\.png|NSD\.SG|put online/, 'paid plans: no NSD.SG image or wording');
+  assert.match(plain, /og:description" content="A page on a\.nsd\.sg\."/);
+  assert.match(plain, /twitter:card" content="summary"/);
 });

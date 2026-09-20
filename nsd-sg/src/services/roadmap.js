@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-3', '0.9.3', 'Paid plans: no NSD.SG in link previews either', `- Changed: on Plus, Beta or any plan without the badge, link previews on WhatsApp and Telegram carry no NSD.SG image or wording. Just your title, your description and your address. The promise that removes the badge now covers previews too.
+- Fixed: the NasarDigital name in both footers is now a link.`, 'improved,fix', '2026-09-21T03:30:00Z'],
   ['cl-0-9-2', '0.9.2', 'Test-page bar no longer covers your header; nicer link previews', `- Fixed: the test-page bar now sits above the page instead of over it, so a page with its own menu at the top is not cut off. There is an × to hide the bar; it comes back on the next load.
 - New: sharing a test link on WhatsApp or Telegram shows an NSD.SG card (“… · test page on NSD.SG”, when it expires) instead of whatever logo the pasted page referenced.
 - New: real sites get a share preview too when the page has none: the page title, its description or first paragraph, the address, and an NSD.SG card image. Pages that already carry their own preview tags are left alone.`, 'fix,new', '2026-09-21T03:00:00Z'],

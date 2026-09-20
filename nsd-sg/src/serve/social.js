@@ -28,9 +28,10 @@ export function hasSocialTags(html) {
 }
 
 /** Build the tag block. `title`/`description` fall back to what the page says. */
-export function socialTags(html, { url, siteName, image, title, description, type = 'website' }) {
+export function socialTags(html, { url, siteName, image, title, description, type = 'website', plain = false }) {
   const t = title || pageTitle(html) || siteName;
-  const d = description || pageDescription(html) || `A page on ${siteName}, made with AI and put online with NSD.SG.`;
+  const d = description || pageDescription(html) || (plain ? `A page on ${siteName}.` : `A page on ${siteName}, made with AI and put online with NSD.SG.`);
+  if (plain) image = '';
   const hasImage = /property=["']og:image["']/i.test(String(html));
   return [
     `<meta property="og:type" content="${esc(type)}">`,
@@ -46,7 +47,8 @@ export function socialTags(html, { url, siteName, image, title, description, typ
   ].filter(Boolean).join('');
 }
 
-/** Add share tags to an HTML document (Buffer or string) unless it already has og:title. Returns a Buffer. */
+/** Add share tags to an HTML document (Buffer or string) unless it already has og:title. Returns a Buffer.
+ *  `plain: true` (paid plans / badge removed) means no NSD.SG image and no NSD.SG wording: the promise that removes the badge removes it from link previews too. */
 export function injectSocial(htmlBuffer, opts) {
   const html = htmlBuffer.toString('utf8');
   if (hasSocialTags(html)) return Buffer.isBuffer(htmlBuffer) ? htmlBuffer : Buffer.from(html, 'utf8');

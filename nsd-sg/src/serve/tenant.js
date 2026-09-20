@@ -165,8 +165,9 @@ function brandingRemovedFor(site) {
 function sendHtml(req, reply, site, abs, status) {
   let body = fs.readFileSync(abs);
   if (body.length <= MAX_HTML_INJECT_BYTES) {
-    if (!brandingRemovedFor(site)) body = injectBranding(body);
-    body = injectSocial(body, { url: `${publicUrlForSubdomain(site.subdomain)}${(req.raw.url ?? '/').split('?')[0]}`, siteName: `${site.subdomain}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png') });
+    const plain = brandingRemovedFor(site);
+    if (!plain) body = injectBranding(body);
+    body = injectSocial(body, { url: `${publicUrlForSubdomain(site.subdomain)}${(req.raw.url ?? '/').split('?')[0]}`, siteName: `${site.subdomain}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain });
   }
   reply.header('Content-Type', 'text/html; charset=utf-8');
   reply.header('Content-Length', String(body.length));

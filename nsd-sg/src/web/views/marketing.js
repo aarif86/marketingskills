@@ -99,7 +99,7 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
         <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
         <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
         <li>Last ${p.limits.max_releases} copies kept</li>
-        <li>${p.features.branding_removable ? 'No NSD.SG badge on your pages' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
+        <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
         <li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' address'}</li>
         <li>${p.features.hide_from_showcase ? 'Keep your site off the public list' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
         ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then ask for more time or upgrade</li>` : ''}
@@ -133,7 +133,7 @@ export function pricingPage({ plans }) {
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
     <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
     <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
-    <li>${p.features.branding_removable ? 'No badge' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Can stay off the public list' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
+    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Can stay off the public list' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
     <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
@@ -219,7 +219,7 @@ export function badgePage({ badgeHtml, baseDomain }) {
   return html`<section class="section"><div class="container narrow">
   <p class="eyebrow">The badge</p>
   <h1>What the “Powered by NasarDigital” badge looks like</h1>
-  <p class="section-lead">Free sites show this small pill in the bottom-right corner of every page. It is what pays for the free plan. It never covers your content, never tracks your visitors, and disappears the moment you move to Plus.</p>
+  <p class="section-lead">Free sites show this small pill in the bottom-right corner of every page, and an NSD.SG card when the link is shared on WhatsApp or Telegram. It is what pays for the free plan. It never covers your content, never tracks your visitors, and both disappear the moment you move to Plus.</p>
   <div class="badge-demo"><div class="bd-bar"><span></span><span></span><span></span><em>yourname.${baseDomain}</em></div>
     <div class="bd-page"><div class="bd-line w60"></div><div class="bd-line w90"></div><div class="bd-line w80"></div><div class="bd-block"></div><div class="bd-line w70"></div><div class="bd-line w50"></div>
     <div class="bd-badge">${raw(badgeHtml)}</div></div></div>

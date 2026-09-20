@@ -237,7 +237,7 @@ export function syncSite(siteId) {
       const src = releaseDir(site.id, site.current_release_id);
       if (!fs.existsSync(src)) throw new PublishError(`release directory missing: ${site.current_release_id}`);
       const badge = !brandingRemovedFor(site, owner);
-      files = materialise(src, build, { badge, social: { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png') } });
+      files = materialise(src, build, { badge, social: { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain: !badge } });
       const has404 = fs.existsSync(path.join(build, '404.html'));
       fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404 }));
     }

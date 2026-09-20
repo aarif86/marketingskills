@@ -217,7 +217,7 @@ test('regular users cannot reach admin; admin can', async () => {
 test('admin removes branding, suspends and restores a site, reserves a name', async () => {
   let r = await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'branding', value: 'removed' });
   assert.equal(r.statusCode, 302);
-  assert.doesNotMatch((await get('/', '', 'alice.nsd.test')).body, /data-nsd="badge"/);
+  { const b = (await get('/', '', 'alice.nsd.test')).body; assert.doesNotMatch(b, /data-nsd="badge"/); assert.doesNotMatch(b, /social-site\.png/, 'no NSD.SG card once the badge is removed'); }
   r = await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'branding', value: 'shown' });
   assert.match((await get('/', '', 'alice.nsd.test')).body, /data-nsd="badge"/);
 

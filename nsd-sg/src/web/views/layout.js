@@ -49,7 +49,7 @@ ${raw(header({
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
 <div><h4>Trust</h4><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a></div>
 </div>
-<p class="fine">© ${new Date().getFullYear()} NasarDigital · Singapore. Pages on NSD.SG are made by their owners. See something wrong? Report it and we act quickly.</p>
+<p class="fine">© ${new Date().getFullYear()} <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> · Singapore. Pages on NSD.SG are made by their owners. See something wrong? Report it and we act quickly.</p>
 </div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
@@ -70,7 +70,7 @@ ${raw(header({
 <form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Log out</button></form>`,
   }))}
 <main class="container app-main">${flashBox(flash)}${raw(body)}</main>
-<footer class="site-footer slim"><div class="container"><span>NSD.SG · a NasarDigital product</span><span><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
+<footer class="site-footer slim"><div class="container"><span><a href="/">NSD.SG</a> · a <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> product</span><span><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
 }

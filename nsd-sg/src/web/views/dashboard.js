@@ -127,7 +127,7 @@ ${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class
   ${traffic.length ? html`<div class="spark">${traffic.map((t) => html`<i style="height:${Math.max(4, Math.min(100, (t.requests / Math.max(1, Math.max(...traffic.map((x) => x.requests)))) * 100))}%" title="${t.day}: ${t.requests} requests"></i>`)}</div>` : html`<p class="muted small">No visits recorded yet.</p>`}
 </section>
 <section class="card"><h2>Branding</h2>
-  ${brandingOn ? html`<p>This site shows a small <strong>“${config.branding.text}”</strong> badge in the corner. It is added when the page is shown, so changing your code will not remove it.</p><a class="btn btn-ghost" href="/billing">Remove it with Plus →</a>` : html`<p>No badge is shown on this site.</p>`}
+  ${brandingOn ? html`<p>This site shows a small <strong>“${config.branding.text}”</strong> badge in the corner, and an NSD.SG card when its link is shared on WhatsApp or Telegram (unless your page has its own preview image). Both are added when the page is shown, so changing your code will not remove them.</p><a class="btn btn-ghost" href="/billing">Remove them with Plus →</a>` : html`<p>No badge is shown on this site, and link previews carry no NSD.SG branding.</p>`}
 </section>
 </div>`.toString();
 }
