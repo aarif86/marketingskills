@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisionSubdomain } from './publish/hostinger.js';
 import { expireStalePending } from './services/hitpay.js';
 import { expirePreviews, ensureTryHost } from './services/tryit.js';
+import { purgeEvidence } from './services/evidence.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -71,6 +72,8 @@ async function main() {
       try { await ensureTryHost(); } catch (e) { console.log(`try host: ${e.message}`); }
       const gone = expirePreviews();
       if (gone) console.log(`Removed ${gone} expired test page(s)`);
+      const purged = purgeEvidence();
+      if (purged) console.log(`Purged ${purged} expired evidence hold(s)`);
       const timedOut = expireStalePending();
       if (timedOut) console.log(`Timed out ${timedOut} unpaid HitPay checkout(s)`);
       const orphans = listOrphanDirs();

@@ -6,6 +6,11 @@ import { buildZip } from './helpers/zipwriter.js';
 import { multipart, cookiesFrom, csrfFrom, cleanup } from './helpers/env.js';
 
 const { buildApp } = await import('../src/server.js');
+const { listHoldsForSite, purgeEvidence } = await import('../src/services/evidence.js');
+const { getDb } = await import('../src/db/index.js');
+import fs from 'node:fs';
+import path from 'node:path';
+import { dataDir } from './helpers/env.js';
 
 let app;
 const P = { host: 'nsd.test' };
@@ -270,4 +275,34 @@ test('site deletion frees the name', async () => {
   assert.equal(r.headers.location, '/dashboard');
   assert.equal((await get('/api/availability?name=bob')).json().available, true);
   assert.equal((await get('/', '', 'bob.nsd.test')).statusCode, 404);
+});
+
+test('suspending a site keeps a copy of its files; admin can download the hold and an evidence pack; audit rows carry the browser', async () => {
+  const before = listHoldsForSite(alice.siteId).length;
+  let r = await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'suspend', reason: 'test hold' });
+  assert.equal(r.statusCode, 302);
+  const holds = listHoldsForSite(alice.siteId);
+  assert.equal(holds.length, before + 1);
+  assert.match(holds[0].reason, /test hold/);
+  assert.ok(fs.existsSync(path.join(dataDir, 'evidence', 'sites', alice.siteId, holds[0].ts, 'files', 'index.html')));
+  const zip = await get(`/admin/evidence/${alice.siteId}/${holds[0].ts}.zip`, admin.cookie);
+  assert.equal(zip.statusCode, 200);
+  assert.match(zip.headers['content-type'], /application\/zip/);
+  assert.ok(zip.rawPayload.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])), 'zip signature');
+  assert.match(zip.rawPayload.toString('latin1'), /files\/index\.html/);
+  const aliceRow = getDb().prepare('SELECT id FROM users WHERE email = ?').get('alice@example.com');
+  const pack = await get(`/admin/users/${aliceRow.id}/evidence.zip`, admin.cookie);
+  assert.equal(pack.statusCode, 200);
+  const text = pack.rawPayload.toString('latin1');
+  for (const name of ['README.txt', 'user.json', 'sessions.json', 'audit.jsonl', 'sites.json', 'ips.txt', 'holds/alice/']) assert.match(text, new RegExp(name.replace(/[/.]/g, '\\$&')), name);
+  assert.doesNotMatch(text, /password_hash/);
+  assert.ok([302, 404].includes((await get(`/admin/users/${aliceRow.id}/evidence.zip`, alice.cookie)).statusCode), 'non-admin cannot');
+  const ua = getDb().prepare("SELECT user_agent FROM audit_log WHERE action = 'admin.evidence.pack' ORDER BY id DESC LIMIT 1").get();
+  assert.equal(typeof ua.user_agent, 'string');
+  await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'unsuspend' });
+  // Past keep_until, the hold is purged.
+  const meta = path.join(dataDir, 'evidence', 'sites', alice.siteId, holds[0].ts, 'meta.json');
+  fs.writeFileSync(meta, JSON.stringify({ ...JSON.parse(fs.readFileSync(meta, 'utf8')), keep_until: '2000-01-01T00:00:00.000Z' }));
+  assert.ok(purgeEvidence() >= 1);
+  assert.equal(listHoldsForSite(alice.siteId).length, before);
 });

@@ -4,6 +4,7 @@ import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
 import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
+import { listHoldsForUser, holdSite, holdZip, evidencePack, evidenceStats } from '../../services/evidence.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -74,7 +75,7 @@ export async function registerAdminRoutes(app) {
     const sites = all("SELECT * FROM sites WHERE user_id = ? AND status != 'deleted' ORDER BY created_at DESC", user.id);
     const auditRows = all('SELECT * FROM audit_log WHERE actor_id = ? OR (target_type = ? AND target_id = ?) ORDER BY at DESC LIMIT 50', user.id, 'user', user.id);
     const subscriptions = all('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC', user.id);
-    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), isLastAdmin: user.role === 'admin' && countAdmins() <= 1, subscriptions }) });
+    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), holds: listHoldsForUser(user.id), isLastAdmin: user.role === 'admin' && countAdmins() <= 1, subscriptions }) });
   });
 
   app.post('/admin/users/:id/subscription', opts, async (req, reply) => {
@@ -104,7 +105,10 @@ export async function registerAdminRoutes(app) {
         if (isSelf) { flash(reply, 'error', 'You cannot change your own status.'); break; }
         const status = action === 'activate' ? 'active' : action === 'suspend' ? 'suspended' : 'disabled';
         setUserStatus(user.id, status);
-        if (status !== 'active') db().prepare("UPDATE sites SET status = 'suspended', suspended_reason = ? WHERE user_id = ? AND status = 'live'").run(`Account ${status}`, user.id);
+        if (status !== 'active') {
+          for (const st of db().prepare("SELECT id FROM sites WHERE user_id = ? AND status = 'live'").all(user.id)) { try { holdSite(st.id, { reason: `account ${status}: ${b.reason ?? ''}`, actorId: req.user.id }); } catch { /* best effort */ } }
+          db().prepare("UPDATE sites SET status = 'suspended', suspended_reason = ? WHERE user_id = ? AND status = 'live'").run(`Account ${status}`, user.id);
+        }
         else db().prepare("UPDATE sites SET status = CASE WHEN current_release_id IS NULL THEN 'empty' ELSE 'live' END, suspended_reason = '' WHERE user_id = ? AND status = 'suspended'").run(user.id);
         audit({ req, action: `admin.user.${action}`, targetType: 'user', targetId: user.id, details: { reason: b.reason ?? '' }, severity: 'warn' });
         flash(reply, 'success', `User ${status}.`);
@@ -282,6 +286,22 @@ export async function registerAdminRoutes(app) {
     return reply.redirect('/admin/plans');
   });
 
+  // ---- evidence downloads (admin only) ----
+  app.get('/admin/users/:id/evidence.zip', opts, async (req, reply) => {
+    const user = findUserById(String(req.params.id));
+    if (!user) return reply.code(404).send('No such user');
+    const zip = evidencePack(user.id);
+    audit({ req, action: 'admin.evidence.pack', targetType: 'user', targetId: user.id, details: { bytes: zip.length }, severity: 'warn' });
+    return reply.header('Content-Disposition', `attachment; filename="evidence-${user.email.replace(/[^\w.@-]/g, '_')}-${new Date().toISOString().slice(0, 10)}.zip"`).header('Cache-Control', 'private, no-store').type('application/zip').send(zip);
+  });
+  app.get('/admin/evidence/:siteId/:ts.zip', opts, async (req, reply) => {
+    const site = getSiteById(String(req.params.siteId));
+    const zip = site ? holdZip(site.id, String(req.params.ts)) : null;
+    if (!zip) return reply.code(404).send('No such hold');
+    audit({ req, action: 'admin.evidence.hold', targetType: 'site', targetId: site.id, details: { ts: req.params.ts }, severity: 'warn' });
+    return reply.header('Content-Disposition', `attachment; filename="hold-${site.subdomain.replace(/[^\w.-]/g, '_')}-${req.params.ts}.zip"`).header('Cache-Control', 'private, no-store').type('application/zip').send(zip);
+  });
+
   // ---- reserved names ----
   app.get('/admin/promo', opts, async (req, reply) => render(req, reply, { title: 'Promo codes', active: 'promo', body: V.promoPage({ codes: listPromoCodes(), plans: listPlans(), csrf: csrfTokenFor(req) }) }));
   app.post('/admin/promo', opts, async (req, reply) => {
@@ -412,7 +432,7 @@ export async function registerAdminRoutes(app) {
         envFile: envFileKeys(),
         csrf: csrfTokenFor(req),
       } : null,
-      tryHost, csrf: csrfTokenFor(req),
+      tryHost, evidence: evidenceStats(), csrf: csrfTokenFor(req),
       siteBytes: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
       siteCount: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n,
       releaseCount: q('SELECT COUNT(*) n FROM releases').n,

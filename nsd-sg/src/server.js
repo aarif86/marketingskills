@@ -17,6 +17,7 @@ import { flushTraffic } from './services/sites.js';
 import { ensureStorageDirs, cleanTemp } from './storage/releases.js';
 import { hit, LIMITS } from './lib/ratelimit.js';
 import { expirePreviews } from './services/tryit.js';
+import { purgeEvidence } from './services/evidence.js';
 import { contentTypeFor } from './lib/mime.js';
 import { registerMarketingRoutes } from './web/routes/marketing.js';
 import { registerAuthRoutes } from './web/routes/auth.js';
@@ -126,7 +127,8 @@ export async function buildApp({ logger = true } = {}) {
       const n = purgeExpiredSessions();
       const t = cleanTemp();
       const p = expirePreviews();
-      if (n || t || p) app.log.info({ sessions: n, temp: t, previews: p }, 'maintenance');
+      const ev = purgeEvidence();
+      if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());
   app.addHook('onClose', async () => {

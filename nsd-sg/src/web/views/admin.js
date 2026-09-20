@@ -49,7 +49,7 @@ ${users.map((u) => html`<tr><td><a href="/admin/users/${u.id}">${u.email}</a>${u
 </tbody></table>`.toString();
 }
 
-export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin, subscriptions = [] }) {
+export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin, subscriptions = [], holds = [] }) {
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/users/${user.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const o = ent.overrides;
   return html`<p class="crumb"><a href="/admin/users">Users</a> / ${user.email}</p>
@@ -92,7 +92,11 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
 
 <div class="grid two">
 <form method="post" action="/admin/users/${user.id}/action" class="card form">${hidden(csrf, { action: 'notes' })}<h2>Admin notes</h2><textarea name="notes" rows="4">${user.notes}</textarea><button class="btn btn-tiny">Save notes</button></form>
-<div class="card"><h2>Sessions (${sessions.length})</h2><table class="table small"><tbody>${sessions.map((s) => html`<tr><td>${s.ip}</td><td class="muted">${s.user_agent.slice(0, 50)}</td><td class="muted">${timeAgo(s.last_seen_at)}</td></tr>`)}</tbody></table>
+<div class="card"><h2>Sessions (${sessions.length})</h2><table class="table small"><tbody>${sessions.map((s) => html`<tr><td>${s.ip}</td><td class="muted" title="${s.user_agent}">${s.user_agent.slice(0, 50)}</td><td class="muted">${timeAgo(s.last_seen_at)}</td></tr>`)}</tbody></table>
+  <h2 class="mt">Evidence</h2>
+  <p class="muted small">Everything about this account in one ZIP: record, logins, every audit row, sites (incl. deleted), plan history, IPs, test pages from those IPs, and held files. Downloads are logged.</p>
+  <p><a class="btn btn-ghost btn-sm" href="/admin/users/${user.id}/evidence.zip">Download evidence pack</a></p>
+  ${holds.length ? html`<table class="table small"><thead><tr><th>Site</th><th>Why</th><th>Held</th><th>Until</th><th></th></tr></thead><tbody>${holds.map((h) => html`<tr><td>${h.subdomain} <span class="muted">v${h.version ?? '?'}</span></td><td class="muted">${h.reason}</td><td class="muted">${formatDate(h.held_at)}</td><td class="muted">${formatDate(h.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/${h.site_id}/${h.ts}.zip">Files</a></td></tr>`)}</tbody></table>` : html`<p class="muted small">No held files. A copy is kept for ${90} days whenever a site is suspended or deleted.</p>`}
   ${subscriptions.length ? html`<h2 class="mt">HitPay subscriptions</h2><table class="table small"><tbody>${subscriptions.map((s) => html`<tr><td><code>${s.id}</code></td><td>${s.plan_id}</td><td>${pill(s.status)}</td><td class="muted">${s.last_event} · ${formatDate(s.updated_at)}${s.last_payment_id ? html` · pay <code>${s.last_payment_id}</code>` : ''}</td>
     <td class="row-gap"><form method="post" action="/admin/users/${user.id}/subscription" class="inline">${hidden(csrf, { action: 'recheck', id: s.id })}<button class="btn btn-tiny btn-ghost">Re-check</button></form>
     ${s.status === 'active' ? html`<form method="post" action="/admin/users/${user.id}/subscription" class="inline" data-confirm="Cancel this subscription at HitPay?">${hidden(csrf, { action: 'cancel', id: s.id })}<button class="btn btn-tiny btn-danger">Cancel</button></form>` : ''}
@@ -220,7 +224,7 @@ export function auditPage({ rows, sev, search }) {
 <form class="filters" method="get"><input name="q" value="${search}" placeholder="action, target, ip, email">
 <select name="severity"><option value="">any severity</option>${['info', 'warn', 'alert'].map((s) => html`<option value="${s}" ${sev === s ? 'selected' : ''}>${s}</option>`)}</select><button class="btn btn-ghost">Filter</button></form>
 <table class="table small"><thead><tr><th>When</th><th>Sev</th><th>Action</th><th>Actor</th><th>Target</th><th>Details</th><th>IP</th></tr></thead><tbody>
-${rows.map((a) => html`<tr><td class="muted">${formatDate(a.at)}</td><td>${pill(a.severity)}</td><td>${a.action}</td><td>${a.email ? html`<a href="/admin/users/${a.actor_id}">${a.email}</a>` : html`<span class="muted">${a.actor_id ?? 'anon'}</span>`}</td><td class="muted">${a.target_type} ${a.target_id}</td><td class="muted">${a.details !== '{}' ? a.details : ''}</td><td class="muted">${a.ip}</td></tr>`)}
+${rows.map((a) => html`<tr><td class="muted">${formatDate(a.at)}</td><td>${pill(a.severity)}</td><td>${a.action}</td><td>${a.email ? html`<a href="/admin/users/${a.actor_id}">${a.email}</a>` : html`<span class="muted">${a.actor_id ?? 'anon'}</span>`}</td><td class="muted">${a.target_type} ${a.target_id}</td><td class="muted">${a.details !== '{}' ? a.details : ''}</td><td class="muted" title="${a.user_agent ?? ''}">${a.ip}</td></tr>`)}
 </tbody></table>`.toString();
 }
 
@@ -254,7 +258,7 @@ ${h.hosting.errors.length ? html`<table class="table small"><tbody>${h.hosting.e
 ${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root (no site owns them): ${h.hosting.orphans.map((o) => html`<form method="post" action="/admin/health/orphan" class="inline">${hidden(h.hosting.csrf, { name: o })}<code>${o}</code> <button class="btn btn-ghost btn-sm" type="submit">remove</button></form> `)}</p>` : ''}
 <form method="post" action="/admin/health/sync" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-primary btn-sm" type="submit">Sync now</button></form> <span class="muted small">provisions pending subdomains and rebuilds every tenant folder (the hourly cron does the same)</span></div>` : ''}
 <div class="card"><h2>Test pages (try.${h.baseDomain})</h2>
-<p>${h.tryHost.live} live test page${h.tryHost.live === 1 ? '' : 's'} (${h.tryHost.ready} confirmed reachable). ${h.tryHost.enabled
+<p>${h.tryHost.live} live test page${h.tryHost.live === 1 ? '' : 's'} (${h.tryHost.ready} confirmed reachable). Evidence held: ${h.evidence.sites} site cop${h.evidence.sites === 1 ? 'y' : 'ies'} (90 days), ${h.evidence.previews} expired test page${h.evidence.previews === 1 ? '' : 's'} (7 days). ${h.tryHost.enabled
   ? html`Folder <code>tenants/try/</code>: <strong>${h.tryHost.dir ? 'present' : 'missing'}</strong> · <a href="${h.tryHost.url}" target="_blank" rel="noopener">${h.tryHost.url}</a> answers over HTTPS: <strong class="${h.tryHost.answers ? 'ok' : 'warn'}">${h.tryHost.answers ? 'yes' : `no${h.tryHost.detail ? ` (${h.tryHost.detail})` : ''}`}</strong>. A new subdomain needs 5–15 min for its certificate; until then visitors see a browser SSL error and the result page keeps waiting.`
   : 'Served by this app (no Hostinger publisher).'}</p>
 ${h.tryHost.lastError ? html`<p class="muted small">Last error (${formatDate(h.tryHost.lastError.created_at)}): <code>${h.tryHost.lastError.error}</code></p>` : ''}

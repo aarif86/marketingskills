@@ -16,6 +16,7 @@ import { esc } from '../lib/html.js';
 import { injectBranding } from '../serve/branding.js';
 import { deployFiles, tempFile, StorageError } from '../storage/releases.js';
 import { isEnabled as hostingEnabled, provisionSubdomain, tenantDir, htaccess, TRY_LABEL } from '../publish/hostinger.js';
+import { holdPreview } from './evidence.js';
 
 export const TRY_TTL_MS = 3 * 60 * 60_000;
 export const TRY_MAX_BYTES = 1024 * 1024;
@@ -203,8 +204,9 @@ export function listShowcasePreviews(limit = 12) {
 /** Admin: take a test page down now (abuse). */
 export function removePreview(id) {
   if (!ID_RE.test(String(id ?? ''))) return false;
-  const row = getDb().prepare('SELECT id FROM previews WHERE id = ?').get(id);
+  const row = getDb().prepare('SELECT * FROM previews WHERE id = ?').get(id);
   if (!row) return false;
+  try { holdPreview(id, row, 'removed by admin'); } catch { /* best effort */ }
   try { removeFiles(id); } catch { /* best effort */ }
   getDb().prepare('DELETE FROM previews WHERE id = ?').run(id);
   return true;
@@ -274,8 +276,9 @@ export async function claimPreview({ id, site, user, limits }) {
 /** Delete expired / claimed previews from disk and the table. Returns the count removed. */
 export function expirePreviews() {
   const db = getDb();
-  const doomed = db.prepare('SELECT id FROM previews WHERE expires_at <= ? OR claimed_at IS NOT NULL').all(nowIso());
+  const doomed = db.prepare('SELECT * FROM previews WHERE expires_at <= ? OR claimed_at IS NOT NULL').all(nowIso());
   for (const r of doomed) {
+    if (!r.claimed_at) { try { holdPreview(r.id, r, 'expired'); } catch { /* best effort */ } } // kept pages live on as a site; no hold needed
     try { removeFiles(r.id); } catch { /* best effort */ }
     db.prepare('DELETE FROM previews WHERE id = ?').run(r.id);
   }

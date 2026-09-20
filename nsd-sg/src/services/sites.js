@@ -4,6 +4,7 @@ import { newId, nowIso } from '../lib/ids.js';
 import { normalizeSubdomain, validateSubdomainSyntax } from '../lib/subdomain.js';
 import { entitlementsFor } from './plans.js';
 import { deleteSiteStorage } from '../storage/releases.js';
+import { holdSite } from './evidence.js';
 import { syncSite as resync, provisionSubdomain, deprovisionSubdomain, isEnabled as hostingEnabled } from '../publish/hostinger.js';
 
 export function isReserved(name) {
@@ -90,6 +91,7 @@ export function updateSiteSettings(siteId, { title, allow_framing, listed }) {
 }
 
 export function setSiteStatus(siteId, status, reason = '') {
+  if (status === 'suspended') { try { holdSite(siteId, { reason: `suspended: ${reason}` }); } catch { /* evidence is best effort */ } }
   getDb().prepare('UPDATE sites SET status = ?, suspended_reason = ?, updated_at = ? WHERE id = ?').run(status, reason, nowIso(), siteId);
   resync(siteId);
 }
@@ -116,10 +118,11 @@ export function renameSubdomain(siteId, newName) {
 }
 
 /** Soft-delete in DB, then remove files. The subdomain becomes available again immediately. */
-export function deleteSite(siteId) {
+export function deleteSite(siteId, { reason = 'deleted', actorId = null } = {}) {
   const db = getDb();
   const site = getSiteById(siteId);
   if (!site) return false;
+  try { holdSite(siteId, { reason, actorId }); } catch { /* evidence is best effort */ }
   db.transaction(() => {
     // Free the name: deleted rows keep the id but the unique subdomain is suffixed.
     db.prepare("UPDATE sites SET status = 'deleted', subdomain = subdomain || '.deleted.' || id, current_release_id = NULL, updated_at = ? WHERE id = ?")

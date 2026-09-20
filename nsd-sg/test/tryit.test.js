@@ -224,6 +224,8 @@ test('expired previews are removed from the table and disk; unknown folders are 
   assert.ok(n >= 1);
   assert.equal(getPreview(id3), null);
   assert.ok(!fs.existsSync(path.join(dataDir, 'try', id3)));
+  assert.ok(fs.existsSync(path.join(dataDir, 'evidence', 'try', id3, 'index.html')), 'expired test page held for 7 days');
+  assert.match(fs.readFileSync(path.join(dataDir, 'evidence', 'try', id3, 'meta.json'), 'utf8'), /"reason": "expired"/);
   assert.ok(!fs.existsSync(path.join(dataDir, 'try', 'zzzzzzzzzzzz')));
   assert.ok(!fs.existsSync(path.join(tenantDir('try'), id3)));
   assert.equal((await get(`/${id3}/`, '', 'try.nsd.test')).statusCode, 404);

@@ -82,3 +82,13 @@ Two lists guard subdomain registration, both editable at `/admin/reserved`:
   `BLOCKED_SUBSTRINGS` in `src/lib/subdomain.js` plus hamas, hezbollah, taliban, alqaeda, zionis. The live list
   is loaded into memory at boot and after every admin change (`loadBlockedWords`), so checks stay in-process.
   System-seeded words cannot be removed from admin. Every refused attempt is logged (`security.blocked_name`).
+
+## Evidence holds (0.9.1)
+
+`src/services/evidence.js`. On suspend or delete (self-service or admin), the current release is copied to
+`DATA_DIR/evidence/sites/<siteId>/<ts>/` with a `meta.json` (owner, reason, actor, version, keep_until = 90 days).
+Expired or admin-removed test pages move to `DATA_DIR/evidence/try/<id>/` (7 days). `purgeEvidence()` runs from the
+maintenance timer and `sync-all`. Admin downloads a single hold (`/admin/evidence/<siteId>/<ts>.zip`) or an evidence
+pack for an account (`/admin/users/<id>/evidence.zip`: user record without hash, sessions, audit rows, sites incl.
+deleted, releases, plan events, IPs, test pages from those IPs, held files; capped at 200 MB). Both downloads are
+audited. Every audit row records the User-Agent (migration 012). Retention is stated on /privacy and /terms.

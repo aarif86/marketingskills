@@ -130,6 +130,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-1', '0.9.1', 'Evidence holds and the acceptable-use line', `- New: when a site is suspended or deleted, a copy of its files is kept for 90 days where only admin can reach it. Expired test pages are kept for 7 days. Admin can download one hold, or an evidence pack for a whole account (record, logins, every audit row, sites, IPs, held files).
+- Changed: every audit row now records the browser, not only logins.
+- Changed: Terms section 3 (acceptable use) and section 7 name the content we do not host and the 90-day hold; the Privacy page says how long security records are kept.`, 'new', '2026-09-21T02:00:00Z'],
   ['cl-0-9-0', '0.9.0', 'Blocked words you can manage yourself', `- New: Admin → Reserved names has a second list, Blocked words. A blocked word is refused anywhere inside a name (“terror” stops terrorist and terror-sg). Add or remove words without a deploy.
 - Changed: hamas, hezbollah, taliban, alqaeda and zionis are blocked words; israel, palestine, gaza, hamas, hezbollah, idf, zionist, taliban, alqaeda and isis are reserved exact names.`, 'new', '2026-09-21T01:00:00Z'],
   ['cl-0-8-3', '0.8.3', 'Small fixes: time zone, menu order, plainer words', `- Changed: test-page times now say “Singapore time” so nobody has to guess.

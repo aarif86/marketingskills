@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   target_id   TEXT NOT NULL DEFAULT '',
   details     TEXT NOT NULL DEFAULT '{}',
   severity    TEXT NOT NULL DEFAULT 'info' CHECK (severity IN ('info','warn','alert'))
+  -- (migration 012 adds user_agent)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_id);
