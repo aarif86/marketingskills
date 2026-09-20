@@ -265,7 +265,7 @@ export async function registerDashboardRoutes(app) {
     try {
       await hitpay.cancelSubscription(sub.id);
       audit({ req, action: 'hitpay.cancel', targetType: 'subscription', targetId: sub.id });
-      flash(reply, 'success', 'Subscription cancelled. No further charges; your plan stays active for 30 days.');
+      flash(reply, 'success', 'Subscription cancelled. No further charges; your plan stays active until the end of the month you have already paid for.');
     } catch (e) {
       req.log.error({ err: e }, 'hitpay cancel failed');
       flash(reply, 'error', 'Could not cancel automatically — email us and we will do it by hand.');

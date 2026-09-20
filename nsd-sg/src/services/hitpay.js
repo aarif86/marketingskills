@@ -93,6 +93,16 @@ export function identify(payload) {
   };
 }
 
+/** End of the paid period: last charge + 1 calendar month; never earlier than a few days from now. */
+export function paidUntil(lastPaidAt, status = 'canceled') {
+  const floor = new Date(Date.now() + (status === 'failed' ? 3 : 1) * 86400000);
+  const base = lastPaidAt ? new Date(lastPaidAt) : null;
+  if (!base || Number.isNaN(base.getTime())) return floor.toISOString();
+  const end = new Date(base);
+  end.setUTCMonth(end.getUTCMonth() + 1);
+  return (end > floor ? end : floor).toISOString();
+}
+
 /** Apply a HitPay event (webhook or return-check) to our records. Idempotent. */
 export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '', refundedAmount = 0 }, log = console) {
   const db = getDb();
@@ -129,15 +139,18 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'payment_received', null, sub.plan_id, JSON.stringify({ subscription: sub.id, status, eventType }));
     }
-    db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id) WHERE id = ?").run(eventType || status, now, paymentId, sub.id);
+    // A charge (payment id present) starts a new paid month; a status-only activation keeps the existing date.
+    db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id), last_paid_at = CASE WHEN ? != '' OR last_paid_at IS NULL THEN ? ELSE last_paid_at END WHERE id = ?")
+      .run(eventType || status, now, paymentId, paymentId, now, sub.id);
     abandonOtherPending(sub.user_id, sub.id);
     return { ok: true, activated: sub.status !== 'active' };
   }
   if (DEAD.has(status)) {
     if (sub.status === 'active') {
-      // Keep the paid plan for 30 more days, then the hourly sync + expiry logic drops them to free.
-      // Never shorten an expiry an admin already pushed further out (manual extensions, founding accounts).
-      const grace = new Date(Date.now() + 30 * 86400000).toISOString();
+      // Market practice: the plan stays until the end of the period already paid for (last charge + 1 month).
+      // A failed renewal (nothing paid) gets 3 days to sort the card out. Never shorten an expiry an admin already
+      // pushed further out (manual extensions, founding accounts).
+      const grace = paidUntil(sub.last_paid_at, status);
       db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ? AND (plan_expires_at IS NULL OR plan_expires_at < ?)').run(grace, now, sub.user_id, grace);
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'subscription_canceled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, status, graceUntil: grace }));

@@ -220,7 +220,7 @@ ${planBanner(ent)}
 </div>
 <div class="card"><h2>${activeSub ? 'Subscription' : 'Upgrade'}</h2>
   ${activeSub ? html`<div class="sub-box"><p><strong>${activeSub.plan_id === 'beta' ? 'Beta' : 'Plus'} · paid monthly by card via HitPay.</strong> Started ${formatDate(activeSub.created_at)}. Receipts come from HitPay by email.</p>
-    <form method="post" action="/billing/hitpay/cancel" class="inline" data-confirm="Cancel your subscription? No more charges; your plan stays active for 30 days, then returns to Free."><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="id" value="${activeSub.id}"><button class="btn btn-danger btn-sm" type="submit">Cancel subscription</button></form>
+    <form method="post" action="/billing/hitpay/cancel" class="inline" data-confirm="Cancel your subscription? No more charges. Your plan stays active until the end of the month you have already paid for, then returns to Free."><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="id" value="${activeSub.id}"><button class="btn btn-danger btn-sm" type="submit">Cancel subscription</button></form>
     <p class="muted small">Need a refund? Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> within 7 days of a charge.</p></div><hr>` : ''}
   ${pendingSub && !activeSub ? html`<div class="flash flash-warn">A payment was started ${timeAgo(pendingSub.created_at)} but HitPay has not confirmed it yet. If you paid, reload this page in a minute — it checks automatically.</div>` : ''}
   ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public) && !(activeSub && activeSub.plan_id === p.id)).map((p) => html`

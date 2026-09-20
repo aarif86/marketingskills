@@ -226,6 +226,11 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   u = db().prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(fay.id);
   assert.equal(u.plan_id, 'plus');
   assert.ok(u.plan_expires_at && new Date(u.plan_expires_at) > new Date(), 'grace period set');
+  // Cancel keeps the plan to the end of the paid month: last_paid_at (set by the charge above) + 1 month, not +30 days from now.
+  const paid = db().prepare("SELECT last_paid_at FROM subscriptions WHERE id = 'rb_1'").get().last_paid_at;
+  assert.ok(paid, 'last_paid_at recorded on activation');
+  const expectEnd = new Date(paid); expectEnd.setUTCMonth(expectEnd.getUTCMonth() + 1);
+  assert.equal(u.plan_expires_at, expectEnd.toISOString(), 'expiry = last charge + 1 month');
   // A cancel must never pull an admin-extended expiry closer.
   db().prepare("UPDATE subscriptions SET status = 'active' WHERE id = 'rb_1'").run();
   db().prepare("UPDATE users SET plan_expires_at = '2027-04-01T00:00:00.000Z' WHERE id = ?").run(fay.id);
@@ -300,4 +305,18 @@ test('HitPay charge webhooks (no reference) link by customer email; refund is re
   assert.equal(r.statusCode, 200);
   const last = db().prepare("SELECT details FROM audit_log WHERE action = 'hitpay.webhook' ORDER BY id DESC LIMIT 1").get();
   assert.match(last.details, /unknown subscription/);
+});
+
+
+test('paidUntil: end of paid month, with a floor for failed renewals and unknown dates', async () => {
+  const { paidUntil } = await import('../src/services/hitpay.js');
+  const d25 = new Date(Date.now() - 25 * 86400000);
+  const end = new Date(d25); end.setUTCMonth(end.getUTCMonth() + 1);
+  assert.equal(paidUntil(d25.toISOString()), end.toISOString());
+  const stale = new Date(Date.now() - 60 * 86400000).toISOString();
+  const floorCancel = new Date(paidUntil(stale)).getTime();
+  assert.ok(floorCancel > Date.now() + 0.9 * 86400000 && floorCancel < Date.now() + 1.1 * 86400000, 'stale paid date -> ~1 day floor');
+  const floorFailed = new Date(paidUntil(stale, 'failed')).getTime();
+  assert.ok(floorFailed > Date.now() + 2.9 * 86400000 && floorFailed < Date.now() + 3.1 * 86400000, 'failed renewal -> ~3 day floor');
+  assert.ok(new Date(paidUntil(null)).getTime() > Date.now(), 'unknown date still gives a floor');
 });
