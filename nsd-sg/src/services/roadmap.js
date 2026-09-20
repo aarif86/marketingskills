@@ -132,7 +132,7 @@ const SEED_CHANGELOG = [
   ['cl-0-5-6', '0.5.6', 'Cancelling keeps what you paid for, exactly', `- Changed: when you cancel a paid plan you keep it until the end of the month you already paid for (last charge + 1 month), the same as any subscription service. Previously it was 30 days from the day you cancelled.
 - Fixed: HitPay error messages in admin no longer show raw HTML.`, 'improved', '2026-09-20T13:00:00Z'],
   ['cl-0-5-5', '0.5.5', 'Cancelling never shortens time you were already given', `- Fixed: if an admin extended your plan and you later cancel a subscription, the later date is kept instead of being replaced by the 30-day grace period.`, 'fix', '2026-09-20T11:30:00Z'],
-  ['cl-0-5-4', '0.5.4', 'Payments: refunds and charges now show in your history', `- Fixed: HitPay payment and refund notifications are now matched to your subscription, so a refund appears in Plan & billing history and admins can refund a charge from the dashboard.`, 'fix', '2026-09-20T02:00:00Z'],
+  ['cl-0-5-4', '0.5.4', 'Payments show up in your history reliably', `- Fixed: HitPay payment notifications are now matched to your subscription every time, so each charge appears in your Plan & billing history.`, 'fix', '2026-09-20T02:00:00Z'],
   ['cl-0-5-3', '0.5.3', 'Feedback from the dashboard, clearer promo plans', `- New: a Feedback link in the dashboard — send an idea or a bug with screenshots or a PDF attached.
 - New: Plan & billing shows exactly what your promo code unlocked next to the Free plan, and lets you remove the code yourself.
 - Improved: after you ask for a free extension, the page shows it was submitted and that we answer within 3–5 working days.`, 'new,improved', '2026-09-03T15:10:00Z'],
