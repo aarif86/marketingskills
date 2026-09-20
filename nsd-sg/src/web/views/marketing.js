@@ -287,7 +287,7 @@ export function tryResultPage({ id, url, expiresAt, user, sites, csrf }) {
   <p class="eyebrow">Your test page is online</p>
   <h1>It works. Here is your link.</h1>
   <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open it ↗</a></div>
-  <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> today (3 hours from now), then it is deleted.</p>
+  <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> (3 hours from now), then it is deleted.</p>
   <div class="card keep"><h2>Want to keep it?</h2>
     ${user ? html`<p>Put it on one of your sites as the home page, or make a new site for it.</p>
       ${sites.length ? html`<form method="post" action="/try/${id}/claim" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}">
