@@ -53,7 +53,7 @@ ${site.status === 'suspended' ? html`<div class="flash flash-error"><strong>This
 ${site.status !== 'suspended' ? html`<section class="card steps-card"><h2>${site.current_release_id ? 'Your site is live' : 'Three steps to go live'}</h2>
 <ol class="steps">
   <li class="done"><strong>Claim your address</strong><span class="muted">${site.subdomain}.${config.baseDomain} is yours.</span></li>
-  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Publish your files</strong><span class="muted">Drop a ZIP or your HTML/CSS/image files below. Every upload is a new version you can roll back to.</span></li>
+  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Publish your page</strong><span class="muted">Paste the HTML from Claude or ChatGPT below, or drop files or a ZIP. Every publish is a new version you can roll back to.</span></li>
   <li class="${site.current_release_id ? 'now' : ''}"><strong>Open and share it</strong><span class="muted">${site.current_release_id ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : 'The Open button appears here once something is published.'}</span></li>
 </ol>
 ${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class="notice"><strong>New address:</strong> the security certificate for <code>${site.subdomain}.${config.baseDomain}</code> can take 5–15 minutes to be issued. If your browser shows a connection or SSL error, wait a little and refresh — nothing is wrong.</p>` : ''}
@@ -61,7 +61,7 @@ ${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class
 
 <section class="card upload-card" id="upload">
   <h2>${site.current_release_id ? 'Publish a new version' : 'Publish your site'}</h2>
-  <p class="muted">Drop a <strong>ZIP</strong> of your whole website (replaces everything), or drop individual files and folders (added to the current version). Max ${formatBytes(ent.limits.max_file_bytes)} per file, ${formatBytes(ent.limits.max_storage_bytes)} per site.</p>
+  <p class="muted">Paste HTML below, or drop a <strong>ZIP</strong> of a whole website (replaces everything), or individual files and folders (added to the current version). Max ${formatBytes(ent.limits.max_file_bytes)} per file, ${formatBytes(ent.limits.max_storage_bytes)} per site.</p>
   <form method="post" action="/sites/${site.id}/upload" enctype="multipart/form-data" class="dropzone" data-dropzone ${ent.expired || site.status === 'suspended' ? 'data-disabled' : ''}>
     <input type="hidden" name="_csrf" value="${csrf}">
     <input type="hidden" name="mode" value="merge" data-mode>
