@@ -8,8 +8,8 @@ import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
-import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage } from '../views/marketing.js';
-import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
+import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage, tryLimitPage } from '../views/marketing.js';
+import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, listShowcasePreviews, readTryCookie, writeTryCookie, anonBlockReason, TRY_COOKIE, TRY_FREE_PER_PERSON, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
 import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
@@ -29,6 +29,14 @@ export async function registerMarketingRoutes(app) {
   // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
   app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {
     const back = (msg) => { flash(reply, 'error', msg); return reply.redirect('/#try'); };
+    // Three free tries per person, then a free account. Signed-in users are not capped here.
+    const cookieCount = readTryCookie(req.cookies?.[TRY_COOKIE]);
+    const blocked = req.user ? null : anonBlockReason({ cookieCount, ip: req.ip });
+    if (blocked) {
+      if (req.isMultipart?.()) for await (const part of req.parts()) { if (part.type !== 'field') part.file.resume(); }
+      audit({ req, action: 'try.capped', targetType: 'preview', targetId: blocked, severity: 'info' });
+      return render(req, reply, { title: 'Create a free account to keep going', body: tryLimitPage({ reason: blocked }) });
+    }
     let htmlText = '';
     let source = 'paste';
     if (req.isMultipart?.()) {
@@ -56,7 +64,8 @@ export async function registerMarketingRoutes(app) {
     if (problem) return back(source === 'file' ? problem.replace('Copy the whole code, from the first line to the last, and paste it again.', 'Choose the .html file your AI gave you (not a picture, PDF or Word file).') : problem);
     try {
       const r = await createPreview({ html: htmlText, ip: req.ip });
-      audit({ req, action: 'try.create', targetType: 'preview', targetId: r.id, details: { bytes: Buffer.byteLength(htmlText, 'utf8'), source } });
+      audit({ req, action: 'try.create', targetType: 'preview', targetId: r.id, details: { bytes: Buffer.byteLength(htmlText, 'utf8'), source, tries: cookieCount + 1 } });
+      if (!req.user) reply.setCookie(TRY_COOKIE, writeTryCookie(cookieCount + 1), { path: '/', httpOnly: true, sameSite: 'Lax', secure: config.isProd, maxAge: 86400 });
       return reply.redirect(`/try/${r.id}`);
     } catch (e) {
       if (!(e instanceof TryError)) throw e;
@@ -141,7 +150,7 @@ export async function registerMarketingRoutes(app) {
       for (const t of temps) fs.rmSync(t, { force: true });
     }
   });
-  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
+  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), previews: listShowcasePreviews(), baseDomain: config.baseDomain }) }));
   app.get('/badge', async (req, reply) => {
     // The real badge markup minus its guard <script> (platform CSP forbids inline scripts; the demo does not need it).
     const badgeHtml = brandingMarkup().replace(/<script>[\s\S]*<\/script>/, '').replace('position:fixed !important', 'position:absolute !important');

@@ -115,7 +115,11 @@ there is no separate restart button in the new hPanel.
   per hour, 2000 live previews in total. Like any new subdomain, the certificate for `try.nsd.sg` takes 5–15 min
   the first time; the result page (`/try/<id>`) polls `/try/<id>/status`, which HEAD-requests the preview URL from
   the app and only shows the link once LiteSpeed answers 200 over HTTPS (`previews.ready_at`). `/admin/health`
-  shows whether the try host answers and has a set-up/repair button.
+  shows whether the try host answers, lists live test pages with a Remove button, and has a set-up/repair button.
+  Anonymous cap: 3 per person (signed `nsd_try` cookie, 24 h) and 10 per IP per day, then a sign-up page; signed-in
+  users are not capped. Reachable test pages are listed (latest 12) at the bottom of `/showcase`, marked temporary.
+  The result page embeds the live preview: platform CSP allows `frame-src` for `try.<domain>`, and the app-served
+  preview answers `frame-ancestors 'self' <platform hosts>` (LiteSpeed-served previews set no frame header).
 - **Without an API token** the app still builds docroots; subdomains stay `pending` and must be created from the
   MCP (`hosting_createWebsiteSubdomainV1`, directory `tenants/<name>`) or hPanel. `/admin/health` lists them.
 - **Backups:** `DATA_DIR` is the whole state (SQLite + releases). hPanel backups cover the account; for an off-box

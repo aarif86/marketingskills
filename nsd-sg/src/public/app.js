@@ -75,21 +75,43 @@
     });
   });
 
-  // ---- try it: pick a file = go; show progress while it uploads ----
+  // ---- try it: pick or drop a file = go; the result opens in a new tab, this page stays ready for another ----
   var tryForm = document.querySelector('[data-try-form]');
   if (tryForm) {
     var tryFile = tryForm.querySelector('[data-try-file]');
-    var tryName = tryForm.querySelector('[data-try-filename]');
     var tryBtn = tryForm.querySelector('[data-try-submit]');
     var tryBar = tryForm.querySelector('[data-try-bar]');
+    var tryNote = tryForm.querySelector('[data-try-note]');
+    var tryText = tryForm.querySelector('textarea[name=html]');
+    var say = function (msg, warn) { if (tryNote) { tryNote.textContent = msg; tryNote.classList.toggle('warn', !!warn); } };
+    var go = function () { if (typeof tryForm.requestSubmit === 'function') tryForm.requestSubmit(); else tryForm.submit(); };
+    var isHtml = function (f) { return /\.html?$/i.test(f.name) || f.type === 'text/html'; };
     if (tryFile) tryFile.addEventListener('change', function () {
       if (!tryFile.files.length) return;
-      if (tryName) tryName.textContent = tryFile.files[0].name;
-      if (typeof tryForm.requestSubmit === 'function') tryForm.requestSubmit(); else tryForm.submit();
+      if (!isHtml(tryFile.files[0])) { say('That is not a web page file. It should end in .html', true); tryFile.value = ''; return; }
+      say('Putting ' + tryFile.files[0].name + ' online…'); go();
     });
-    tryForm.addEventListener('submit', function () {
+    var over = 0;
+    ['dragenter', 'dragover'].forEach(function (ev) { tryForm.addEventListener(ev, function (e) { e.preventDefault(); over++; tryForm.classList.add('over'); }); });
+    tryForm.addEventListener('dragleave', function () { if (--over <= 0) { over = 0; tryForm.classList.remove('over'); } });
+    tryForm.addEventListener('drop', function (e) {
+      e.preventDefault(); over = 0; tryForm.classList.remove('over');
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      if (!isHtml(files[0])) { say('That is not a web page file. It should end in .html', true); return; }
+      try { tryFile.files = files; } catch (err) { say('Your browser could not take the dropped file. Use “Choose the file” instead.', true); return; }
+      say('Putting ' + files[0].name + ' online…'); go();
+    });
+    tryForm.addEventListener('submit', function (e) {
+      if (!tryFile.files.length && !(tryText && tryText.value.trim())) { e.preventDefault(); say('Choose the file or paste the code first.', true); return; }
       tryBtn.disabled = true; tryBtn.textContent = 'Putting your page online…';
       if (tryBar) tryBar.hidden = false;
+      setTimeout(function () {
+        tryBtn.disabled = false; tryBtn.textContent = 'Put another page online';
+        if (tryBar) tryBar.hidden = true;
+        say('Opened in a new tab. Not there? Check your pop-up blocker, or press the button again.');
+        tryFile.value = ''; if (tryText) tryText.value = '';
+      }, 2500);
     });
   }
 

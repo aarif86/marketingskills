@@ -20,6 +20,9 @@ import { isEnabled as hostingEnabled, provisionSubdomain, tenantDir, htaccess, T
 export const TRY_TTL_MS = 3 * 60 * 60_000;
 export const TRY_MAX_BYTES = 1024 * 1024;
 export const TRY_MAX_LIVE = 2000; // hard cap on stored previews (2 GB worst case)
+export const TRY_FREE_PER_PERSON = 3;   // signed cookie: after this many, ask for a free account
+export const TRY_FREE_PER_IP_DAY = 10;  // shared offices/schools sit behind one IP, so the IP cap is looser
+export const TRY_COOKIE = 'nsd_try';
 const ID_RE = /^[a-z0-9]{10,16}$/;
 const ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'; // no 0/o/1/l/i: ids get read out loud and typed
 
@@ -170,6 +173,43 @@ export async function checkReady(id) {
   return { ready: false, reason: 'waiting', detail, url, waitedMs: Date.now() - Date.parse(row.created_at + (row.created_at.endsWith('Z') ? '' : 'Z')) };
 }
 
+// ---- anonymous cap: 3 per person (signed cookie), 10 per IP per day ----------------------------------
+function signCount(n) { return crypto.createHmac('sha256', config.sessionSecret).update(`try:${n}`).digest('base64url').slice(0, 24); }
+export function readTryCookie(raw) {
+  const m = /^(\d{1,3})\.([A-Za-z0-9_-]{24})$/.exec(String(raw ?? ''));
+  if (!m) return 0;
+  const n = Number(m[1]);
+  const expected = signCount(n);
+  return m[2].length === expected.length && crypto.timingSafeEqual(Buffer.from(m[2]), Buffer.from(expected)) ? n : 0;
+}
+export function writeTryCookie(n) { return `${n}.${signCount(n)}`; }
+export function ipTriesToday(ip) {
+  return getDb().prepare("SELECT COUNT(*) n FROM previews WHERE ip = ? AND created_at > datetime('now', '-1 day')").get(String(ip)).n;
+}
+/** Why an anonymous visitor may not make another test page right now, or null. */
+export function anonBlockReason({ cookieCount, ip }) {
+  if (cookieCount >= TRY_FREE_PER_PERSON) return 'person';
+  if (ipTriesToday(ip) >= TRY_FREE_PER_IP_DAY) return 'ip';
+  return null;
+}
+
+/** Live, confirmed-reachable previews for the public showcase (newest first). */
+export function listShowcasePreviews(limit = 12) {
+  const rows = getDb().prepare(`SELECT id, expires_at, created_at FROM previews WHERE claimed_at IS NULL AND expires_at > ? AND (ready_at IS NOT NULL OR ?) ORDER BY created_at DESC LIMIT ?`)
+    .all(nowIso(), hostingEnabled() ? 0 : 1, limit);
+  return rows.map((r) => ({ ...r, url: previewUrl(r.id), gone: expiresLabel(r.expires_at) }));
+}
+
+/** Admin: take a test page down now (abuse). */
+export function removePreview(id) {
+  if (!ID_RE.test(String(id ?? ''))) return false;
+  const row = getDb().prepare('SELECT id FROM previews WHERE id = ?').get(id);
+  if (!row) return false;
+  try { removeFiles(id); } catch { /* best effort */ }
+  getDb().prepare('DELETE FROM previews WHERE id = ?').run(id);
+  return true;
+}
+
 /** Admin view of the shared try host. */
 export async function tryHostStatus() {
   const db = getDb();
@@ -178,6 +218,7 @@ export async function tryHostStatus() {
     live: countLive(),
     ready: db.prepare('SELECT COUNT(*) n FROM previews WHERE ready_at IS NOT NULL AND claimed_at IS NULL AND expires_at > ?').get(nowIso()).n,
     lastError: db.prepare("SELECT error, created_at FROM previews WHERE error != '' ORDER BY created_at DESC LIMIT 1").get() ?? null,
+    pages: db.prepare('SELECT id, ip, bytes, created_at, expires_at, ready_at FROM previews WHERE claimed_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 50').all(nowIso()).map((r) => ({ ...r, url: previewUrl(r.id) })),
     dir: hostingEnabled() ? fs.existsSync(path.join(tenantDir(TRY_LABEL), '.htaccess')) : null,
     url: `${config.publicScheme}://${TRY_LABEL}.${config.baseDomain}/`,
     answers: null,

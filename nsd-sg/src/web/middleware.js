@@ -74,7 +74,7 @@ export function platformSecurityHeaders(reply) {
   reply.header('Cross-Origin-Opener-Policy', 'same-origin');
   reply.header(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'",
+    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src ${config.publicScheme}://try.${config.baseDomain}; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'`,
   );
   if (config.isProd) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 }

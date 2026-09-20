@@ -136,7 +136,9 @@ export async function serveTenant(req, reply, label) {
 
 // try.<baseDomain>/<id>/ — anonymous 3-hour previews (VPS / local; on Hostinger LiteSpeed serves the same files).
 function serveTryPreview(req, reply) {
-  securityHeaders(reply, { allowFraming: false });
+  securityHeaders(reply, { allowFraming: true });
+  // Only the platform may embed a preview (the result page shows it live); nobody else.
+  reply.header('Content-Security-Policy', `frame-ancestors 'self' ${config.platformHosts.map((h) => `${config.publicScheme}://${h}`).join(' ')}`);
   reply.header('X-Robots-Tag', 'noindex, nofollow');
   const parsed = requestPath(req.raw.url ?? '/');
   if (!parsed || parsed.parts.length === 0) return sendPage(reply, 200, TRY_PAGES.root());

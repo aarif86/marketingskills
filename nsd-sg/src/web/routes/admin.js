@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
 import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll } from '../../publish/hostinger.js';
-import { tryHostStatus, ensureTryHost } from '../../services/tryit.js';
+import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -412,6 +412,14 @@ export async function registerAdminRoutes(app) {
     } catch (e) {
       flash(reply, 'error', `Could not set up the try address: ${String(e.message).slice(0, 300)}`);
     }
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/try-remove', opts, async (req, reply) => {
+    const id = String(req.body?.id ?? '');
+    const ok = removePreview(id);
+    audit({ req, action: 'try.removed', targetType: 'preview', targetId: id, severity: 'warn', details: { ok } });
+    flash(reply, ok ? 'ok' : 'error', ok ? `Test page ${id} removed.` : 'No such test page.');
     return reply.redirect('/admin/health');
   });
 

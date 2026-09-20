@@ -11,7 +11,7 @@ process.env.HOSTINGER_USERNAME = 'u000000000';
 
 const { buildApp } = await import('../src/server.js');
 const { getDb } = await import('../src/db/index.js');
-const { expirePreviews, getPreview, setReadyProbe, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
+const { expirePreviews, getPreview, setReadyProbe, removePreview, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
 const { multipart } = await import('./helpers/env.js');
 let probeAnswers = true;
 setReadyProbe(async () => probeAnswers);
@@ -33,6 +33,7 @@ async function post(url, cookie, form, pageUrl = '/') {
 }
 
 let id = '';
+const forgetIp = () => getDb().prepare("UPDATE previews SET ip = 'x'").run();
 
 test('home page has the try box; a paste creates a preview and shows the link page', async () => {
   const home = await get('/');
@@ -45,6 +46,9 @@ test('home page has the try box; a paste creates a preview and shows the link pa
   const page = await get(`/try/${id}`);
   assert.equal(page.statusCode, 200);
   assert.match(page.body, /It works\. Here is your link\./);
+  assert.match(page.body, new RegExp(`<iframe class="try-frame" src="http://try\\.nsd\\.test/${id}/"`));
+  assert.match(page.headers['content-security-policy'], /frame-src http:\/\/try\.nsd\.test/);
+  assert.match(String(r.headers['set-cookie']), /nsd_try=1\./);
   assert.match(page.body, new RegExp(`try\\.nsd\\.test/${id}/`));
   assert.match(page.body, new RegExp(`/signup\\?preview=${id}`));
   assert.match(page.body, /3 hours/);
@@ -62,6 +66,7 @@ test('the preview is served on try.<domain> with the bar, the badge and noindex;
   assert.match(r.body, /name="robots" content="noindex/);
   assert.equal(r.headers['x-robots-tag'], 'noindex, nofollow');
   assert.equal(r.headers['cache-control'], 'no-store');
+  assert.match(r.headers['content-security-policy'], /frame-ancestors 'self' http:\/\/nsd\.test/);
   const noSlash = await get(`/${id}`, '', 'try.nsd.test');
   assert.equal(noSlash.statusCode, 301);
   assert.equal(noSlash.headers.location, `/${id}/`);
@@ -118,10 +123,48 @@ test('junk, oversized pastes and too many pastes are refused in plain words', as
   assert.match(flashOf(junk), /does not look like a web page/);
   const big = await post('/try', '', { html: '<html>' + 'x'.repeat(TRY_MAX_BYTES) + '</html>' });
   assert.match(flashOf(big), /bigger than 1 MB/);
-  for (let i = 0; i < 5; i++) await post('/try', '', { html: PAGE }); // limit is 5 per hour
-  const limited = await post('/try', '', { html: PAGE });
-  assert.equal(limited.statusCode, 429);
+  reset('tryIt:127.0.0.1'); forgetIp();
+  for (let i = 0; i < 5; i++) { await post('/try', '', { html: PAGE }); reset('tryIt:127.0.0.1'); }
+  reset('tryIt:127.0.0.1'); forgetIp();
+});
+
+test('three free tries per person (signed cookie), then a friendly sign-up page; ten per IP per day', async () => {
+  forgetIp();
+  let cookie = '';
+  for (let i = 1; i <= 3; i++) {
+    const r = await post('/try', cookie, { html: PAGE });
+    assert.equal(r.statusCode, 302, `try ${i}`);
+    const c = String(r.headers['set-cookie']).match(/nsd_try=([^;]+)/)[1];
+    assert.match(c, new RegExp(`^${i}\\.`));
+    cookie = `nsd_try=${c}`;
+    reset('tryIt:127.0.0.1');
+  }
+  const fourth = await post('/try', cookie, { html: PAGE });
+  assert.equal(fourth.statusCode, 200);
+  assert.match(fourth.body, /Make a free account to keep going/);
+  // A forged cookie counts as zero, not as a free pass past the IP cap.
+  const forged = await post('/try', 'nsd_try=0.aaaaaaaaaaaaaaaaaaaaaaaa', { html: PAGE });
+  assert.equal(forged.statusCode, 302);
   reset('tryIt:127.0.0.1');
+  for (let i = 0; i < 7; i++) { await post('/try', '', { html: PAGE }); reset('tryIt:127.0.0.1'); }
+  const ipCapped = await post('/try', '', { html: PAGE });
+  assert.equal(ipCapped.statusCode, 200);
+  assert.match(ipCapped.body, /from your network today/);
+  forgetIp(); reset('tryIt:127.0.0.1');
+});
+
+test('live test pages show on the showcase as temporary; admin can remove one', async () => {
+  const made = await post('/try', '', { html: PAGE });
+  const ids = made.headers.location.split('/').pop();
+  await get(`/try/${ids}/status`); // marks it reachable
+  const sc = await get('/showcase');
+  assert.match(sc.body, /Test pages right now/);
+  assert.match(sc.body, new RegExp(`try\\.nsd\\.test/<i>${ids}</i>`));
+  assert.match(sc.body, /pill-temp/);
+  assert.ok(removePreview(ids));
+  assert.equal(getPreview(ids), null);
+  assert.doesNotMatch((await get('/showcase')).body, new RegExp(ids));
+  forgetIp(); reset('tryIt:127.0.0.1');
 });
 
 test('"try" is reserved and cannot be claimed as a site name', async () => {
@@ -130,6 +173,7 @@ test('"try" is reserved and cannot be claimed as a site name', async () => {
 });
 
 test('signing up with ?preview= moves the page to the new site as its home page', async () => {
+  forgetIp(); reset('tryIt:127.0.0.1');
   const signup = await get(`/signup?preview=${id}`);
   assert.match(signup.body, /Keep your page/);
   assert.match(signup.body, new RegExp(`name="preview" value="${id}"`));
@@ -153,6 +197,7 @@ test('signing up with ?preview= moves the page to the new site as its home page'
 });
 
 test('a signed-in user can put a preview onto an existing site from the result page', async () => {
+  forgetIp(); reset('tryIt:127.0.0.1');
   const login = await post('/login', '', { email: 'dina@example.com', password: 'correct-horse-battery' }, '/login');
   assert.equal(login.statusCode, 302, login.body.slice(0, 300));
   const cookie = cookiesFrom(login);
@@ -170,6 +215,7 @@ test('a signed-in user can put a preview onto an existing site from the result p
 });
 
 test('expired previews are removed from the table and disk; unknown folders are swept', async () => {
+  forgetIp(); reset('tryIt:127.0.0.1');
   const made = await post('/try', '', { html: PAGE });
   const id3 = made.headers.location.split('/').pop();
   getDb().prepare("UPDATE previews SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?").run(id3);

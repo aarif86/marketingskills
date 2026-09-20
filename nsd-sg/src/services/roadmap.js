@@ -130,6 +130,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-8-2', '0.8.2', 'Drop the file, see it live, three free tries', `- New: drag the .html file anywhere into the try box and it goes online. Your page opens in a new tab and is shown live on that page, with the link next to it.
+- Changed: three test pages free without an account, then we ask you to make a free account. Test pages that are live also appear at the bottom of the showcase, clearly marked as temporary.
+- Admin: the test-page panel lists every live test page with a Remove button.
+- Design: more room to breathe in the try box and on the result page.`, 'new,improved', '2026-09-20T23:30:00Z'],
   ['cl-0-8-1', '0.8.1', 'Try it: upload the file, and we check the link before showing it', `- New: on the home page you can now upload the .html file your AI gave you, not only paste the code. Picking the file starts it straight away.
 - Changed: after you press the button, the page shows “Putting your page online…” and only shows the link once it really answers. If the try address is brand new and its padlock is still being issued, it says so and keeps checking instead of sending you to a broken link.
 - Fixed: the web address box on sign-up looked like a box inside a box.

@@ -1,7 +1,7 @@
 // Marketing pages. Copy is deliberately plain: the audience is non-technical.
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
-import { expiresLabel } from '../../services/tryit.js';
+import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
 
@@ -27,17 +27,22 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
   <p class="eyebrow">Try it first · no account needed</p>
   <h2>Put your page online for 3 hours</h2>
   <p class="section-lead">Your AI made you a page. Upload the file or paste the code, press the button, and you get a link you can send to anyone. Like it? Sign up and keep it at your own address.</p>
-  <form method="post" action="/try" enctype="multipart/form-data" class="form card try-form" data-try-form>
+  <form method="post" action="/try" enctype="multipart/form-data" target="_blank" class="form card try-form" data-try-form>
     <input type="hidden" name="_csrf" value="${csrf}">
     <div class="try-choices">
-      <div class="choice"><h3>Upload the file</h3><p class="muted small">In <strong>Claude</strong>: press <strong>Download</strong> on the page it made. You get a file ending in <code>.html</code>. Choose that file here.</p>
-        <label class="btn btn-ghost file-pick">Choose the file<input type="file" name="file" accept=".html,.htm,text/html" hidden data-try-file></label> <span class="muted small" data-try-filename></span></div>
-      <div class="choice"><h3>Or paste the code</h3><p class="muted small">In <strong>ChatGPT</strong> or <strong>Gemini</strong>: press <strong>Copy</strong> at the top of the code box, then paste it here.</p>
+      <div class="choice"><h3>Upload the file</h3><p class="muted">In <strong>Claude</strong>: press <strong>Download</strong> on the page it made. You get a file ending in <code>.html</code>.</p>
+        <label class="btn btn-ghost btn-lg file-pick">Choose the file<input type="file" name="file" accept=".html,.htm,text/html" hidden data-try-file></label>
+        <p class="muted small drop-hint">or drag the file anywhere into this box</p></div>
+      <div class="choice"><h3>Or paste the code</h3><p class="muted">In <strong>ChatGPT</strong> or <strong>Gemini</strong>: press <strong>Copy</strong> at the top of the code box, then paste it here.</p>
         <textarea name="html" rows="6" spellcheck="false" placeholder="It usually starts with <!doctype html> or <html>. Paste all of it."></textarea></div>
     </div>
-    <button class="btn btn-primary btn-lg" type="submit" data-try-submit>Put my page online</button>
+    <div class="try-actions">
+      <button class="btn btn-primary btn-lg" type="submit" data-try-submit>Put my page online</button>
+      <span class="muted" data-try-note>Your page opens in a new tab.</span>
+    </div>
     <div class="bar busy" hidden data-try-bar><span></span></div>
-    <p class="muted small">Anyone with the link can see a test page. It is deleted after 3 hours. No account, no email, nothing to install.</p>
+    <div class="drop-veil" aria-hidden="true"><span>Drop it to put it online</span></div>
+    <p class="muted small try-fine">Anyone with the link can see a test page. It is deleted after 3 hours. ${TRY_FREE_PER_PERSON} test pages free without an account. No email, nothing to install.</p>
   </form>
 </div></section>
 
@@ -196,12 +201,15 @@ export function reportPage({ csrf, site }) {
   </form></div></section>`.toString();
 }
 
-export function showcasePage({ sites, baseDomain }) {
+export function showcasePage({ sites, baseDomain, previews = [] }) {
   return html`<section class="section"><div class="container">
   <p class="eyebrow">Live on NSD.SG</p>
   <h1>${sites.length} site${sites.length === 1 ? '' : 's'} hosted right now</h1>
   <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically; Plus lets you stay off the list.</p>
   ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
+  ${previews.length ? html`<div class="sc-temp"><h2>Test pages right now <span class="muted">${previews.length}</span></h2>
+  <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown.</p>
+  <ul class="showcase temp">${previews.map((p) => html`<li><a href="${p.url}" target="_blank" rel="noopener nofollow"><span class="sc-name">try.${baseDomain}/<i>${p.id}</i></span><span class="sc-title muted"><span class="pill pill-temp">test page</span> gone at ${p.gone}</span><span class="arrow">↗</span></a></li>`)}</ul></div>` : ''}
   <p class="muted small mt">Something here breaks our <a href="/terms">terms</a>? <a href="/report">Report it</a>.</p>
 </div></section>`.toString();
 }
@@ -308,8 +316,9 @@ export function tryResultPage({ id, url, expiresAt, status, user, sites, csrf })
   return html`<section class="section try-result"><div class="container narrow">
   <p class="eyebrow">Your test page is online</p>
   <h1>It works. Here is your link.</h1>
-  <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${shown}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open it ↗</a></div>
+  <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${shown}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open in a new tab ↗</a></div>
   <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> (3 hours from now), then it is deleted.</p>
+  <div class="try-frame-wrap"><div class="bd-bar"><span></span><span></span><span></span><em>${shown}</em></div><iframe class="try-frame" src="${url}" title="Your test page, live" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div>
   <div class="card keep"><h2>Want to keep it?</h2>
     ${user ? html`<p>Put it on one of your sites as the home page, or make a new site for it.</p>
       ${sites.length ? html`<form method="post" action="/try/${id}/claim" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}">
@@ -321,6 +330,16 @@ export function tryResultPage({ id, url, expiresAt, status, user, sites, csrf })
       <p class="muted small mt">Already have an account? <a href="/login?next=${encodeURIComponent(`/try/${id}`)}">Log in</a> and you can add it to a site you already have.</p>`}
   </div>
   <p class="muted small">Something wrong with the page? Get the file or the code from your AI tool again and <a href="/#try">try once more</a>. Each try makes a new link.</p>
+</div></section>`.toString();
+}
+
+export function tryLimitPage({ reason }) {
+  return html`<section class="section try-result"><div class="container narrow">
+  <p class="eyebrow">That was your ${TRY_FREE_PER_PERSON} free tries</p>
+  <h1>Like it? Make a free account to keep going.</h1>
+  <p class="section-lead">${reason === 'ip' ? 'A lot of test pages have come from your network today.' : `You have made ${TRY_FREE_PER_PERSON} test pages without an account.`} With a free account your pages stay online for good at <strong>yourname.${config.baseDomain}</strong>, you can change them any time, and there is no 3-hour limit.</p>
+  <p class="try-actions"><a class="btn btn-primary btn-lg" href="/signup">Create my free account</a><a class="btn btn-ghost btn-lg" href="/login?next=%2F%23try">I already have one</a></p>
+  <p class="muted small">Free means free: no card, and your first site can be online a minute from now.</p>
 </div></section>`.toString();
 }
 
