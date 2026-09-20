@@ -226,6 +226,11 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   u = db().prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(fay.id);
   assert.equal(u.plan_id, 'plus');
   assert.ok(u.plan_expires_at && new Date(u.plan_expires_at) > new Date(), 'grace period set');
+  // A cancel must never pull an admin-extended expiry closer.
+  db().prepare("UPDATE subscriptions SET status = 'active' WHERE id = 'rb_1'").run();
+  db().prepare("UPDATE users SET plan_expires_at = '2027-04-01T00:00:00.000Z' WHERE id = ?").run(fay.id);
+  await app.inject({ method: 'POST', url: '/billing/hitpay/webhook', headers: { host: H, 'content-type': 'application/json', 'hitpay-signature': sig2, 'hitpay-event-type': 'recurring_billing.subscription_updated' }, body: cancel });
+  assert.equal(db().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(fay.id).plan_expires_at, '2027-04-01T00:00:00.000Z', 'later expiry kept');
 });
 
 test('roadmap and changelog: public pages render seed content; logged-in user can vote and suggest', async () => {

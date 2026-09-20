@@ -136,8 +136,9 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
   if (DEAD.has(status)) {
     if (sub.status === 'active') {
       // Keep the paid plan for 30 more days, then the hourly sync + expiry logic drops them to free.
+      // Never shorten an expiry an admin already pushed further out (manual extensions, founding accounts).
       const grace = new Date(Date.now() + 30 * 86400000).toISOString();
-      db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ?').run(grace, now, sub.user_id);
+      db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ? AND (plan_expires_at IS NULL OR plan_expires_at < ?)').run(grace, now, sub.user_id, grace);
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'subscription_canceled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, status, graceUntil: grace }));
     }
