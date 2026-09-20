@@ -8,6 +8,7 @@
   "main": "server.cjs",
   "scripts": {
     "start": "node src/server.js",
+    "build": "echo \"NSD.SG has no build step (server-rendered, no bundler)\"",
     "dev": "NODE_ENV=development node --watch src/server.js",
     "migrate": "node src/cli.js migrate",
     "cli": "node src/cli.js",
