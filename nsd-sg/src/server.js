@@ -104,6 +104,11 @@ export async function buildApp({ logger = true } = {}) {
 
   app.setErrorHandler((err, req, reply) => {
     if (err.validation) return reply.code(400).send('Bad request.');
+    if (String(err.code ?? '').startsWith('SQLITE_CONSTRAINT')) {
+      req.log.warn({ err, url: req.url }, 'constraint violation');
+      return reply.code(409).type('text/html; charset=utf-8')
+        .send('<!doctype html><title>Cannot do that</title><p style="font-family:system-ui;padding:2rem">That change was refused because other records still depend on this one. Go back and retire or reassign it instead. <a href="javascript:history.back()">Back</a></p>');
+    }
     if (err.code === 'FST_REQ_FILE_TOO_LARGE' || err.statusCode === 413) {
       return reply.code(413).type('text/html; charset=utf-8').send('<p style="font-family:system-ui;padding:2rem">That upload is larger than the limit for your plan.</p>');
     }

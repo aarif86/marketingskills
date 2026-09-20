@@ -266,9 +266,15 @@ export function promoPage({ codes, plans, csrf }) {
     <label>Note <input name="note" placeholder="asatizah group / business team" maxlength="200"></label>
   </div>
   <button class="btn btn-primary btn-tiny">Create code</button></form>
-<div class="card"><table class="table"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody>
-${codes.map((c) => html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses}</td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td class="muted small">${c.note}</td>
-  <td><form method="post" action="/admin/promo" class="inline" data-confirm="${c.redeemed > 0 ? `Retire ${c.code}? It was redeemed ${c.redeemed} time(s), so it is kept for the records but nobody can use it again.` : `Delete ${c.code}?`}">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">${c.redeemed > 0 ? 'Retire' : 'Delete'}</button></form></td></tr>`)}
+<div class="card"><table class="table"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>
+${codes.map((c) => {
+    const expired = !!c.expires_at && new Date(c.expires_at).getTime() <= Date.now();
+    const exhausted = c.uses >= c.max_uses;
+    const status = expired ? (c.redeemed > 0 ? 'retired' : 'expired') : exhausted ? 'used up' : 'active';
+    const closed = expired || exhausted; // nothing left to redeem: only an unused code still has anything to delete
+    return html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses}</td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td>${pill(status === 'active' ? 'live' : status)}</td><td class="muted small">${c.note}</td>
+  <td>${closed && c.redeemed > 0 ? '' : html`<form method="post" action="/admin/promo" class="inline" data-confirm="${c.redeemed > 0 ? `Retire ${c.code}? It was redeemed ${c.redeemed} time(s), so it is kept for the records but nobody can use it again.` : `Delete ${c.code}?`}">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">${c.redeemed > 0 ? 'Retire' : 'Delete'}</button></form>`}</td></tr>`;
+  })}
 ${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td></tr>`}
 </tbody></table></div>`.toString();
 }

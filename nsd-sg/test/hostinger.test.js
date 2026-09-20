@@ -337,6 +337,14 @@ test('promo: a redeemed code is retired not deleted; an unused code is deleted; 
   const row = db().prepare("SELECT * FROM promo_codes WHERE code = 'USED1'").get();
   assert.ok(row, 'kept for the records');
   assert.ok(new Date(row.expires_at) <= new Date(), 'expired now');
+  // Admin table: the retired code shows a status and no button; a fresh code still offers Delete.
+  const adminLogin = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const adminCookie = cookiesFrom(adminLogin);
+  const promoPage = await app.inject({ method: 'GET', url: '/admin/promo', headers: { host: H, cookie: adminCookie } });
+  assert.match(promoPage.body, /USED1[\s\S]*?retired/);
+  const usedRow = promoPage.body.slice(promoPage.body.indexOf('USED1'), promoPage.body.indexOf('FRESH1'));
+  assert.doesNotMatch(usedRow, /Retire<\/button>/, 'no button once retired');
+  assert.match(promoPage.body.slice(promoPage.body.indexOf('FRESH1')), /Delete<\/button>/);
   assert.equal(deletePromoCode('FRESH1').deleted, true);
   assert.equal(db().prepare("SELECT COUNT(*) n FROM promo_codes WHERE code = 'FRESH1'").get().n, 0);
   // Paying subscriber: promo removal refused, billing page hides the promo box.
