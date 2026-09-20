@@ -106,7 +106,7 @@ export function updateSiteSettings(siteId, { title, allow_framing, listed }) {
   const sets = [];
   const vals = [];
   if (title !== undefined) { sets.push('title = ?'); vals.push(String(title).trim().slice(0, 100)); }
-  if (listed !== undefined) { sets.push('listed = ?'); vals.push(listed ? 1 : 0); }
+  if (listed !== undefined) { sets.push('listed = ?'); vals.push(listed ? 1 : 0); sets.push('listed_choice = ?'); vals.push(listed ? 1 : 0); }
   if (allow_framing !== undefined) { sets.push('allow_framing = ?'); vals.push(allow_framing ? 1 : 0); }
   if (!sets.length) return;
   sets.push('updated_at = ?');
@@ -162,12 +162,19 @@ export function storageUsedByUser(userId) {
   return getDb().prepare("SELECT COALESCE(SUM(total_storage_bytes), 0) AS n FROM sites WHERE user_id = ? AND status != 'deleted'").get(userId).n;
 }
 
-/** Public showcase: live sites whose owner is active and who have not opted out. */
+/** Public showcase: live sites of active owners. Free plans are listed unless they opted out; plans that may hide
+ *  from the showcase (Plus, Beta, admin override) are listed only when the owner switched it on. */
 export function listShowcaseSites(limit = 500) {
-  return getDb().prepare(`
-    SELECT s.subdomain, s.title, s.last_deployed_at FROM sites s JOIN users u ON u.id = s.user_id
-    WHERE s.status = 'live' AND s.listed = 1 AND u.status = 'active'
+  const rows = getDb().prepare(`
+    SELECT s.subdomain, s.title, s.last_deployed_at, s.listed, s.listed_choice, u.plan_id, u.plan_expires_at, u.overrides_json
+    FROM sites s JOIN users u ON u.id = s.user_id
+    WHERE s.status = 'live' AND u.status = 'active'
     ORDER BY s.last_deployed_at DESC LIMIT ?`).all(limit);
+  return rows.filter((r) => {
+    const ent = entitlementsFor({ plan_id: r.plan_id, plan_expires_at: r.plan_expires_at, overrides_json: r.overrides_json });
+    const canHide = (ent.features.hide_from_showcase ?? ent.features.branding_removable) && !ent.expired;
+    return canHide ? r.listed_choice === 1 : r.listed !== 0;
+  }).map(({ subdomain, title, last_deployed_at }) => ({ subdomain, title, last_deployed_at }));
 }
 
 // ---- reserved names (admin) ------------------------------------------------------

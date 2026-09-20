@@ -101,7 +101,7 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
         <li>Last ${p.limits.max_releases} copies kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
         <li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' address'}</li>
-        <li>${p.features.hide_from_showcase ? 'Keep your site off the public list' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
+        <li>${p.features.hide_from_showcase ? 'Off the public showcase unless you want to be on it' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
         ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then ask for more time or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>
@@ -133,7 +133,7 @@ export function pricingPage({ plans }) {
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
     <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
     <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
-    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Can stay off the public list' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
+    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
     <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
@@ -207,7 +207,7 @@ export function showcasePage({ sites, baseDomain, previews = [] }) {
   return html`<section class="section"><div class="container">
   <p class="eyebrow">Live on NSD.SG</p>
   <h1>${sites.length} site${sites.length === 1 ? '' : 's'} hosted right now</h1>
-  <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically; Plus lets you stay off the list.</p>
+  <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically. Paid plans are off the list unless the owner switches it on.</p>
   ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
   ${previews.length ? html`<div class="sc-temp"><h2>Test pages right now <span class="muted">${previews.length}</span></h2>
   <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown (Singapore time).</p>
@@ -226,7 +226,7 @@ export function badgePage({ badgeHtml, baseDomain }) {
     <div class="bd-badge">${raw(badgeHtml)}</div></div></div>
   <div class="grid two mt">
     <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 3 months, and you can ask for more time.</p></div>
-    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, stay off the showcase, use your own domain name as an extra. <a href="/pricing">See pricing →</a></p></div>
+    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, off the showcase unless you opt in, use your own domain name as an extra. <a href="/pricing">See pricing →</a></p></div>
   </div>
 </div></section>`.toString();
 }

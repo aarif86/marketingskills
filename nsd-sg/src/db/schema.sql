@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS sites (
   storage_bytes       INTEGER NOT NULL DEFAULT 0,     -- bytes of current release
   total_storage_bytes INTEGER NOT NULL DEFAULT 0,     -- bytes across retained releases (unique files)
   suspended_reason    TEXT NOT NULL DEFAULT '',
-  -- (migrations add hosting_state, hosting_error, hosting_synced_at, hosting_ready_at)
+  -- (migrations add hosting_state, hosting_error, hosting_synced_at, hosting_ready_at, listed_choice)
   last_deployed_at    TEXT,
   created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))

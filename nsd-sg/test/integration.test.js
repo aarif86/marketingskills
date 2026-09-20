@@ -340,3 +340,29 @@ test('a site without index.html shows a branded file list; folders too', async (
   const detail = await get(`/sites/${siteId}`, cookie);
   assert.match(detail.body, /simple list of these files/);
 });
+
+test('showcase: free sites listed, paid sites hidden until the owner opts in', async () => {
+  const { listShowcaseSites } = await import('../src/services/sites.js');
+  const names = () => listShowcaseSites().map((s) => s.subdomain);
+  // listy is on the free plan with a live site
+  assert.ok(names().includes('listy'), 'free plan listed');
+  const listyRow = getDb().prepare('SELECT id FROM users WHERE email = ?').get('listy@example.com');
+  const siteId = getDb().prepare("SELECT id FROM sites WHERE user_id = ? AND status != 'deleted'").get(listyRow.id).id;
+  const login = await app.inject({ method: 'POST', url: '/login', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrfFrom((await get('/login')).body), email: 'listy@example.com', password: 'correct-horse-battery' }).toString() });
+  const cookie = cookiesFrom(login);
+  // admin moves listy to Plus -> off the showcase
+  await post(`/admin/users/${listyRow.id}/action`, admin.cookie, { action: 'plan', plan_id: 'plus' });
+  assert.ok(!names().includes('listy'), 'paid plan hidden by default');
+  let settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /Show this site on the public/);
+  assert.doesNotMatch(settings.body, /name="listed" value="1" checked/);
+  // opt in
+  let r = await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy', listed: '1' });
+  assert.equal(r.statusCode, 302);
+  assert.ok(names().includes('listy'), 'opted in');
+  settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /name="listed" value="1" checked/);
+  // opt out again
+  r = await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy' });
+  assert.ok(!names().includes('listy'), 'opted out');
+});
