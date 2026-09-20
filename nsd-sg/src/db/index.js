@@ -122,7 +122,7 @@ export const RESERVED_SUBDOMAINS = [
   'static', 'cdn', 'assets', 'media', 'img', 'images', 'files', 'upload', 'uploads', 'download',
   'status', 'health', 'metrics', 'monitor', 'login', 'signup', 'register', 'auth', 'sso', 'oauth', 'account',
   'billing', 'pay', 'payment', 'payments', 'checkout', 'store', 'shop', 'support', 'help', 'docs', 'blog',
-  'news', 'dev', 'test', 'staging', 'beta', 'alpha', 'demo', 'preview', 'sandbox', 'localhost',
+  'news', 'dev', 'test', 'try', 'staging', 'beta', 'alpha', 'demo', 'preview', 'sandbox', 'localhost',
   'nsd', 'nasar', 'nasardigital', 'nasarhq', 'hq', 'official', 'root', 'sys', 'system', 'internal',
   'abuse', 'security', 'postmaster', 'hostmaster', 'webmaster', 'noreply', 'no-reply',
   // ToS categories: adult, gambling, scams, impersonation, drugs, weapons, hate (exact names; substrings are blocked in lib/subdomain.js)

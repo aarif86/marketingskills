@@ -106,6 +106,14 @@ there is no separate restart button in the new hPanel.
   There is no shell on managed hosting, so schedule it as an hPanel cron (`hosting_createAccountCronJobV1`):
   `cd ~/domains/nsd.sg/hbuilds/current/nodejs && /opt/alt/alt-nodejs22/root/bin/node src/cli.js sync-all` hourly.
   Plan expiries (badge returning after the trial) are picked up by this run.
+- **"Try it" previews (0.8.0):** anonymous pastes from the home page live at `try.nsd.sg/<id>/` for 3 hours. The
+  `try` subdomain is provisioned once (first paste, or `sync-all`) with its docroot at `tenants/try/`; each preview
+  is `tenants/try/<id>/index.html` with the preview bar, badge and noindex baked in, plus a raw copy in
+  `nsd-data/try/<id>/` used when the visitor signs up and keeps it. Expired previews are removed by the app's
+  10-minute maintenance timer while it is awake and by the hourly `sync-all` cron otherwise, so on managed hosting a
+  preview can outlive its 3 hours by up to an hour. `try` is a reserved name. Caps: 1 MB per paste, 5 pastes per IP
+  per hour, 2000 live previews in total. Like any new subdomain, the certificate for `try.nsd.sg` takes 5–15 min
+  the first time.
 - **Without an API token** the app still builds docroots; subdomains stay `pending` and must be created from the
   MCP (`hosting_createWebsiteSubdomainV1`, directory `tenants/<name>`) or hPanel. `/admin/health` lists them.
 - **Backups:** `DATA_DIR` is the whole state (SQLite + releases). hPanel backups cover the account; for an off-box

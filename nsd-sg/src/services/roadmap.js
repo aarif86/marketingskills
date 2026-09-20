@@ -113,6 +113,7 @@ export function deleteChangelog(id) { getDb().prepare('DELETE FROM changelog WHE
 
 // ---- seed: the real history of the product so the pages are never empty -------------------------
 const SEED_ROADMAP = [
+  ['rm-try-it', 'Try it before you sign up', 'Paste the code on the home page, no account, and get a link that works for 3 hours. Sign up to keep it at your own address.', 'shipped', 'platform', 9],
   ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'shipped', 'platform', 10],
   ['rm-custom-domain', 'Connect your own domain', 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Add-on for Plus and Beta.', 'planned', 'platform', 20],
   ['rm-expiry-emails', 'Reminder emails before your free period ends', 'A heads-up at day 76, a grace period, and a clear path to extend or upgrade — no surprises.', 'planned', 'billing', 30],
@@ -129,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-8-0', '0.8.0', 'Try it first, and plainer words everywhere', `- New: paste the code on the home page without an account and see it online at try.nsd.sg in seconds. The link works for 3 hours. Press “Keep it” to sign up and move the page to your own address; signed-in users can drop it onto a site they already have.
+- Changed: the whole site now uses everyday words. “Publish a version” is “put your page online”, “versions” are “older copies”, “HTTPS” is “the padlock”. Same product, less jargon.`, 'new,improved', '2026-09-20T20:00:00Z'],
   ['cl-0-7-0', '0.7.0', 'Paste HTML, get a link', `- New: on your site page, paste the HTML straight from Claude or ChatGPT and it is live — no download, no upload. Give it a page name for an address like name.nsd.sg/proposal, or leave it blank for the home page.
 - Changed: the home page now says who NSD.SG is for: people who make things with AI and need to hand them to someone else. One page counts.`, 'new', '2026-09-20T16:00:00Z'],
   ['cl-0-6-1', '0.6.1', 'Promo tidy-ups', `- Fixed: a promo code that people already used can be retired by admin instead of failing to delete.

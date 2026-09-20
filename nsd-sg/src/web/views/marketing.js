@@ -1,67 +1,80 @@
 // Marketing pages. Copy is deliberately plain: the audience is non-technical.
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
+import { expiresLabel } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
 
-export function homePage({ baseDomain, plans }) {
+export function homePage({ baseDomain, plans, csrf = '' }) {
   return html`
 <section class="hero"><div class="container">
-  <p class="eyebrow">For people who make things with AI · Singapore</p>
+  <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
-  <p class="lead">Claude, ChatGPT and Gemini hand you a file. Sharing it as an artifact link looks like a scratchpad. Put it at <strong>yourname.${baseDomain}</strong> instead — live in a minute, with HTTPS, and it looks like yours.</p>
+  <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours.</p>
   <form class="hero-form" action="/signup" method="get">
-    <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Choose your site name"><span>.${baseDomain}</span></div>
+    <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Pick your web address"><span>.${baseDomain}</span></div>
     <button class="btn btn-primary btn-lg" type="submit">Claim my address</button>
   </form>
-  <p class="hero-note" data-availability-msg>Free to start. No credit card. One page counts.</p>
+  <p class="hero-note" data-availability-msg>Free. No card needed. Not sure yet? <a href="#try">Try it first, no account</a>.</p>
   <div class="loop">
-    <div class="card"><h3>Before</h3><p class="muted small">What you send today</p><span class="ugly">claude.ai/public/artifacts/9f3a1c2e-7b…</span></div>
-    <div class="card"><h3>After</h3><p class="muted small">What you send with NSD.SG</p><span class="nice">https://yourname.${baseDomain}/proposal</span></div>
-    <div class="card"><h3>How</h3><p class="muted small">Three steps, no jargon</p><code>Copy the HTML → paste it in → send the link</code></div>
+    <div class="card"><h3>Before</h3><p class="muted small">The link the AI gives you</p><span class="ugly">claude.ai/public/artifacts/9f3a1c2e-7b…</span></div>
+    <div class="card"><h3>After</h3><p class="muted small">The link you send with NSD.SG</p><span class="nice">https://yourname.${baseDomain}/proposal</span></div>
+    <div class="card"><h3>How</h3><p class="muted small">Three steps, no computer skills needed</p><code>Copy the code → paste it here → send the link</code></div>
   </div>
+</div></section>
+
+<section id="try" class="section try"><div class="container narrow">
+  <p class="eyebrow">Try it first · no account needed</p>
+  <h2>See your page online in 10 seconds</h2>
+  <p class="section-lead">Copy the code your AI gave you. Paste it below. Press the button. You get a link that works for 3 hours. Like it? Sign up and keep it at your own address.</p>
+  <form method="post" action="/try" class="form card try-form">
+    <input type="hidden" name="_csrf" value="${csrf}">
+    <label>Paste the code here <textarea name="html" rows="7" required spellcheck="false" placeholder="It usually starts with <!doctype html> or <html>. Paste all of it."></textarea></label>
+    <button class="btn btn-primary btn-lg" type="submit">Show me my page</button>
+    <p class="muted small"><strong>Where is the code?</strong> In Claude: open the page it made, press the ⋯ menu, then “Copy code”. In ChatGPT or Gemini: press the copy button at the top of the code box. Test pages can be seen by anyone with the link and are deleted after 3 hours.</p>
+  </form>
 </div></section>
 
 <section id="who" class="section who"><div class="container">
   <h2>Who this is for</h2>
-  <p class="section-lead">Not people who want “a website”. People whose work now produces web pages, and who need to hand them to someone else without looking like a test.</p>
+  <p class="section-lead">People who are not web designers, but who now make web pages with AI and need to hand them to someone else without it looking like a test.</p>
   <div class="grid three">
-    <div class="card"><h3><span class="ico">💼</span>Professionals who share their work</h3><p>Consultants, trainers, coaches, freelancers. A proposal page, a calculator, an interactive explainer, a checklist, a one-page pitch.</p><p class="eg">yourname.${baseDomain}/proposal</p></div>
-    <div class="card"><h3><span class="ico">📖</span>Teachers and asatizah</h3><p>A lesson page, a du‘a list, a quiz for the class, a term schedule. Sent to a WhatsApp group of parents or students and opened on a phone.</p><p class="eg">ustazname.${baseDomain}/quiz</p></div>
-    <div class="card"><h3><span class="ico">📅</span>Event and community organisers</h3><p>Programme, timings, map, registration info. Lives for three weeks and needs to look trustworthy for every one of them.</p><p class="eg">event.${baseDomain}</p></div>
-    <div class="card"><h3><span class="ico">🧪</span>Builders showing prototypes</h3><p>You built something last night and need a public link for feedback this morning. Replace it tonight; every version is kept.</p><p class="eg">project.${baseDomain}</p></div>
-    <div class="card"><h3><span class="ico">🏪</span>Small businesses with one page</h3><p>Opening hours, what you do, how to reach you. The page AI wrote for you, on a Singapore address, for free.</p><p class="eg">shopname.${baseDomain}</p></div>
-    <div class="card"><h3><span class="ico">🚫</span>Not for</h3><p>Apps with logins, databases or payments. NSD.SG serves pages, not servers. When you need that, <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds it.</p></div>
+    <div class="card"><h3><span class="ico">💼</span>People who share their work</h3><p>Consultants, trainers, coaches, freelancers. A proposal, a price calculator, an explainer, a checklist, a one-page pitch.</p><p class="eg">yourname.${baseDomain}/proposal</p></div>
+    <div class="card"><h3><span class="ico">📖</span>Teachers and asatizah</h3><p>A lesson page, a du‘a list, a quiz for the class, the term timetable. Send it to the parents’ WhatsApp group. It opens on any phone.</p><p class="eg">ustazname.${baseDomain}/quiz</p></div>
+    <div class="card"><h3><span class="ico">📅</span>Event and community organisers</h3><p>The programme, the timings, the map, how to register. It only needs to live for three weeks, but it has to look trustworthy for all of them.</p><p class="eg">event.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🧪</span>People trying out an idea</h3><p>You made something last night and want feedback this morning. Send a proper link. Change it tonight. Every older copy is kept.</p><p class="eg">project.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🏪</span>Small businesses with one page</h3><p>Opening hours, what you do, how to reach you. The page the AI wrote for you, on a Singapore address, for free.</p><p class="eg">shopname.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🚫</span>Not for</h3><p>Things that need a login, save people’s data, or take payments. NSD.SG shows pages; it does not run programs. When you need that, <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds it for you.</p></div>
   </div>
 </div></section>
 
 <section id="how" class="section alt"><div class="container">
   <h2>How it works</h2>
   <div class="grid three">
-    <div class="card"><div class="step">1</div><h3>Make it</h3><p>Ask Claude, ChatGPT or any AI tool for the page. It gives you HTML. That is all you need.</p></div>
-    <div class="card"><div class="step">2</div><h3>Paste or upload</h3><p>Sign up, pick your name, then paste the HTML straight in — or upload files, a folder or a ZIP if you have more.</p></div>
-    <div class="card"><div class="step">3</div><h3>Send the link</h3><p>It is live at <strong>https://yourname.${baseDomain}</strong> with HTTPS. Paste again any time to update; the old version is kept.</p></div>
+    <div class="card"><div class="step">1</div><h3>Ask the AI for a page</h3><p>Tell Claude, ChatGPT or Gemini what you want. When it is done, press “Copy code”. That code is your whole page.</p></div>
+    <div class="card"><div class="step">2</div><h3>Paste it here</h3><p>Sign up for free, pick your name, paste the code. Have files instead? Drop them in. That works too.</p></div>
+    <div class="card"><div class="step">3</div><h3>Send the link</h3><p>Your page is now at <strong>yourname.${baseDomain}</strong>. Send it on WhatsApp, email, anywhere. Paste again any time to change it.</p></div>
   </div>
 </div></section>
 
 <section id="why" class="section"><div class="container">
-  <h2>Why NSD.SG and not the link the AI gave you</h2>
+  <h2>Why not just send the link the AI gave you?</h2>
   <div class="grid three">
-    <div class="card"><h3>It looks like yours</h3><p><strong>yourname.${baseDomain}</strong> is short, says Singapore, and carries no other company's name. Not a random id, not somebody's app.</p></div>
-    <div class="card"><h3>Nothing to learn</h3><p>No git, no deploy commands, no DNS, no “framework detection”. If it opens in your browser, it works here.</p></div>
-    <div class="card"><h3>One page is enough</h3><p>Most things people make with AI are a single file. Paste it and you are done. Grow into a full site only if you want to.</p></div>
-    <div class="card"><h3>Safe by design</h3><p>Pages are static and isolated from each other. Only web files are accepted, served with strict content types and HTTPS.</p></div>
-    <div class="card"><h3>A person in Singapore</h3><p>Built and supported by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Stuck? A real person answers.</p></div>
-    <div class="card"><h3>A path to more</h3><p>When a page becomes a business, we help with a real domain, a professional build, SEO and growth. Same team.</p></div>
+    <div class="card"><h3>It looks like yours</h3><p><strong>yourname.${baseDomain}</strong> is short, says Singapore, and has no other company’s name in it. Not a long string of random letters.</p></div>
+    <div class="card"><h3>Nothing to learn</h3><p>No setup, no settings, no technical words. If the page opens in your browser, it works here.</p></div>
+    <div class="card"><h3>One page is enough</h3><p>Most things people make with AI are one page. Paste it and you are done. Add more pages only if you want to.</p></div>
+    <div class="card"><h3>Safe</h3><p>Every page gets the padlock (secure connection) for free. Pages cannot run programs, so nothing on them can harm your visitors.</p></div>
+    <div class="card"><h3>A real person in Singapore</h3><p>Built and looked after by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Stuck? Email us and a person replies.</p></div>
+    <div class="card"><h3>Room to grow</h3><p>When your page becomes a business, we help with your own .sg or .com name, a professional website and getting found on Google. Same team.</p></div>
   </div>
 </div></section>
 
 <section id="features" class="section alt"><div class="container">
-  <h2>Everything you need, nothing you don't</h2>
+  <h2>What you get</h2>
   <ul class="features">
-    <li>Paste HTML, or drag-and-drop files, folders, ZIP</li><li>Named pages: /proposal, /quiz, /menu</li><li>Version history and rollback</li>
-    <li>Automatic HTTPS</li><li>Custom 404 page</li><li>Reserved-name and abuse protection</li>
-    <li>Usage and storage in your dashboard</li><li>Your own domain on Plus</li><li>Email support from NasarDigital</li>
+    <li>Paste the code, or drop in files, a folder or a ZIP</li><li>Extra pages with their own names: /proposal, /quiz, /menu</li><li>Older copies kept, so you can go back</li>
+    <li>The padlock (secure connection) on every page</li><li>Your own “page not found” page if you want one</li><li>Protection against fake and copycat names</li>
+    <li>See how many people visited</li><li>Your own domain name on Plus</li><li>Email help from NasarDigital</li>
   </ul>
 </div></section>
 
@@ -72,13 +85,13 @@ export function homePage({ baseDomain, plans }) {
       <h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div>
       <p>${p.description}</p>
       <ul>
-        <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, unlimited pages each</li>
-        <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB storage</li>
-        <li>${p.limits.max_releases} versions kept</li>
-        <li>${p.features.branding_removable ? 'No NSD.SG badge' : 'Small “Powered by NasarDigital” badge'}</li>
-        <li>${p.features.custom_domains ? 'Bring your own domain (add-on)' : 'name.' + config.baseDomain + ' address'}</li>
-        <li>${p.features.hide_from_showcase ? 'Hide your site from the public showcase' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
-        ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then extend or upgrade</li>` : ''}
+        <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
+        <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
+        <li>Last ${p.limits.max_releases} copies kept</li>
+        <li>${p.features.branding_removable ? 'No NSD.SG badge on your pages' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
+        <li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' address'}</li>
+        <li>${p.features.hide_from_showcase ? 'Keep your site off the public list' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
+        ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then ask for more time or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>
     </div>`)}
@@ -87,57 +100,58 @@ export function homePage({ baseDomain, plans }) {
 
 <section id="faq-teaser" class="section alt"><div class="container narrow">
   <h2>Questions people ask</h2>
-  <details><summary>I only have one HTML file. Is that enough?</summary><p>Yes. Paste it in and it becomes your home page. Add more pages later by pasting again with a name, like <code>/proposal</code>.</p></details>
-  <details><summary>What can I host?</summary><p>Anything that runs in a browser: HTML, CSS, JavaScript, images, fonts, video, PDF. That is what AI tools produce. Server-side code is not run, which keeps every page fast and safe.</p></details>
-  <details><summary>Can I update it after sharing the link?</summary><p>Yes. Paste or upload the new version; the link stays the same. Older versions are kept so you can roll back.</p></details>
-  <details><summary>Why is there a badge on my page?</summary><p>Free pages carry a small “Powered by NasarDigital · nsd.sg” badge. It pays for the free tier. Plus removes it.</p></details>
-  <p><a href="/faq">Read the full FAQ →</a></p>
+  <details><summary>I only have one page. Is that enough?</summary><p>Yes. Paste it and it becomes your home page. You can add more pages later, each with its own name, like <code>/proposal</code>.</p></details>
+  <details><summary>What is “the code”?</summary><p>When an AI makes you a page, it writes it in a language called HTML. That is the code. You never need to read it. Just copy all of it and paste it here.</p></details>
+  <details><summary>Can I change the page after I send the link?</summary><p>Yes. Paste the new code and the link stays the same. The old copy is kept, so you can go back if you need to.</p></details>
+  <details><summary>Why is there a small badge on my page?</summary><p>Free pages show a small “Powered by NasarDigital · nsd.sg” badge in the corner. That is what pays for the free plan. Plus removes it.</p></details>
+  <p><a href="/faq">Read all the questions →</a></p>
 </div></section>
 
 <section class="cta"><div class="container">
   <h2>Your page is ready. Give it an address.</h2>
   <a class="btn btn-primary btn-lg" href="/signup">Claim my ${baseDomain} address</a>
-  <p class="muted">Create with AI → Deploy with NSD.SG → Grow with NasarDigital</p>
+  <p class="muted">Make it with AI → Put it online with NSD.SG → Grow with NasarDigital</p>
 </div></section>`.toString();
 }
 
 export function pricingPage({ plans }) {
   return html`<section class="section"><div class="container">
   <h1>Pricing</h1>
-  <p class="section-lead">Start free. Pay only when you want the badge gone, more sites, or your own domain.</p>
+  <p class="section-lead">Start free. Pay only if you want the badge gone, more sites, or your own domain name.</p>
   <div class="grid pricing">${plans.map((p) => html`
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
-    <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB storage</li>
-    <li>${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB max per file</li><li>${p.limits.max_releases} versions kept</li>
-    <li>${p.features.branding_removable ? 'No badge' : html`<a href="/badge">Powered-by badge</a>`}</li><li>${p.features.custom_domains ? 'Bring your own domain (add-on)' : 'Subdomain only'}</li><li>${p.features.hide_from_showcase ? 'Can hide from the showcase' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
-    <li>${p.features.priority_support ? 'Priority support' : 'Email support'}</li></ul>
+    <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
+    <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
+    <li>${p.features.branding_removable ? 'No badge' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Can stay off the public list' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
+    <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
-  <div class="card mt"><h3>Need a proper domain and a professional website?</h3><p><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> designs, builds and grows websites for Singapore businesses. NSD.SG customers get priority onboarding.</p></div>
+  <div class="card mt"><h3>Want your own domain name and a professional website?</h3><p><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> designs, builds and grows websites for Singapore businesses. NSD.SG customers go to the front of the queue.</p></div>
 </div></section>`.toString();
 }
 
 export function faqPage() {
   const qa = [
-    ['What is NSD.SG?', 'A place to put what you made with AI online, at your own name.nsd.sg address with HTTPS. One page or a whole site — paste the HTML or upload the files and send the link.'],
-    ['Can I paste HTML straight from Claude or ChatGPT?', 'Yes. On your site page there is a “paste HTML” box. Copy the code from the artifact or the code block, paste it, give it a page name (or leave blank for the home page) and it is live. No download, no upload.'],
-    ['Is a single page enough, or do I need a full website?', 'A single page is enough and it is what most people start with. Add pages whenever you like, each with its own address such as name.nsd.sg/proposal.'],
-    ['Can I host an app with logins, a database or payments?', 'No. NSD.SG serves pages, not servers, so those parts have nowhere to run. If your idea needs them, NasarDigital can build it properly.'],
-    ['Do I need to know how to code?', 'No. If you can download a ZIP and drag it into a browser window, you can publish on NSD.SG.'],
-    ['Which AI tools work with NSD.SG?', 'Any tool that produces website files: Claude, ChatGPT, Gemini, Cursor, v0, Lovable, Bolt, Framer exports, Webflow exports, Hugo/Astro/Next static exports, or a site you wrote yourself.'],
-    ['What files are accepted?', 'HTML, CSS, JavaScript, JSON, images (PNG, JPG, GIF, WebP, AVIF, SVG, ICO), fonts (WOFF, WOFF2, TTF, OTF), video/audio (MP4, WebM, MP3, OGG, WAV), PDF, text. Anything executable (PHP, scripts, binaries) is rejected.'],
-    ['Can my site have a contact form or a database?', 'Not on NSD.SG itself: sites are static. Most people use a form service (Formspree, Tally, Google Forms) or an embed. For a full custom build, talk to NasarDigital.'],
-    ['How do I update my site?', 'Open the site in your dashboard and upload a new ZIP (replaces everything) or upload individual files (adds/replaces). Every publish becomes a version you can roll back to.'],
-    ['What happens after 3 months on the Free plan?', 'You can request a free extension from your dashboard, or move to Plus. Your site stays online while an extension is pending.'],
-    ['Can I remove the “Powered by NasarDigital” badge?', 'Yes, on the Plus plan. On the Free plan it is required; editing your HTML will not remove it because it is added when the page is served.'],
-    ['Can I use my own domain?', 'Custom domains are part of Plus. Point your domain at NSD.SG and we take care of SSL.'],
-    ['Is there a name I cannot use?', 'Names that look like banks, government services or well-known brands are reserved to protect visitors from phishing. Offensive names are also declined.'],
-    ['What about abuse?', 'Every site is isolated, static, and served with strict security headers. We accept abuse reports at /report and suspend sites that host phishing, malware or illegal content.'],
-    ['Where is my site hosted?', 'On NasarDigital infrastructure in Singapore/Asia, behind HTTPS. Backups run daily.'],
+    ['What is NSD.SG?', 'A place to put the page you made with AI online, at your own name.nsd.sg address. Paste the code or drop in your files, then send the link to anyone.'],
+    ['What is “the code”?', 'When Claude, ChatGPT or Gemini makes you a page, it writes it in a language called HTML. That is the code. You do not need to understand it. Copy all of it and paste it into NSD.SG.'],
+    ['Can I try it before I sign up?', 'Yes. On the home page, paste the code into the “Try it first” box. You get a link that works for 3 hours. If you like it, sign up and press “Keep it” to move the page to your own address.'],
+    ['Where do I find the copy button?', 'In Claude: open the page it made, press the ⋯ menu at the top, then “Copy code”. In ChatGPT and Gemini: there is a copy button at the top right of the code box.'],
+    ['I only have one page. Is that enough?', 'Yes. Most people start with one page. Add more whenever you like, each with its own name, such as name.nsd.sg/proposal.'],
+    ['Can I make a page where people log in, or pay, or fill in a form that saves answers?', 'Not on NSD.SG. NSD.SG shows pages; it does not run programs behind them. For forms, most people use a free form service (Google Forms, Tally) and put the link on their page. If you need the full thing, NasarDigital can build it.'],
+    ['Do I need to know how to code?', 'No. If you can copy and paste, you can use NSD.SG.'],
+    ['Which AI tools work with NSD.SG?', 'Any tool that gives you a web page: Claude, ChatGPT, Gemini, Cursor, v0, Lovable, Bolt and more. Files from Framer, Webflow and similar tools work too.'],
+    ['What kind of files can I put on my site?', 'Web pages, pictures, fonts, videos, sounds and PDFs. Programs and scripts that run on a server are not allowed, which keeps every page safe.'],
+    ['How do I change my page after it is online?', 'Open your site in NSD.SG and paste the new code, or drop in the new files. The link stays the same. The old copy is kept so you can go back.'],
+    ['What happens after 3 months on the Free plan?', 'Ask for more time from your Plan page (we say yes to most real projects), or move to Plus. Your site stays online while we look at your request.'],
+    ['Can I remove the “Powered by NasarDigital” badge?', 'Yes, on the Plus plan. On the Free plan it stays. Changing your code will not remove it, because it is added when the page is shown.'],
+    ['Can I use my own domain name, like mybusiness.sg?', 'Yes, on Plus. You buy the name from any seller, we connect it to your site and take care of the padlock (secure connection).'],
+    ['Are there names I cannot use?', 'Names that look like banks, government services or well-known brands are blocked, so nobody can trick your visitors. Rude names are blocked too.'],
+    ['What if someone puts something bad on a page?', 'Every page is checked and kept separate from the others. Anyone can report a page at /report, and we take bad pages down quickly.'],
+    ['Where are the pages kept?', 'On NasarDigital servers in Singapore and Asia, with the padlock (secure connection) on every page. Copies are made every day.'],
   ];
-  return html`<section class="section"><div class="container narrow"><h1>Frequently asked questions</h1>
+  return html`<section class="section"><div class="container narrow"><h1>Questions people ask</h1>
   ${qa.map(([q, a]) => html`<details><summary>${q}</summary><p>${a}</p></details>`)}
-  <p class="mt">Something else? Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>.</p></div></section>`.toString();
+  <p class="mt">Something else? Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();
 }
 
 export function termsPage() {
@@ -165,11 +179,11 @@ export function privacyPage() {
 
 export function reportPage({ csrf, site }) {
   return html`<section class="section"><div class="container narrow"><h1>Report abuse</h1>
-  <p>Seen phishing, malware, scams or stolen content on a ${config.baseDomain} site? Tell us. Reports are reviewed by a person.</p>
+  <p>Seen a fake login page, a scam, a virus or stolen content on a ${config.baseDomain} site? Tell us. A person reads every report. For a test page (try.${config.baseDomain}), type <strong>try</strong> as the site name and paste the full link below.</p>
   <form method="post" action="/report" class="form">
     <input type="hidden" name="_csrf" value="${csrf}">
     <label>Site name <div class="domain-input"><input name="site" value="${site}" required maxlength="60" placeholder="name"><span>.${config.baseDomain}</span></div></label>
-    <label>Category <select name="category"><option value="phishing">Phishing / impersonation</option><option value="malware">Malware</option><option value="copyright">Copyright</option><option value="spam">Spam / scam</option><option value="other">Other</option></select></label>
+    <label>What kind of problem? <select name="category"><option value="phishing">Fake page pretending to be a bank, company or person</option><option value="malware">Virus or harmful download</option><option value="copyright">Stolen content</option><option value="spam">Spam or scam</option><option value="other">Something else</option></select></label>
     <label>What is wrong? <textarea name="details" rows="5" required minlength="10" maxlength="4000"></textarea></label>
     <label>Your email (optional) <input type="email" name="email" maxlength="200"></label>
     <button class="btn btn-primary" type="submit">Send report</button>
@@ -180,7 +194,7 @@ export function showcasePage({ sites, baseDomain }) {
   return html`<section class="section"><div class="container">
   <p class="eyebrow">Live on NSD.SG</p>
   <h1>${sites.length} site${sites.length === 1 ? '' : 's'} hosted right now</h1>
-  <p class="section-lead">Every one of these was generated with an AI tool and uploaded as plain files. Free-plan sites are listed automatically; Plus lets you opt out.</p>
+  <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically; Plus lets you stay off the list.</p>
   ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
   <p class="muted small mt">Something here breaks our <a href="/terms">terms</a>? <a href="/report">Report it</a>.</p>
 </div></section>`.toString();
@@ -190,13 +204,13 @@ export function badgePage({ badgeHtml, baseDomain }) {
   return html`<section class="section"><div class="container narrow">
   <p class="eyebrow">The badge</p>
   <h1>What the “Powered by NasarDigital” badge looks like</h1>
-  <p class="section-lead">Free sites carry this small pill in the bottom-right corner of every page. It is how the free tier pays for itself. It never covers your content, never tracks your visitors, and disappears the moment you move to Plus.</p>
+  <p class="section-lead">Free sites show this small pill in the bottom-right corner of every page. It is what pays for the free plan. It never covers your content, never tracks your visitors, and disappears the moment you move to Plus.</p>
   <div class="badge-demo"><div class="bd-bar"><span></span><span></span><span></span><em>yourname.${baseDomain}</em></div>
     <div class="bd-page"><div class="bd-line w60"></div><div class="bd-line w90"></div><div class="bd-line w80"></div><div class="bd-block"></div><div class="bd-line w70"></div><div class="bd-line w50"></div>
     <div class="bd-badge">${raw(badgeHtml)}</div></div></div>
   <div class="grid two mt">
-    <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 3 months, extendable when you ask.</p></div>
-    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, hide from the showcase, bring your own domain as an add-on. <a href="/pricing">See pricing →</a></p></div>
+    <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 3 months, and you can ask for more time.</p></div>
+    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, stay off the showcase, use your own domain name as an extra. <a href="/pricing">See pricing →</a></p></div>
   </div>
 </div></section>`.toString();
 }
@@ -264,5 +278,34 @@ export function changelogPage({ entries }) {
     <h2>${e.title}</h2>
     <div class="cl-body">${renderBody(e.body)}</div>
   </article>`)}</div>
+</div></section>`.toString();
+}
+
+export function tryResultPage({ id, url, expiresAt, user, sites, csrf }) {
+  const when = expiresLabel(expiresAt);
+  return html`<section class="section try-result"><div class="container narrow">
+  <p class="eyebrow">Your test page is online</p>
+  <h1>It works. Here is your link.</h1>
+  <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open it ↗</a></div>
+  <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> today (3 hours from now), then it is deleted.</p>
+  <div class="card keep"><h2>Want to keep it?</h2>
+    ${user ? html`<p>Put it on one of your sites as the home page, or make a new site for it.</p>
+      ${sites.length ? html`<form method="post" action="/try/${id}/claim" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}">
+        <select name="site_id" required>${sites.map((s) => html`<option value="${s.id}">${s.subdomain}.${config.baseDomain}${s.current_release_id ? ' (replaces its home page)' : ''}</option>`)}</select>
+        <button class="btn btn-primary" type="submit">Put it on this site</button></form>` : ''}
+      <p class="mt"><a class="btn ${sites.length ? 'btn-ghost' : 'btn-primary'}" href="/sites/new?preview=${id}">Make a new site for it</a></p>`
+    : html`<p>Sign up for free, pick a name, and this page moves to <strong>yourname.${config.baseDomain}</strong>. It stays online for good, and you can change it any time.</p>
+      <a class="btn btn-primary btn-lg" href="/signup?preview=${id}">Keep it at my own address</a>
+      <p class="muted small mt">Already have an account? <a href="/login?next=${encodeURIComponent(`/try/${id}`)}">Log in</a> and you can add it to a site you already have.</p>`}
+  </div>
+  <p class="muted small">Something wrong with the page? Press the ⋯ menu in your AI tool, copy the code again and <a href="/#try">paste it once more</a>. Each paste makes a new link.</p>
+</div></section>`.toString();
+}
+
+export function tryGonePage() {
+  return html`<section class="section"><div class="container narrow">
+  <p class="eyebrow">Test page</p>
+  <h1>This test page is gone.</h1>
+  <p class="section-lead">Test pages last 3 hours, then they are deleted. <a href="/#try">Make a new one</a>, or <a href="/signup">sign up</a> to keep a page online for good.</p>
 </div></section>`.toString();
 }

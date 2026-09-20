@@ -26,7 +26,7 @@ function head(title, { description = '' } = {}) {
   return html`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title ? `${title} · NSD.SG` : 'NSD.SG — You made it with AI. Give it a proper address.'}</title>
-<meta name="description" content="${description || 'Upload the website you generated with AI and put it live on name.nsd.sg in under a minute. Clean .sg address, free to start.'}">
+<meta name="description" content="${description || 'Made a page with Claude, ChatGPT or Gemini? Paste the code and it is online at yourname.nsd.sg in a minute. Free to start. Try it without an account.'}">
 <link rel="stylesheet" href="/assets/app.css?v=${config.version}">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#0f1014">
@@ -36,20 +36,20 @@ function head(title, { description = '' } = {}) {
 export function marketingLayout({ title, description, body, user, flash }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#how', 'How it works'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/roadmap', 'Roadmap'], ['/faq', 'FAQ']],
+    links: [['/#try', 'Try it'], ['/#how', 'How it works'], ['/#who', 'Who it’s for'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']],
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
-      : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Get started</a>`,
+      : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Sign up free</a>`,
   }))}
 <main>${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
-<div><div class="brand small">NSD<span>.SG</span></div><p>Create with AI. Deploy with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
-<div><h4>Product</h4><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">Changelog</a><a href="/faq">FAQ</a></div>
+<div><div class="brand small">NSD<span>.SG</span></div><p>Make it with AI. Put it online with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
+<div><h4>Product</h4><a href="/#try">Try it</a><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">What’s new</a><a href="/faq">Questions</a></div>
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
 <div><h4>Trust</h4><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a></div>
 </div>
-<p class="fine">© ${new Date().getFullYear()} NasarDigital · Singapore. Sites hosted on NSD.SG are created by their owners; report abuse and we act quickly.</p>
+<p class="fine">© ${new Date().getFullYear()} NasarDigital · Singapore. Pages on NSD.SG are made by their owners. See something wrong? Report it and we act quickly.</p>
 </div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
@@ -59,7 +59,7 @@ export function appLayout({ title, body, user, flash, csrf, active = '' }) {
   const nav = [
     ['/dashboard', 'Sites', 'sites'],
     ['/account', 'Account', 'account'],
-    ['/billing', 'Plan & billing', 'billing'],
+    ['/billing', 'Plan & payment', 'billing'],
     ['/roadmap#suggest', 'Feedback', 'feedback'],
   ];
   return html`${head(title)}<body class="app">

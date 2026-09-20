@@ -8,7 +8,10 @@ import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
-import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage } from '../views/marketing.js';
+import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage } from '../views/marketing.js';
+import { createPreview, getPreview, claimPreview, previewUrl, TryError } from '../../services/tryit.js';
+import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
+import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
@@ -21,7 +24,45 @@ export async function registerMarketingRoutes(app) {
   const render = (req, reply, { title, description, body }) =>
     reply.type('text/html; charset=utf-8').send(marketingLayout({ title, description, body, user: req.user, flash: readFlash(req, reply) }));
 
-  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }) }) }));
+  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req) }) }));
+
+  // ---- Try it: paste HTML, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
+  app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {
+    try {
+      const r = await createPreview({ html: String(req.body?.html ?? ''), ip: req.ip });
+      audit({ req, action: 'try.create', targetType: 'preview', targetId: r.id, details: { bytes: Buffer.byteLength(String(req.body?.html ?? ''), 'utf8') } });
+      return reply.redirect(`/try/${r.id}`);
+    } catch (e) {
+      if (!(e instanceof TryError)) throw e;
+      flash(reply, 'error', e.message);
+      return reply.redirect('/#try');
+    }
+  });
+  app.get('/try/:id', async (req, reply) => {
+    const id = String(req.params.id);
+    const row = getPreview(id);
+    if (!row) return reply.code(404).type('text/html; charset=utf-8').send(marketingLayout({ title: 'Test page', body: tryGonePage(), user: req.user, flash: readFlash(req, reply) }));
+    const sites = req.user ? listSitesForUser(req.user.id).filter((s) => s.status !== 'suspended') : [];
+    return render(req, reply, { title: 'Your test page is online', description: 'A test page on NSD.SG, live for 3 hours.', body: tryResultPage({ id, url: previewUrl(id), expiresAt: row.expires_at, user: req.user, sites, csrf: csrfTokenFor(req) }) });
+  });
+  // Signed-in users can drop a test page onto one of their sites as its home page.
+  app.post('/try/:id/claim', { preHandler: requireUser }, async (req, reply) => {
+    const id = String(req.params.id);
+    const site = getSiteForUser(String(req.body?.site_id ?? ''), req.user.id);
+    if (!site) { flash(reply, 'error', 'Pick one of your sites first.'); return reply.redirect(`/try/${id}`); }
+    const ent = entitlementsFor(req.user);
+    if (ent.expired) { flash(reply, 'error', 'Your plan has ended. Ask for more time or upgrade first.'); return reply.redirect('/billing'); }
+    try {
+      const r = await claimPreview({ id, site, user: req.user, limits: ent.limits });
+      audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'try', preview: id, version: r.version } });
+      flash(reply, 'success', `Done. Your page is now the home page of ${site.subdomain}.${config.baseDomain}.`);
+      return reply.redirect(`/sites/${site.id}`);
+    } catch (e) {
+      if (!(e instanceof TryError)) throw e;
+      flash(reply, 'error', e.message);
+      return reply.redirect(`/try/${id}`);
+    }
+  });
   app.get('/pricing', async (req, reply) => render(req, reply, { title: 'Pricing', body: pricingPage({ plans: listPlans({ publicOnly: true }) }) }));
   app.get('/faq', async (req, reply) => render(req, reply, { title: 'FAQ', body: faqPage() }));
   app.get('/roadmap', async (req, reply) => render(req, reply, { title: 'Roadmap', description: 'What NSD.SG is building next — vote and suggest.', body: roadmapPage({ items: listRoadmap({ userId: req.user?.id ?? null }), user: req.user, csrf: csrfTokenFor(req) }) }));

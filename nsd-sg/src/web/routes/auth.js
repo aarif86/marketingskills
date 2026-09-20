@@ -16,6 +16,21 @@ import { marketingLayout } from '../views/layout.js';
 import { signupPage, loginPage, forgotPage, resetPage } from '../views/auth.js';
 import { csrfTokenFor, setSessionCookie, clearSessionCookie, readFlash, flash } from '../middleware.js';
 import * as google from '../../services/google.js';
+import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
+import { entitlementsFor } from '../../services/plans.js';
+
+// Move a "try it" test page onto a brand-new site. Returns the flash sentence, or null when there was nothing to keep.
+async function keepPreview(req, user, site, preview) {
+  if (!preview) return null;
+  try {
+    const r = await claimPreview({ id: preview, site, user, limits: entitlementsFor(user).limits });
+    audit({ req, actor: user, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'try', preview, version: r.version } });
+    return ` Your test page is now live at ${site.subdomain}.${config.baseDomain}.`;
+  } catch (e) {
+    if (!(e instanceof TryError)) throw e;
+    return ` ${site.subdomain}.${config.baseDomain} is yours, but the test page could not be moved (${e.message}) Paste the code again on your site page.`;
+  }
+}
 
 function safeNext(next) {
   if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return '/dashboard';
@@ -29,7 +44,9 @@ export async function registerAuthRoutes(app) {
   app.get('/signup', async (req, reply) => {
     if (req.user) return reply.redirect('/dashboard');
     const plan = getPlan(String(req.query.plan ?? ''));
-    return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: normalizeSubdomain(req.query.name ?? ''), plan: plan?.is_public ? plan : null, values: {}, googleEnabled: google.enabled() }));
+    const preview = getPreview(String(req.query.preview ?? ''))?.id ?? '';
+    if (req.query.preview && !preview) flash(reply, 'error', 'That test page has expired. Sign up anyway and paste the code again on your site page.');
+    return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: normalizeSubdomain(req.query.name ?? ''), plan: plan?.is_public ? plan : null, values: {}, errors: [], preview, googleEnabled: google.enabled() }));
   });
 
   // ---- Continue with Google (OpenID Connect + PKCE) ----
@@ -41,7 +58,8 @@ export async function registerAuthRoutes(app) {
     if (req.user) return reply.redirect('/dashboard');
     const { state, verifier, url } = google.beginFlow();
     const name = normalizeSubdomain(req.query.name ?? '').slice(0, 40);
-    reply.setCookie(FLOW_COOKIE, google.sealFlow({ state, verifier, next: safeNext(req.query.next), name, t: Date.now() }), flowCookieOpts(600));
+    const preview = getPreview(String(req.query.preview ?? ''))?.id ?? '';
+    reply.setCookie(FLOW_COOKIE, google.sealFlow({ state, verifier, next: safeNext(req.query.next), name, preview, t: Date.now() }), flowCookieOpts(600));
     return reply.redirect(url);
   });
 
@@ -72,7 +90,7 @@ export async function registerAuthRoutes(app) {
       const r = createSite({ user, subdomain: flow.name, title: user.name ? `${user.name}'s site` : flow.name });
       if (r.ok) {
         audit({ req, actor: user, action: 'site.create', targetType: 'site', targetId: r.site.id, details: { subdomain: flow.name } });
-        siteMsg = ` ${flow.name}.${config.baseDomain} is yours — upload your files to go live.`;
+        siteMsg = await keepPreview(req, user, r.site, flow.preview) ?? ` ${flow.name}.${config.baseDomain} is yours. Paste your page or add your files to go live.`;
       }
     }
     const sessionToken = createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] ?? '' });
@@ -88,23 +106,27 @@ export async function registerAuthRoutes(app) {
     const name = String(b.name ?? '').trim().slice(0, 80);
     const password = String(b.password ?? '');
     const subdomain = normalizeSubdomain(b.subdomain ?? '');
+    const preview = getPreview(String(b.preview ?? ''))?.id ?? '';
     const errors = [];
     const e1 = validateEmail(email); if (e1) errors.push(e1);
     const e2 = validatePasswordStrength(password); if (e2) errors.push(e2);
     if (subdomain) { const e3 = subdomainUnavailableReason(subdomain); if (e3) errors.push(`Site name: ${e3}`); const t = blockedTermIn(subdomain); if (t) watchdog(req, subdomain, t); }
-    if (!b.agree) errors.push('Please accept the Terms of Service.');
+    if (preview && !subdomain) errors.push('Pick a web address so we know where to put your test page.');
+    if (!b.agree) errors.push('Please tick the box to accept the Terms of Service.');
     if (!errors.length && findUserByEmail(email)) errors.push('An account with that email already exists. Try logging in.');
     if (errors.length) {
-      return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: subdomain, plan: null, values: { email, name }, errors, googleEnabled: google.enabled() }));
+      return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: subdomain, plan: null, values: { email, name }, errors, preview, googleEnabled: google.enabled() }));
     }
     const user = await createUser({ email, password, name });
     audit({ req, actor: user, action: 'auth.signup', targetType: 'user', targetId: user.id });
     let siteMsg = '';
+    let siteId = '';
     if (subdomain) {
       const r = createSite({ user, subdomain, title: name ? `${name}'s site` : subdomain });
       if (r.ok) {
+        siteId = r.site.id;
         audit({ req, actor: user, action: 'site.create', targetType: 'site', targetId: r.site.id, details: { subdomain } });
-        siteMsg = ` ${subdomain}.${config.baseDomain} is yours — upload your files to go live.`;
+        siteMsg = await keepPreview(req, user, r.site, preview) ?? ` ${subdomain}.${config.baseDomain} is yours. Paste your page or add your files to go live.`;
       }
     }
     const token = issueToken(user.id, 'verify_email', 3 * 86400);
@@ -115,8 +137,8 @@ export async function registerAuthRoutes(app) {
     }).catch((err) => req.log.error({ err }, 'verification mail failed'));
     const sessionToken = createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] ?? '' });
     setSessionCookie(reply, sessionToken);
-    flash(reply, 'success', `Welcome to NSD.SG!${siteMsg} We have emailed you a confirmation link.`);
-    return reply.redirect('/dashboard');
+    flash(reply, 'success', `Welcome to NSD.SG!${siteMsg} We have emailed you a link to confirm your address.`);
+    return reply.redirect(siteId ? `/sites/${siteId}` : '/dashboard');
   });
 
   app.get('/login', async (req, reply) => {

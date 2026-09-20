@@ -4,37 +4,39 @@ import { config, publicUrlForSubdomain } from '../../config.js';
 const statusPill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 
 function planBanner(ent) {
-  if (ent.expired) return html`<div class="flash flash-error">Your <strong>${ent.plan.name}</strong> plan expired on ${formatDate(ent.expiresAt)}. Your sites stay online for now, but publishing is paused. <a href="/billing">Request an extension or upgrade →</a></div>`;
-  if (ent.daysLeft !== null && ent.daysLeft <= 14) return html`<div class="flash flash-warn">Your free period ends in <strong>${ent.daysLeft} day${ent.daysLeft === 1 ? '' : 's'}</strong>. <a href="/billing">Extend for free or upgrade →</a></div>`;
+  if (ent.expired) return html`<div class="flash flash-error">Your <strong>${ent.plan.name}</strong> plan ended on ${formatDate(ent.expiresAt)}. Your sites stay online for now, but you cannot change them until you <a href="/billing">ask for more time or upgrade →</a></div>`;
+  if (ent.daysLeft !== null && ent.daysLeft <= 14) return html`<div class="flash flash-warn">Your free period ends in <strong>${ent.daysLeft} day${ent.daysLeft === 1 ? '' : 's'}</strong>. <a href="/billing">Ask for more time (free) or upgrade →</a></div>`;
   return '';
 }
 
 export function sitesIndex({ sites, ent, storageUsed, user }) {
   return html`
 ${planBanner(ent)}
-${!user.email_verified_at ? html`<div class="flash flash-warn">Please confirm your email address. <a href="/account">Resend the link from your account page →</a></div>` : ''}
-<div class="page-head"><div><h1>Your sites</h1><p class="muted">${sites.length} of ${ent.limits.max_sites} · ${formatBytes(storageUsed)} of ${formatBytes(ent.limits.max_storage_bytes)} used · ${ent.plan.name} plan</p></div>
+${!user.email_verified_at ? html`<div class="flash flash-warn">Please confirm your email: we sent you a link. Did not get it? <a href="/account">Send it again from your account page →</a></div>` : ''}
+<div class="page-head"><div><h1>Your sites</h1><p class="muted">${sites.length} of ${ent.limits.max_sites} site${ent.limits.max_sites === 1 ? '' : 's'} · ${formatBytes(storageUsed)} of ${formatBytes(ent.limits.max_storage_bytes)} space used · ${ent.plan.name} plan</p></div>
 ${sites.length < ent.limits.max_sites && !ent.expired ? html`<a class="btn btn-primary" href="/sites/new">+ New site</a>` : ''}</div>
-${sites.length === 0 ? html`<div class="card empty"><h3>No sites yet</h3><p>Claim your <strong>name.${config.baseDomain}</strong> address and upload the website you generated.</p><a class="btn btn-primary" href="/sites/new">Create your first site</a></div>` : ''}
+${sites.length === 0 ? html`<div class="card empty"><h3>No sites yet</h3><p>Pick your <strong>name.${config.baseDomain}</strong> address, then paste the page your AI made.</p><a class="btn btn-primary" href="/sites/new">Pick my address</a></div>` : ''}
 <div class="site-list">${sites.map((s) => html`
 <a class="card site-row" href="/sites/${s.id}">
   <div><div class="site-name">${s.subdomain}<span class="muted">.${config.baseDomain}</span></div><div class="muted small">${s.title}</div></div>
   <div>${statusPill(s.status)}</div>
-  <div class="muted small">${s.last_deployed_at ? `Updated ${timeAgo(s.last_deployed_at)}` : 'Nothing published'}</div>
+  <div class="muted small">${s.last_deployed_at ? `Changed ${timeAgo(s.last_deployed_at)}` : 'Nothing online yet'}</div>
   <div class="muted small">${formatBytes(s.storage_bytes)}</div>
 </a>`)}</div>`.toString();
 }
 
-export function newSite({ csrf, ent, count }) {
+export function newSite({ csrf, ent, count, preview = '' }) {
   if (count >= ent.limits.max_sites) {
-    return html`<h1>New site</h1><div class="card"><p>Your ${ent.plan.name} plan allows ${ent.limits.max_sites} site${ent.limits.max_sites === 1 ? '' : 's'}.</p><a class="btn btn-primary" href="/billing">See plans</a></div>`.toString();
+    return html`<h1>New site</h1><div class="card"><p>Your ${ent.plan.name} plan allows ${ent.limits.max_sites} site${ent.limits.max_sites === 1 ? '' : 's'}, and you already have ${count}. Add more pages to a site you have, or upgrade for more sites.</p><a class="btn btn-primary" href="/billing">See plans</a></div>`.toString();
   }
-  return html`<h1>New site</h1>
+  return html`<h1>${preview ? 'Pick an address for your test page' : 'New site'}</h1>
+${preview ? html`<p class="muted">Your test page moves here as the home page the moment you press the button.</p>` : ''}
 <form method="post" action="/sites" class="form card">
   <input type="hidden" name="_csrf" value="${csrf}">
-  <label>Site address <div class="domain-input"><input name="subdomain" required maxlength="40" placeholder="yourname" autocomplete="off" spellcheck="false" data-availability autofocus><span>.${config.baseDomain}</span></div><small data-availability-msg>3–40 characters: letters, numbers, hyphens.</small></label>
-  <label>Title <span class="muted">(only shown in your dashboard)</span><input name="title" maxlength="100" placeholder="My portfolio"></label>
-  <button class="btn btn-primary" type="submit">Create site</button>
+  ${preview ? html`<input type="hidden" name="preview" value="${preview}">` : ''}
+  <label>Web address <div class="domain-input"><input name="subdomain" required maxlength="40" placeholder="yourname" autocomplete="off" spellcheck="false" data-availability autofocus><span>.${config.baseDomain}</span></div><small data-availability-msg>3 to 40 letters, numbers or hyphens. This is the link you will send people.</small></label>
+  <label>Name for your own reference <span class="muted">(only you see it)</span><input name="title" maxlength="100" placeholder="e.g. Ramadan quiz, Client proposal"></label>
+  <button class="btn btn-primary" type="submit">${preview ? 'Create site and keep my page' : 'Create site'}</button>
 </form>`.toString();
 }
 
@@ -46,86 +48,86 @@ ${planBanner(ent)}
 <div class="page-head">
   <div><p class="crumb"><a href="/dashboard">Sites</a> / ${site.subdomain}</p>
   <h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${statusPill(site.status)}</h1>
-  <p class="muted">${site.title} · ${files.length} files · ${formatBytes(site.storage_bytes)} · ${site.last_deployed_at ? `updated ${timeAgo(site.last_deployed_at)}` : 'nothing published yet'}</p></div>
+  <p class="muted">${site.title} · ${files.length} file${files.length === 1 ? '' : 's'} · ${formatBytes(site.storage_bytes)} · ${site.last_deployed_at ? `changed ${timeAgo(site.last_deployed_at)}` : 'nothing online yet'}</p></div>
   <div class="actions">${site.status === 'live' ? html`<a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open site ↗</a>` : ''}<a class="btn btn-ghost" href="/sites/${site.id}/settings">Settings</a></div>
 </div>
-${site.status === 'suspended' ? html`<div class="flash flash-error"><strong>This site is suspended.</strong> ${site.suspended_reason || 'Contact support for details.'}</div>` : ''}
-${site.status !== 'suspended' ? html`<section class="card steps-card"><h2>${site.current_release_id ? 'Your site is live' : 'Three steps to go live'}</h2>
+${site.status === 'suspended' ? html`<div class="flash flash-error"><strong>This site has been switched off by NSD.SG.</strong> ${site.suspended_reason || 'Email us to find out why.'}</div>` : ''}
+${site.status !== 'suspended' ? html`<section class="card steps-card"><h2>${site.current_release_id ? 'Your site is online' : 'Three steps to get online'}</h2>
 <ol class="steps">
-  <li class="done"><strong>Claim your address</strong><span class="muted">${site.subdomain}.${config.baseDomain} is yours.</span></li>
-  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Publish your page</strong><span class="muted">Paste the HTML from Claude or ChatGPT below, or drop files or a ZIP. Every publish is a new version you can roll back to.</span></li>
-  <li class="${site.current_release_id ? 'now' : ''}"><strong>Open and share it</strong><span class="muted">${site.current_release_id ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : 'The Open button appears here once something is published.'}</span></li>
+  <li class="done"><strong>Pick your address</strong><span class="muted">${site.subdomain}.${config.baseDomain} is yours.</span></li>
+  <li class="${site.current_release_id ? 'done' : 'now'}"><strong>Put your page on it</strong><span class="muted">Paste the code from Claude, ChatGPT or Gemini below. Or drop in files if you have them. Every change is kept, so you can always go back.</span></li>
+  <li class="${site.current_release_id ? 'now' : ''}"><strong>Open it and send the link</strong><span class="muted">${site.current_release_id ? html`<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener">Open ${site.subdomain}.${config.baseDomain} ↗</a>` : 'The Open button appears here once your page is on.'}</span></li>
 </ol>
-${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class="notice"><strong>New address:</strong> the security certificate for <code>${site.subdomain}.${config.baseDomain}</code> can take 5–15 minutes to be issued. If your browser shows a connection or SSL error, wait a little and refresh — nothing is wrong.</p>` : ''}
+${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class="notice"><strong>New address:</strong> the padlock (secure connection) for <code>${site.subdomain}.${config.baseDomain}</code> can take 5 to 15 minutes to switch on. If your browser shows a warning or “cannot connect” at first, wait a little and try again. Nothing is wrong.</p>` : ''}
 </section>` : ''}
 
 <section class="card upload-card" id="upload">
-  <h2>${site.current_release_id ? 'Publish a new version' : 'Publish your site'}</h2>
-  <p class="muted">Paste HTML below, or drop a <strong>ZIP</strong> of a whole website (replaces everything), or individual files and folders (added to the current version). Max ${formatBytes(ent.limits.max_file_bytes)} per file, ${formatBytes(ent.limits.max_storage_bytes)} per site.</p>
+  <h2>${site.current_release_id ? 'Change your page' : 'Put your page online'}</h2>
+  <p class="muted">Easiest: paste the code in the box below. Have files instead? Drop them here. A ZIP replaces the whole site; loose files and folders are added to what is already there. Up to ${formatBytes(ent.limits.max_file_bytes)} per file and ${formatBytes(ent.limits.max_storage_bytes)} per site.</p>
   <form method="post" action="/sites/${site.id}/upload" enctype="multipart/form-data" class="dropzone" data-dropzone ${ent.expired || site.status === 'suspended' ? 'data-disabled' : ''}>
     <input type="hidden" name="_csrf" value="${csrf}">
     <input type="hidden" name="mode" value="merge" data-mode>
     <div class="dz-inner">
-      <p class="dz-title">Drag &amp; drop your ZIP or files here</p>
+      <p class="dz-title">Drop your files or ZIP here</p>
       <p class="muted">or</p>
       <div class="dz-buttons">
         <label class="btn btn-primary">Choose ZIP<input type="file" name="files" accept=".zip,application/zip" hidden data-pick="zip"></label>
         <label class="btn btn-ghost">Choose files<input type="file" name="files" multiple hidden data-pick="files"></label>
         <label class="btn btn-ghost">Choose folder<input type="file" name="files" webkitdirectory multiple hidden data-pick="folder"></label>
       </div>
-      <p class="muted small">Your site needs an <code>index.html</code> at the top level. HTML, CSS, JS, images, fonts, video and PDF are accepted; scripts that run on a server (PHP etc.) are not.</p>
+      <p class="muted small">Your home page must be a file called <code>index.html</code>. Web pages, pictures, fonts, video and PDF are fine. Programs that run on a server are not.</p>
     </div>
     <div class="dz-progress" hidden><div class="bar"><span></span></div><p class="dz-status">Uploading…</p></div>
     <noscript><button class="btn btn-primary" type="submit">Upload</button></noscript>
   </form>
   <details class="paste-box" ${!site.current_release_id ? 'open' : ''}>
-    <summary><strong>Or paste HTML straight from Claude or ChatGPT</strong> <span class="muted">— no download, no upload</span></summary>
+    <summary><strong>Paste the code from Claude, ChatGPT or Gemini</strong> <span class="muted">· the easy way, nothing to download</span></summary>
     <form method="post" action="/sites/${site.id}/paste" class="form">
       <input type="hidden" name="_csrf" value="${csrf}">
-      <label>Page <span class="muted">(leave blank for the home page)</span>
+      <label>Which page? <span class="muted">(leave empty for your home page)</span>
         <div class="domain-input page-input"><span>${site.subdomain}.${config.baseDomain}/</span><input name="page" placeholder="proposal" maxlength="60" pattern="[A-Za-z0-9-]*" autocomplete="off"></div>
-        <small>Blank publishes as your home page. A name like <code>proposal</code> becomes <code>${site.subdomain}.${config.baseDomain}/proposal</code>.</small></label>
-      <label>HTML <textarea name="html" rows="8" placeholder="&lt;!doctype html&gt; … paste the whole file … &lt;/html&gt;" required spellcheck="false" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}></textarea>
-        <small>In Claude: open the artifact → ⋯ → Copy code. In ChatGPT: the copy button on the code block. Pasting replaces that one page and keeps everything else.</small></label>
-      <button class="btn btn-primary" type="submit" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}>Publish this page</button>
+        <small>Empty means your home page, ${site.subdomain}.${config.baseDomain}. Type a word like <code>proposal</code> and the page gets its own link: <code>${site.subdomain}.${config.baseDomain}/proposal</code>.</small></label>
+      <label>The code <textarea name="html" rows="8" placeholder="It usually starts with <!doctype html> or <html>. Paste all of it." required spellcheck="false" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}></textarea>
+        <small>In Claude: open the page it made, press ⋯, then “Copy code”. In ChatGPT or Gemini: the copy button at the top of the code box. Pasting replaces that one page and keeps the rest of your site.</small></label>
+      <button class="btn btn-primary" type="submit" ${ent.expired || site.status === 'suspended' ? 'disabled' : ''}>Put this page online</button>
     </form>
   </details>
 </section>
 
 <div class="grid two">
 <section class="card">
-  <h2>Files <span class="muted small">(current version)</span></h2>
-  ${files.length === 0 ? html`<p class="muted">No files yet.</p>` : html`
+  <h2>Files <span class="muted small">(what is online now)</span></h2>
+  ${files.length === 0 ? html`<p class="muted">Nothing yet. Paste your page above.</p>` : html`
   <div class="file-list">${files.map((f) => html`
     <div class="file-row">
       <a href="/sites/${site.id}/files/view?path=${encodeURIComponent(f.path)}" target="_blank" rel="noopener" title="View file" class="file-path">${f.path}</a>
       <span class="muted small">${formatBytes(f.size)}</span>
-      <form method="post" action="/sites/${site.id}/files/delete" class="inline" data-confirm="Delete ${f.path}? A new version without it will be published.">
+      <form method="post" action="/sites/${site.id}/files/delete" class="inline" data-confirm="Remove ${f.path} from your site? You can restore the older copy later.">
         <input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="path" value="${f.path}">
         <button class="btn btn-tiny btn-danger" type="submit" aria-label="Delete ${f.path}">✕</button></form>
     </div>`)}</div>`}
-  ${!files.some((f) => f.path === 'index.html') && files.length ? html`<p class="flash flash-warn">There is no <code>index.html</code> at the top level, so visitors will see “page not found” at the root.</p>` : ''}
+  ${!files.some((f) => f.path === 'index.html') && files.length ? html`<p class="flash flash-warn">There is no home page yet (a file called <code>index.html</code>), so visitors to ${site.subdomain}.${config.baseDomain} see “page not found”. Paste your page with the “Which page?” box left empty.</p>` : ''}
 </section>
 
 <section class="card">
-  <h2>Versions</h2>
-  ${releases.length === 0 ? html`<p class="muted">Every publish is kept here so you can roll back.</p>` : html`
+  <h2>Older copies</h2>
+  ${releases.length === 0 ? html`<p class="muted">Every change is kept here, so you can always go back.</p>` : html`
   <div class="release-list">${releases.map((r) => html`
     <div class="release-row ${r.id === site.current_release_id ? 'current' : ''}">
       <div><strong>v${r.version}</strong> <span class="muted small">${r.source}</span>${r.id === site.current_release_id ? html` <span class="pill pill-live">live</span>` : ''}
         <div class="muted small">${r.note} · ${r.file_count} files · ${formatBytes(r.size_bytes)} · ${formatDate(r.created_at)}</div></div>
-      ${r.id !== site.current_release_id ? html`<form method="post" action="/sites/${site.id}/rollback" class="inline" data-confirm="Make version ${r.version} live again?"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="release_id" value="${r.id}"><button class="btn btn-tiny" type="submit">Restore</button></form>` : ''}
+      ${r.id !== site.current_release_id ? html`<form method="post" action="/sites/${site.id}/rollback" class="inline" data-confirm="Put copy ${r.version} back online?"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="release_id" value="${r.id}"><button class="btn btn-tiny" type="submit">Go back to this</button></form>` : ''}
     </div>`)}</div>
-  <p class="muted small">Your plan keeps the last ${ent.limits.max_releases} versions.</p>`}
+  <p class="muted small">Your plan keeps the last ${ent.limits.max_releases} copies.</p>`}
 </section>
 </div>
 
 <div class="grid two">
-<section class="card"><h2>Traffic (30 days)</h2><p><strong>${reqs.toLocaleString()}</strong> requests · <strong>${formatBytes(monthBytes)}</strong> served this month of ${formatBytes(ent.limits.max_bandwidth_bytes_month)}</p>
+<section class="card"><h2>Visits (last 30 days)</h2><p><strong>${reqs.toLocaleString()}</strong> page and file loads · <strong>${formatBytes(monthBytes)}</strong> sent this month of ${formatBytes(ent.limits.max_bandwidth_bytes_month)} allowed</p>
   ${traffic.length ? html`<div class="spark">${traffic.map((t) => html`<i style="height:${Math.max(4, Math.min(100, (t.requests / Math.max(1, Math.max(...traffic.map((x) => x.requests)))) * 100))}%" title="${t.day}: ${t.requests} requests"></i>`)}</div>` : html`<p class="muted small">No visits recorded yet.</p>`}
 </section>
 <section class="card"><h2>Branding</h2>
-  ${brandingOn ? html`<p>This site shows the <strong>“${config.branding.text}”</strong> badge. It is added when pages are served, so editing your HTML will not remove it.</p><a class="btn btn-ghost" href="/billing">Remove it with Plus →</a>` : html`<p>No badge is shown on this site.</p>`}
+  ${brandingOn ? html`<p>This site shows a small <strong>“${config.branding.text}”</strong> badge in the corner. It is added when the page is shown, so changing your code will not remove it.</p><a class="btn btn-ghost" href="/billing">Remove it with Plus →</a>` : html`<p>No badge is shown on this site.</p>`}
 </section>
 </div>`.toString();
 }
@@ -135,16 +137,16 @@ export function siteSettings({ site, csrf, ent }) {
 <h1>Settings</h1>
 <form method="post" action="/sites/${site.id}/settings" class="form card">
   <input type="hidden" name="_csrf" value="${csrf}">
-  <label>Address <div class="domain-input"><input value="${site.subdomain}" disabled><span>.${config.baseDomain}</span></div><small>Addresses cannot be renamed. Create a new site for a different name.</small></label>
-  <label>Title <input name="title" value="${site.title}" maxlength="100"></label>
-  <label class="check"><input type="checkbox" name="allow_framing" value="1" ${site.allow_framing ? 'checked' : ''}> Allow other websites to embed this site in an iframe <small>(off by default to prevent click-jacking)</small></label>
+  <label>Web address <div class="domain-input"><input value="${site.subdomain}" disabled><span>.${config.baseDomain}</span></div><small>An address cannot be renamed. Make a new site if you want a different name.</small></label>
+  <label>Name for your own reference <input name="title" value="${site.title}" maxlength="100"></label>
+  <label class="check"><input type="checkbox" name="allow_framing" value="1" ${site.allow_framing ? 'checked' : ''}> Let other websites show this site inside their own page <small>(off unless you need it; keeping it off protects your visitors)</small></label>
   ${(ent.features.hide_from_showcase ?? ent.features.branding_removable) ? html`<label class="check"><input type="checkbox" name="listed" value="1" ${site.listed ? 'checked' : ''}> List this site on the public <a href="/showcase">showcase</a> <small>(untick to keep it off the list)</small></label>` : html`<p class="muted small">Live sites on the free plan appear on the public <a href="/showcase">showcase</a>. Plus lets you hide yours.</p>`}
   <button class="btn btn-primary" type="submit">Save</button>
 </form>
 ${ent.features.custom_domains ? html`<div class="card"><h2>Custom domain</h2><p class="muted">Bring your own domain (an add-on — the domain itself is bought separately from any registrar, ~S$20–60/yr for .sg). Connecting it is done by hand for now — email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a> and we will set it up for you today.</p></div>` : ''}
 <div class="card danger">
   <h2>Delete this site</h2>
-  <p class="muted">Removes all files and versions. The address becomes available to anyone.</p>
+  <p class="muted">Removes every file and every older copy. Anyone can then take the address.</p>
   <form method="post" action="/sites/${site.id}/delete" class="form-inline">
     <input type="hidden" name="_csrf" value="${csrf}">
     <input name="confirm" placeholder="type ${site.subdomain} to confirm" required autocomplete="off">

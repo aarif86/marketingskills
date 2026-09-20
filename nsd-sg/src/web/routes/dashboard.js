@@ -22,6 +22,7 @@ import {
 import { appLayout } from '../views/layout.js';
 import * as V from '../views/dashboard.js';
 import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCookie } from '../middleware.js';
+import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
 
 const TEXT_PREVIEW = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'txt', 'md', 'xml', 'svg', 'webmanifest', 'csv', 'vtt', 'map']);
 
@@ -43,7 +44,7 @@ export async function registerDashboardRoutes(app) {
 
   app.get('/sites/new', { preHandler: requireUser }, async (req, reply) => {
     const ent = entitlementsFor(req.user);
-    return render(req, reply, { title: 'New site', active: 'sites', body: V.newSite({ csrf: csrfTokenFor(req), ent, count: listSitesForUser(req.user.id).length }) });
+    return render(req, reply, { title: 'New site', active: 'sites', body: V.newSite({ csrf: csrfTokenFor(req), ent, count: listSitesForUser(req.user.id).length, preview: getPreview(String(req.query.preview ?? ''))?.id ?? '' }) });
   });
 
   app.post('/sites', { preHandler: [requireUser, limiter('siteCreate', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
@@ -51,7 +52,20 @@ export async function registerDashboardRoutes(app) {
     { const t = blockedTermIn(String(req.body?.subdomain ?? '').toLowerCase()); if (t) watchdog(req, req.body?.subdomain, t); }
     if (!r.ok) { flash(reply, 'error', r.reason); return reply.redirect('/sites/new'); }
     audit({ req, action: 'site.create', targetType: 'site', targetId: r.site.id, details: { subdomain: r.site.subdomain } });
-    flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours. Upload your files to go live.`);
+    const preview = getPreview(String(req.body?.preview ?? ''))?.id ?? '';
+    if (preview) {
+      try {
+        const k = await claimPreview({ id: preview, site: r.site, user: req.user, limits: entitlementsFor(req.user).limits });
+        audit({ req, action: 'site.deploy', targetType: 'site', targetId: r.site.id, details: { source: 'try', preview, version: k.version } });
+        flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours, and your test page is live on it.`);
+        return reply.redirect(`/sites/${r.site.id}`);
+      } catch (e) {
+        if (!(e instanceof TryError)) throw e;
+        flash(reply, 'warn', `${r.site.subdomain}.${config.baseDomain} is yours, but the test page could not be moved: ${e.message}`);
+        return reply.redirect(`/sites/${r.site.id}`);
+      }
+    }
+    flash(reply, 'success', `${r.site.subdomain}.${config.baseDomain} is yours. Paste your page or add your files to go live.`);
     return reply.redirect(`/sites/${r.site.id}`);
   });
 

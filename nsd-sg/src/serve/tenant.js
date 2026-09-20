@@ -15,6 +15,8 @@ import { entitlementsFor } from '../services/plans.js';
 import { releaseDir, resolveWithin } from '../storage/releases.js';
 import { injectBranding } from './branding.js';
 import { esc } from '../lib/html.js';
+import { TRY_LABEL } from '../publish/hostinger.js';
+import { getPreview, readPreviewHtml, renderPreview, PAGES as TRY_PAGES } from '../services/tryit.js';
 
 const MAX_HTML_INJECT_BYTES = 5 * 1024 * 1024;
 
@@ -40,11 +42,11 @@ main{max-width:520px;padding:2.5rem;text-align:center}h1{font-size:1.5rem;margin
 }
 
 const PAGES = {
-  notFoundSite: (label) => page('Site not found', `<h1>There is no site here yet.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> is not taken. Want it? <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/signup?name=${encodeURIComponent(label)}">Create it on NSD.SG</a>.</p>`),
-  empty: (label) => page('Coming soon', `<h1>Coming soon.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> has been claimed but nothing is published yet.</p>`),
-  suspended: () => page('Site unavailable', `<h1>This site is unavailable.</h1><p>It has been suspended by the platform. If you are the owner, sign in to NSD.SG for details.</p>`),
-  notFoundFile: () => page('Page not found', `<h1>Page not found.</h1><p>The file you asked for does not exist on this site.</p>`),
-  methodNotAllowed: () => page('Not allowed', `<h1>Method not allowed.</h1><p>Sites on NSD.SG are static: only GET and HEAD are supported.</p>`),
+  notFoundSite: (label) => page('Site not found', `<h1>There is no site here yet.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> is not taken. Want it? <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/signup?name=${encodeURIComponent(label)}">Make it yours on NSD.SG</a>. It is free.</p>`),
+  empty: (label) => page('Coming soon', `<h1>Coming soon.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> belongs to someone, but there is no page on it yet.</p>`),
+  suspended: () => page('Site unavailable', `<h1>This site is unavailable.</h1><p>NSD.SG has switched it off. If it is yours, log in to NSD.SG to see why.</p>`),
+  notFoundFile: () => page('Page not found', `<h1>Page not found.</h1><p>There is no page with that name on this site. Check the link and try again.</p>`),
+  methodNotAllowed: () => page('Not allowed', `<h1>Not allowed.</h1><p>Sites on NSD.SG only show pages; they cannot receive forms or data.</p>`),
 };
 
 function sendPage(reply, status, html) {
@@ -81,6 +83,8 @@ export async function serveTenant(req, reply, label) {
 
   const rl = hit(`tenant:${req.ip}`, LIMITS.tenantGeneral.limit, LIMITS.tenantGeneral.windowMs);
   if (!rl.ok) return reply.code(429).header('Retry-After', String(rl.retryAfterSec)).send('Too many requests');
+
+  if (label === TRY_LABEL) return serveTryPreview(req, reply);
 
   const site = getSiteForServing(label);
   securityHeaders(reply, { allowFraming: !!site?.allow_framing });
@@ -128,6 +132,23 @@ export async function serveTenant(req, reply, label) {
   recordTraffic(site.id, st.size);
   if (req.method === 'HEAD') return reply.send();
   return reply.send(fs.createReadStream(abs));
+}
+
+// try.<baseDomain>/<id>/ — anonymous 3-hour previews (VPS / local; on Hostinger LiteSpeed serves the same files).
+function serveTryPreview(req, reply) {
+  securityHeaders(reply, { allowFraming: false });
+  reply.header('X-Robots-Tag', 'noindex, nofollow');
+  const parsed = requestPath(req.raw.url ?? '/');
+  if (!parsed || parsed.parts.length === 0) return sendPage(reply, 200, TRY_PAGES.root());
+  const [id, ...rest] = parsed.parts;
+  if (rest.length > 1 || (rest.length === 1 && rest[0] !== 'index.html')) return sendPage(reply, 404, TRY_PAGES.gone());
+  const row = getPreview(id);
+  const html = row ? readPreviewHtml(id) : null;
+  if (!row || html === null) return sendPage(reply, 404, TRY_PAGES.gone());
+  if (rest.length === 0 && !parsed.trailingSlash) return reply.code(301).header('Cache-Control', 'no-store').redirect(`/${id}/`);
+  const body = renderPreview(html, { id, expiresAt: row.expires_at });
+  reply.header('Content-Type', 'text/html; charset=utf-8').header('Content-Length', String(body.length)).header('Cache-Control', 'no-store').code(200);
+  return req.method === 'HEAD' ? reply.send() : reply.send(body);
 }
 
 function brandingRemovedFor(site) {

@@ -7,6 +7,7 @@ import { pruneReleases, cleanTemp } from './storage/releases.js';
 import { config } from './config.js';
 import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisionSubdomain } from './publish/hostinger.js';
 import { expireStalePending } from './services/hitpay.js';
+import { expirePreviews, ensureTryHost } from './services/tryit.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -67,6 +68,9 @@ async function main() {
     case 'sync-all': {
       if (!hostingEnabled()) throw new Error('TENANT_ROOT is not set; nothing to sync');
       console.log(await syncAll());
+      try { await ensureTryHost(); } catch (e) { console.log(`try host: ${e.message}`); }
+      const gone = expirePreviews();
+      if (gone) console.log(`Removed ${gone} expired test page(s)`);
       const timedOut = expireStalePending();
       if (timedOut) console.log(`Timed out ${timedOut} unpaid HitPay checkout(s)`);
       const orphans = listOrphanDirs();

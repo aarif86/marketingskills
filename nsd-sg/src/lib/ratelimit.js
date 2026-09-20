@@ -44,6 +44,7 @@ export const LIMITS = {
   siteCreate: { limit: 10, windowMs: 60 * 60_000 },
   abuseReport: { limit: 5, windowMs: 60 * 60_000 },
   suggest: { limit: 10, windowMs: 60 * 60_000 },
+  tryIt: { limit: 5, windowMs: 60 * 60_000 },
   platformGeneral: { limit: 600, windowMs: 60_000 },
   tenantGeneral: { limit: 1200, windowMs: 60_000 },
 };

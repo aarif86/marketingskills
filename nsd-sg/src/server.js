@@ -16,6 +16,7 @@ import { ensureBootstrapAdmin, purgeExpiredSessions } from './services/users.js'
 import { flushTraffic } from './services/sites.js';
 import { ensureStorageDirs, cleanTemp } from './storage/releases.js';
 import { hit, LIMITS } from './lib/ratelimit.js';
+import { expirePreviews } from './services/tryit.js';
 import { contentTypeFor } from './lib/mime.js';
 import { registerMarketingRoutes } from './web/routes/marketing.js';
 import { registerAuthRoutes } from './web/routes/auth.js';
@@ -30,7 +31,7 @@ export async function buildApp({ logger = true } = {}) {
   const app = Fastify({
     logger: logger ? { level: config.isProd ? 'info' : 'debug' } : false,
     trustProxy: config.trustProxy || false,
-    bodyLimit: 1024 * 1024, // non-multipart bodies (forms/json)
+    bodyLimit: 4 * 1024 * 1024, // non-multipart bodies (forms/json); pasted HTML is form-encoded, which grows it ~3x
     disableRequestLogging: config.isProd,
     routerOptions: { ignoreTrailingSlash: false },
   });
@@ -41,7 +42,7 @@ export async function buildApp({ logger = true } = {}) {
     try { done(null, body ? JSON.parse(body) : {}); } catch (e) { e.statusCode = 400; done(e); }
   });
   await app.register(cookie, { secret: config.sessionSecret });
-  await app.register(formbody, { bodyLimit: 256 * 1024 });
+  await app.register(formbody, { bodyLimit: 4 * 1024 * 1024 });
   await app.register(multipart, {
     preservePath: true, // folder uploads send "dir/file.ext" as the filename
     limits: {
@@ -124,7 +125,8 @@ export async function buildApp({ logger = true } = {}) {
     try {
       const n = purgeExpiredSessions();
       const t = cleanTemp();
-      if (n || t) app.log.info({ sessions: n, temp: t }, 'maintenance');
+      const p = expirePreviews();
+      if (n || t || p) app.log.info({ sessions: n, temp: t, previews: p }, 'maintenance');
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());
   app.addHook('onClose', async () => {
