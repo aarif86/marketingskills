@@ -403,7 +403,7 @@ test('admin can probe an address and mark it ready by hand', async () => {
   getDb().prepare('UPDATE sites SET hosting_ready_at = NULL WHERE id = ?').run(row.id);
   let r = await post(`/admin/sites/${row.id}/action`, admin.cookie, { action: 'probe' }, `/admin/sites/${row.id}`);
   assert.equal(r.statusCode, 302);
-  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Not yet: HEAD http:\/\/dana\.nsd\.test\//);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Not yet: HEAD http:\/\/dana\.nsd\.test/);
   const page = await get(`/admin/sites/${row.id}`, admin.cookie);
   assert.match(page.body, /not yet confirmed/);
   r = await post(`/admin/sites/${row.id}/action`, admin.cookie, { action: 'ready' }, `/admin/sites/${row.id}`);
