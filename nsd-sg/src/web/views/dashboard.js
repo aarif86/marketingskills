@@ -49,7 +49,7 @@ export function siteDetail({ site, ent, files, releases, traffic, monthBytes, cs
 ${planBanner(ent)}
 <div class="page-head">
   <div><p class="crumb"><a href="/dashboard">Sites</a> / ${site.subdomain}</p>
-  <h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${statusPill(site.status)}</h1>
+  <h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${site.status === 'live' && !isReady ? html`<span class="pill pill-empty">setting up</span>` : statusPill(site.status)}</h1>
   <p class="muted">${site.title} · ${files.length} file${files.length === 1 ? '' : 's'} · ${formatBytes(site.storage_bytes)} · ${site.last_deployed_at ? `changed ${timeAgo(site.last_deployed_at)}` : 'nothing online yet'}</p></div>
   <div class="actions">${site.status === 'live' ? (isReady ? html`<a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open site ↗</a>` : html`<span class="btn btn-ghost is-wait" title="Your address is still being set up">Setting up…</span>`) : ''}<a class="btn btn-ghost" href="/sites/${site.id}/settings">Settings</a></div>
 </div>
