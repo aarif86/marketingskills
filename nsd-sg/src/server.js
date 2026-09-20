@@ -26,6 +26,7 @@ import { registerAuthRoutes } from './web/routes/auth.js';
 import { registerDashboardRoutes } from './web/routes/dashboard.js';
 import { registerAdminRoutes } from './web/routes/admin.js';
 import { registerSystemRoutes } from './web/routes/system.js';
+import { registerMcpRoutes } from './mcp/server.js';
 
 export async function buildApp({ logger = true } = {}) {
   getDb();
@@ -40,7 +41,7 @@ export async function buildApp({ logger = true } = {}) {
   });
 
   // Keep the raw JSON body around: webhook signatures (HitPay) are computed over the exact bytes.
-  app.addContentTypeParser('application/json', { parseAs: 'string', bodyLimit: 256 * 1024 }, (req, body, done) => {
+  app.addContentTypeParser('application/json', { parseAs: 'string', bodyLimit: 12 * 1024 * 1024 }, (req, body, done) => {
     req.rawBody = body;
     try { done(null, body ? JSON.parse(body) : {}); } catch (e) { e.statusCode = 400; done(e); }
   });
@@ -104,6 +105,7 @@ export async function buildApp({ logger = true } = {}) {
   await registerDashboardRoutes(app);
   await registerAdminRoutes(app);
   await registerSystemRoutes(app);
+  await registerMcpRoutes(app);
 
   app.setNotFoundHandler((req, reply) => {
     if (req.isTenant) return reply; // already handled

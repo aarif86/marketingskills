@@ -24,6 +24,7 @@ import * as V from '../views/dashboard.js';
 import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCookie } from '../middleware.js';
 import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
 import { listDomainsForSite, getDomainForSite, addDomain, removeDomain, checkDomain, instructionsFor } from '../../services/domains.js';
+import { listTokens, createToken, revokeToken } from '../../services/tokens.js';
 
 const liveWord = (site) => (knownReady(site) ? 'is online' : 'is saved and will be online as soon as your address is ready (see below)');
 
@@ -285,6 +286,27 @@ export async function registerDashboardRoutes(app) {
     audit({ req, action: 'site.delete', targetType: 'site', targetId: site.id, details: { subdomain: site.subdomain }, severity: 'warn' });
     flash(reply, 'success', `${site.subdomain}.${config.baseDomain} has been deleted.`);
     return reply.redirect('/dashboard');
+  });
+
+  // ---- Connect to Claude (API tokens for the MCP endpoint) ----
+  app.get('/connect', { preHandler: requireUser }, async (req, reply) => {
+    const fresh = req.cookies?.nsd_newtoken ? JSON.parse(Buffer.from(req.cookies.nsd_newtoken, 'base64url').toString('utf8')) : null;
+    if (fresh) reply.clearCookie('nsd_newtoken', { path: '/connect' });
+    return render(req, reply, { title: 'Connect to Claude', active: 'connect', body: V.connectPage({ tokens: listTokens(req.user.id), fresh, csrf: csrfTokenFor(req), sites: listSitesForUser(req.user.id) }) });
+  });
+  app.post('/connect/tokens', { preHandler: [requireUser, limiter('siteCreate', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
+    const r = createToken({ userId: req.user.id, name: req.body?.name });
+    if (!r.ok) { flash(reply, 'error', r.reason); return reply.redirect('/connect'); }
+    audit({ req, action: 'token.create', targetType: 'token', targetId: r.id, details: { name: String(req.body?.name ?? '').slice(0, 60) } });
+    // Shown exactly once on the next page load, then gone.
+    reply.setCookie('nsd_newtoken', Buffer.from(JSON.stringify({ id: r.id, token: r.token }), 'utf8').toString('base64url'), { path: '/connect', httpOnly: true, sameSite: 'Lax', secure: config.isProd, maxAge: 120 });
+    return reply.redirect('/connect');
+  });
+  app.post('/connect/tokens/:id/revoke', { preHandler: requireUser }, async (req, reply) => {
+    const ok = revokeToken(String(req.params.id), req.user.id);
+    if (ok) audit({ req, action: 'token.revoke', targetType: 'token', targetId: String(req.params.id), severity: 'warn' });
+    flash(reply, ok ? 'success' : 'error', ok ? 'Token revoked. Claude can no longer publish with it.' : 'No such token.');
+    return reply.redirect('/connect');
   });
 
   // ---- account ----

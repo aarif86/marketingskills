@@ -5,7 +5,8 @@ const statusPill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 
 function planBanner(ent) {
   if (ent.expired) return html`<div class="flash flash-error">Your <strong>${ent.plan.name}</strong> plan ended on ${formatDate(ent.expiresAt)}. Your sites stay online for now, but you cannot change them until you <a href="/billing">ask for more time or upgrade →</a></div>`;
-  if (ent.daysLeft !== null && ent.daysLeft <= 14) return html`<div class="flash flash-warn">Your free period ends in <strong>${ent.daysLeft} day${ent.daysLeft === 1 ? '' : 's'}</strong>. <a href="/billing">Ask for more time (free) or upgrade →</a></div>`;
+  if (ent.daysLeft !== null && ent.daysLeft <= 1) return html`<div class="flash flash-error">Your free period ends <strong>${ent.daysLeft === 0 ? 'today' : 'tomorrow'}</strong>. Your site stays online, but after that you cannot change it until you <a href="/billing">ask for more time (free) or upgrade →</a></div>`;
+  if (ent.daysLeft !== null && ent.daysLeft <= 7) return html`<div class="flash flash-warn">Your free period ends in <strong>${ent.daysLeft} days</strong>. <a href="/billing">Ask for more time (free) or upgrade →</a></div>`;
   return '';
 }
 
@@ -242,7 +243,7 @@ ${planBanner(ent)}
   </ul>
   ${ent.plan.trial_days && pendingExtension ? html`<div class="flash flash-info ext-pending"><strong>Free extension submitted</strong> on ${formatDate(pendingExtension.created_at)}. We review requests within 3–5 working days and confirm by email. Check back here — the expiry date above updates when it is approved.</div>` : ''}
   ${ent.plan.trial_days && !pendingExtension ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
-    <h3>Need more time?</h3><p class="muted small">Ask for another ${Math.round(ent.plan.trial_days / 30)} months free. Tell us why — we say yes to most real projects.</p>
+    <h3>Need more time?</h3><p class="muted small">Ask for another ${ent.plan.trial_days >= 60 ? `${Math.round(ent.plan.trial_days / 30)} months` : `${ent.plan.trial_days} days`} free. Tell us why — we say yes to most real projects.</p>
     <label>Reason <select name="reason" required><option value="">Choose one…</option>
       <option>Still building my site</option><option>Showing it to clients or an employer</option><option>Student or learning project</option>
       <option>Community, mosque or non-profit site</option><option>Waiting for budget approval to upgrade</option><option>Something else</option></select></label>
@@ -269,3 +270,46 @@ ${planBanner(ent)}
 }
 
 export { publicUrlForSubdomain };
+
+export function connectPage({ tokens, fresh, csrf, sites }) {
+  const base = `${config.publicScheme}://${config.platformHosts[0]}`;
+  const live = tokens.filter((t) => !t.revoked_at);
+  const example = sites[0]?.subdomain ?? 'my-site';
+  return html`<h1>Connect to Claude</h1>
+<p class="section-lead">Let Claude put pages online for you. You add NSD.SG to Claude once; after that you can say “publish this as ${example}” and get a live link back. No files to download, nothing to upload.</p>
+${fresh ? html`<div class="card token-fresh"><h2>Your new token</h2>
+  <p>This is the only time it is shown. Copy it now.</p>
+  <p class="token"><code>${fresh.token}</code></p>
+  <h3>Your connection address</h3>
+  <p class="token"><code>${base}/mcp/${fresh.token}</code></p>
+  <p class="muted small">The address contains the token, so treat it like a password: paste it into Claude, do not post it anywhere. If it ever leaks, revoke it below and make a new one.</p>
+</div>` : ''}
+<div class="grid two">
+<div class="card"><h2>1. Make a token</h2>
+  <p class="muted">One per app you connect, so you can switch one off without touching the others.</p>
+  <form method="post" action="/connect/tokens" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="name" placeholder="e.g. Claude Desktop" maxlength="60"><button class="btn btn-primary" type="submit">Make a token</button></form>
+  ${live.length ? html`<table class="table small mt"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${live.map((t) => html`<tr><td>${t.name}</td><td class="muted">${formatDate(t.created_at)}</td><td class="muted">${t.last_used_at ? `${timeAgo(t.last_used_at)} · ${t.calls} call${t.calls === 1 ? '' : 's'}` : 'never'}</td><td><form method="post" action="/connect/tokens/${t.id}/revoke" class="inline" data-confirm="Revoke this token? Claude will stop working with it."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-danger" type="submit">Revoke</button></form></td></tr>`)}</tbody></table>` : html`<p class="muted small mt">No tokens yet.</p>`}
+</div>
+<div class="card"><h2>2. Add NSD.SG to Claude</h2>
+  <h3>Claude on the web or Claude Desktop</h3>
+  <ol class="plain-steps">
+    <li>Open <strong>Settings → Connectors</strong> (on the web: claude.ai/settings/connectors).</li>
+    <li>Press <strong>Add custom connector</strong>.</li>
+    <li>Name: <code>NSD.SG</code>. URL: your connection address from step 1 (it starts with <code>${base}/mcp/</code>).</li>
+    <li>Leave the OAuth fields empty and press <strong>Add</strong>. Then switch NSD.SG on in the chat’s tools menu.</li>
+  </ol>
+  <h3>Claude Code</h3>
+  <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_TOKEN</code></p>
+  <h3>Then just ask</h3>
+  <p class="example">“Publish this page as <strong>${example}</strong> on NSD.SG.”</p>
+  <p class="muted small">Claude sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “update it” to change it, “list my sites” to see what you have. Free plan: one site with the small badge; Plus: up to five, no badge, your own domain name.</p>
+</div>
+</div>
+<div class="card"><h2>What Claude can and cannot do with this</h2>
+  <ul class="plain">
+    <li>Can: publish, update, list and delete <strong>your</strong> sites, within your plan’s limits. Same rules as this dashboard, including the name checks.</li>
+    <li>Cannot: touch anyone else’s site, change your plan, or pay for anything.</li>
+    <li>Limits per token: 60 requests an hour, 20 publishes an hour. Enough for a working session, not for a script gone wrong.</li>
+  </ul>
+</div>`.toString();
+}

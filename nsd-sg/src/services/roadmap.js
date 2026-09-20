@@ -130,6 +130,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-11-0', '0.11.0', 'Publish straight from Claude; 30 free days; Plus leads with your own domain', `- New: Connect to Claude. Make a token, add NSD.SG to Claude (web, Desktop or Claude Code) once, then say “publish this as my-site” and get a live link back. Claude can publish, update, list and delete your own sites, within your plan, with the same name checks as the dashboard.
+- Changed: new Free accounts get 30 days. Everyone who signed up before keeps their dates. Warnings appear at 7 days and 1 day left.
+- Changed: pricing now leads with what people actually pay for: your own domain name on Plus. Prices unchanged.`, 'new,improved', '2026-09-21T09:00:00Z'],
   ['cl-0-10-0', '0.10.0', 'Connect your own domain name, by yourself', `- New: on Plus and Beta, open your site’s Settings, type a domain you bought (like mybusiness.sg), and we show the two records to add where you bought it, in plain words. Press “Check the records” and the site connects, padlock included. Your name.nsd.sg address keeps working.
 - Admin: a queue of domains waiting to be connected, and a monthly-recurring revenue figure on the overview.`, 'new', '2026-09-21T08:00:00Z'],
   ['cl-0-9-8', '0.9.8', 'Test-page bar fits on a phone', `- Fixed: on phones the bar above a test page cut its words off. It now wraps onto two lines with shorter labels, and the × is always reachable. Older test links get the new bar too.

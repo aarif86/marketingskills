@@ -44,6 +44,18 @@ then `active` at once on VPS/local (the app serves the hostname; Caddy `tls-ask`
 Hostinger, after `addDomainToHosting()` succeeds. If the API refuses, the domain waits in Admin → System health with
 the hPanel steps and a "Mark connected" button. Buying domains through Hostinger is not built.
 
+## Publish from Claude: MCP endpoint (0.11.0)
+
+`src/mcp/server.js`, zero dependencies, MCP streamable HTTP, stateless JSON-RPC (`initialize`, `ping`, `tools/list`,
+`tools/call`; GET → 405). Auth: per-user API tokens (`api_tokens`, hashed, shown once, revocable, last-used) either
+in the URL (`POST /mcp/<token>`, the form Claude Desktop / claude.ai custom connectors can use) or as
+`Authorization: Bearer`. Rate limits per token: 60 calls/h, 20 publishes/h. Tools: `nsd_publish` (name + html or
+files; creates the site through `createSite`, so plan limits, reserved names and blocked words apply; merges into an
+existing site), `nsd_update` (replace all), `nsd_list_sites`, `nsd_get_site`, `nsd_delete_site` (id + confirm).
+Quota and expiry errors are plain sentences carrying the upgrade URL. Dashboard page `/connect` issues tokens and
+walks through adding the connector. Free trial is 30 days for new sign-ups (migration 018; existing users keep
+their stamped expiry); dashboard warns at 7 and 1 days left.
+
 ## Pages
 
 | Route | Who | Purpose |

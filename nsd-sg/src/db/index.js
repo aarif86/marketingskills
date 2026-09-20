@@ -61,9 +61,9 @@ export const DEFAULT_PLANS = [
   {
     id: 'free',
     name: 'Free',
-    description: 'Host one site on your own .sg address. Free for 3 months, extendable.',
+    description: 'Host one site on your own .sg address. Free for 30 days; ask for more time or upgrade.',
     price_cents_month: 0,
-    trial_days: 90,
+    trial_days: 30,
     is_public: 1,
     is_default: 1,
     sort_order: 10,
@@ -73,7 +73,7 @@ export const DEFAULT_PLANS = [
   {
     id: 'plus',
     name: 'Plus',
-    description: 'Remove the NSD.SG footer, host more sites, keep more history.',
+    description: 'Your own domain name, no badge, up to 5 sites, more history.',
     price_cents_month: 900,
     trial_days: null,
     is_public: 1,

@@ -45,6 +45,8 @@ export const LIMITS = {
   abuseReport: { limit: 5, windowMs: 60 * 60_000 },
   suggest: { limit: 10, windowMs: 60 * 60_000 },
   tryIt: { limit: 5, windowMs: 60 * 60_000 },
+  mcp: { limit: 60, windowMs: 60 * 60_000 },
+  mcpPublish: { limit: 20, windowMs: 60 * 60_000 },
   platformGeneral: { limit: 600, windowMs: 60_000 },
   tenantGeneral: { limit: 1200, windowMs: 60_000 },
 };

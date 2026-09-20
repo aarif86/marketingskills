@@ -60,6 +60,7 @@ export function appLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/dashboard', 'Sites', 'sites'],
     ['/account', 'Account', 'account'],
     ['/billing', 'Plan & payment', 'billing'],
+    ['/connect', 'Connect to Claude', 'connect'],
     ['/roadmap#suggest', 'Feedback', 'feedback'],
   ];
   return html`${head(title)}<body class="app">

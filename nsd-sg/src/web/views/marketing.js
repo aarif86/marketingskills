@@ -4,6 +4,7 @@ import { config } from '../../config.js';
 import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
+export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 
 export function homePage({ baseDomain, plans, csrf = '' }) {
   return html`
@@ -96,13 +97,14 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
       <h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div>
       <p>${p.description}</p>
       <ul>
+        ${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}
         <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
         <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
         <li>Last ${p.limits.max_releases} copies kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
-        <li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' address'}</li>
+        ${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}
         <li>${p.features.hide_from_showcase ? 'Off the public showcase unless you want to be on it' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
-        ${p.trial_days ? html`<li>Free for ${Math.round(p.trial_days / 30)} months, then ask for more time or upgrade</li>` : ''}
+        ${p.trial_days ? html`<li>Free for ${period(p.trial_days)}, then ask for more time or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>
     </div>`)}
@@ -128,12 +130,12 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
 export function pricingPage({ plans }) {
   return html`<section class="section"><div class="container">
   <h1>Pricing</h1>
-  <p class="section-lead">Start free. Pay only if you want the badge gone, more sites, or your own domain name.</p>
+  <p class="section-lead">Start free for 30 days. Plus gives you your own domain name, no badge, and more sites.</p>
   <div class="grid pricing">${plans.map((p) => html`
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
     <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
     <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
-    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Use your own domain name (extra)' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
+    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Your own domain name, like mybusiness.sg' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
     <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
@@ -154,7 +156,7 @@ export function faqPage() {
     ['What kind of files can I put on my site?', 'Web pages, pictures, fonts, videos, sounds and PDFs. Programs and scripts that run on a server are not allowed, which keeps every page safe.'],
     ['Can I just share a few PDFs, with no page?', 'Yes. Upload the files and leave out the home page. Visitors get a tidy list of your files in NSD.SG style, and each one opens with a click.'],
     ['How do I change my page after it is online?', 'Open your site in NSD.SG and paste the new code, or drop in the new files. The link stays the same. The old copy is kept so you can go back.'],
-    ['What happens after 3 months on the Free plan?', 'Ask for more time from your Plan page (we say yes to most real projects), or move to Plus. Your site stays online while we look at your request.'],
+    ['What happens when the 30 free days are up?', 'Ask for more time from your Plan page (we say yes to most real projects), or move to Plus. Your site stays online while we look at your request.'],
     ['Can I remove the “Powered by NasarDigital” badge?', 'Yes, on the Plus plan. On the Free plan it stays. Changing your code will not remove it, because it is added when the page is shown.'],
     ['Can I use my own domain name, like mybusiness.sg?', 'Yes, on Plus and Beta. Buy the name from any seller, open your site’s Settings, type the name, and add the two records we show you where you bought it. Press Check and it connects, padlock included.'],
     ['Are there names I cannot use?', 'Names that look like banks, government services or well-known brands are blocked, so nobody can trick your visitors. Rude names are blocked too.'],
@@ -225,8 +227,8 @@ export function badgePage({ badgeHtml, baseDomain }) {
     <div class="bd-page"><div class="bd-line w60"></div><div class="bd-line w90"></div><div class="bd-line w80"></div><div class="bd-block"></div><div class="bd-line w70"></div><div class="bd-line w50"></div>
     <div class="bd-badge">${raw(badgeHtml)}</div></div></div>
   <div class="grid two mt">
-    <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 3 months, and you can ask for more time.</p></div>
-    <div class="card"><h3>On Plus</h3><p class="muted">No badge, up to 5 sites, off the showcase unless you opt in, use your own domain name as an extra. <a href="/pricing">See pricing →</a></p></div>
+    <div class="card"><h3>On the free plan</h3><p class="muted">Badge shown, site listed on the <a href="/showcase">showcase</a>. Free for 30 days, and you can ask for more time.</p></div>
+    <div class="card"><h3>On Plus</h3><p class="muted">Your own domain name, no badge, up to 5 sites, off the showcase unless you opt in. <a href="/pricing">See pricing →</a></p></div>
   </div>
 </div></section>`.toString();
 }

@@ -10,7 +10,7 @@ const errorList = (errors) => (errors?.length ? html`<div class="flash flash-err
 export function signupPage({ csrf, name, plan, values, errors, googleEnabled = false, preview = '' }) {
   return html`<section class="section auth"><div class="container narrow">
   <h1>${preview ? 'Keep your page. Pick its address.' : 'Create your account'}</h1>
-  <p class="muted">${preview ? html`Choose a name below. When you sign up, your test page moves to <strong>thatname.${config.baseDomain}</strong> and stays online.` : plan ? html`You picked the <strong>${plan.name}</strong> plan. Everyone starts on Free; you can upgrade from inside once you are in.` : 'Free. Takes a minute. Your page can be online right after.'}</p>
+  <p class="muted">${preview ? html`Choose a name below. When you sign up, your test page moves to <strong>thatname.${config.baseDomain}</strong> and stays online.` : plan ? html`You picked the <strong>${plan.name}</strong> plan. Everyone starts on Free; you can upgrade from inside once you are in.` : 'Free for 30 days, no card. Your page can be online a minute from now.'}</p>
   ${errorList(errors)}
   ${googleEnabled ? googleButton(`/auth/google${googleQuery({ name, preview })}`, 'Continue with Google') : ''}
   <form method="post" action="/signup" class="form" autocomplete="on">
