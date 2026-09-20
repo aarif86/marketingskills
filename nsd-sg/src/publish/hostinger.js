@@ -301,6 +301,65 @@ export async function syncAll() {
   return out;
 }
 
+// ---- Self-healing --------------------------------------------------------------------------------
+// Creating the subdomain at Hostinger is one API call that can fail or time out. Nothing about that should
+// need a human: repairSite() re-asks (throttled), the owner's site page triggers it while they wait, the
+// maintenance timer and the cron sweep the rest, and admin is emailed once if a site stays stuck.
+const REPAIR_MIN_GAP_MS = 60_000;
+const REPAIR_MAX_PER_DAY = 40;
+
+export const RETRYABLE = new Set(['pending', 'error']);
+
+/** Re-provision one site's subdomain if it is not confirmed yet. Returns what happened. */
+export async function repairSite(siteId, { force = false } = {}) {
+  if (!isEnabled()) return { skipped: true, reason: 'publisher off' };
+  const db = getDb();
+  const site = db.prepare('SELECT * FROM sites WHERE id = ?').get(siteId);
+  if (!site || site.status === 'deleted') return { skipped: true, reason: 'no such site' };
+  if (site.hosting_ready_at) return { skipped: true, reason: 'already reachable' };
+  const last = site.hosting_last_attempt_at ? Date.parse(site.hosting_last_attempt_at) : 0;
+  if (!force && Date.now() - last < REPAIR_MIN_GAP_MS) return { skipped: true, reason: 'tried a moment ago' };
+  if (!force && site.hosting_attempts >= REPAIR_MAX_PER_DAY && Date.now() - last < 86400000) return { skipped: true, reason: 'daily retry cap' };
+  db.prepare('UPDATE sites SET hosting_attempts = hosting_attempts + 1, hosting_last_attempt_at = ? WHERE id = ?').run(nowIso(), siteId);
+  let provision;
+  try {
+    provision = await provisionSubdomain(site.subdomain);
+    if (provision.provisioned) db.prepare("UPDATE sites SET hosting_state = 'ready', hosting_error = '' WHERE id = ?").run(siteId);
+    else db.prepare("UPDATE sites SET hosting_state = 'pending', hosting_error = ? WHERE id = ?").run(provision.reason ?? 'not provisioned', siteId);
+  } catch (e) {
+    const msg = String(e.message).slice(0, 500);
+    db.prepare("UPDATE sites SET hosting_state = 'error', hosting_error = ? WHERE id = ?").run(msg, siteId);
+    return { ok: false, error: msg, attempts: site.hosting_attempts + 1 };
+  }
+  const sync = syncSite(siteId);
+  return { ok: true, provisioned: provision.provisioned, existed: !!provision.existed, reason: provision.reason ?? '', sync, attempts: site.hosting_attempts + 1 };
+}
+
+/** Sweep every site whose address is not confirmed yet. Cheap when there is nothing to do. */
+export async function repairPending({ force = false } = {}) {
+  if (!isEnabled()) return { skipped: true };
+  const rows = getDb().prepare("SELECT id, subdomain FROM sites WHERE status != 'deleted' AND hosting_ready_at IS NULL").all();
+  const out = { checked: rows.length, repaired: 0, failed: 0, skipped: 0, details: [] };
+  for (const r of rows) {
+    const res = await repairSite(r.id, { force });
+    if (res.skipped) out.skipped++; else if (res.ok) out.repaired++; else out.failed++;
+    out.details.push({ subdomain: r.subdomain, ...res });
+  }
+  return out;
+}
+
+/** Is the Hostinger API token alive? Lists subdomains; returns count or the error text. */
+export async function checkApi() {
+  if (!isEnabled()) return { ok: false, reason: 'publisher off' };
+  if (!config.hostinger.apiToken) return { ok: false, reason: 'no API token in nsd-data/.env' };
+  try {
+    const list = await listHostingSubdomains();
+    return { ok: true, count: list.length, names: list.map((s) => s.subdomain ?? s.domain).filter(Boolean).slice(0, 50) };
+  } catch (e) {
+    return { ok: false, reason: String(e.message).slice(0, 300) };
+  }
+}
+
 /** Remove orphan tenant directories that no live site owns (safety net after crashes). */
 export function listOrphanDirs() {
   if (!isEnabled() || !fs.existsSync(tenantRoot())) return [];

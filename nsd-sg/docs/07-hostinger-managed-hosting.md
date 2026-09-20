@@ -124,6 +124,11 @@ there is no separate restart button in the new hPanel.
   the app (`src/lib/probe.js`) and, on the first 200, sets `sites.hosting_ready_at`; until then the page shows
   “Putting your site online…” with the steps and no Open button, and publish messages say “saved” rather than
   “online”. Same mechanism as test pages. Without the publisher (VPS/local) a site is ready at once.
+- **Self-healing (0.9.6):** a site whose address is not confirmed (`hosting_ready_at` NULL) is re-provisioned by
+  `repairSite()` (throttled: once a minute, 40/day) from three places: the owner's status poll, a 2-minute
+  timer while the process is alive, and `sync-all`/`repair` on the cron. Admin has Repair now (site page),
+  Repair all + Test Hostinger API (health), and gets one email per site still stuck after 30 min
+  (`hosting_alerted_at`). Columns: hosting_attempts, hosting_last_attempt_at, hosting_alerted_at (migration 015).
 - **Without an API token** the app still builds docroots; subdomains stay `pending` and must be created from the
   MCP (`hosting_createWebsiteSubdomainV1`, directory `tenants/<name>`) or hPanel. `/admin/health` lists them.
 - **Backups:** `DATA_DIR` is the whole state (SQLite + releases). hPanel backups cover the account; for an off-box

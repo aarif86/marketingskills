@@ -18,6 +18,7 @@ import { ensureStorageDirs, cleanTemp } from './storage/releases.js';
 import { hit, LIMITS } from './lib/ratelimit.js';
 import { expirePreviews } from './services/tryit.js';
 import { purgeEvidence } from './services/evidence.js';
+import { repairPending, isEnabled as hostingEnabled } from './publish/hostinger.js';
 import { contentTypeFor } from './lib/mime.js';
 import { registerMarketingRoutes } from './web/routes/marketing.js';
 import { registerAuthRoutes } from './web/routes/auth.js';
@@ -131,6 +132,11 @@ export async function buildApp({ logger = true } = {}) {
       if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());
+  if (hostingEnabled()) {
+    timers.push(setInterval(() => {
+      repairPending().then((r) => { if (r.repaired || r.failed) app.log.info(r, 'hosting repair sweep'); }).catch((e) => app.log.error(e));
+    }, 2 * 60_000).unref());
+  }
   app.addHook('onClose', async () => {
     timers.forEach(clearInterval);
     flushTraffic();

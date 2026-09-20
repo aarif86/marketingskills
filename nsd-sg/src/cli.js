@@ -5,7 +5,7 @@ import { createUser, findUserByEmail, setUserRole, changePassword } from './serv
 import { assignPlan, listPlans } from './services/plans.js';
 import { pruneReleases, cleanTemp } from './storage/releases.js';
 import { config } from './config.js';
-import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisionSubdomain } from './publish/hostinger.js';
+import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisionSubdomain, repairPending, checkApi } from './publish/hostinger.js';
 import { expireStalePending } from './services/hitpay.js';
 import { expirePreviews, ensureTryHost } from './services/tryit.js';
 import { purgeEvidence } from './services/evidence.js';
@@ -69,6 +69,7 @@ async function main() {
     case 'sync-all': {
       if (!hostingEnabled()) throw new Error('TENANT_ROOT is not set; nothing to sync');
       console.log(await syncAll());
+      { const r = await repairPending(); if (r.checked) console.log('repair:', JSON.stringify(r)); }
       try { await ensureTryHost(); } catch (e) { console.log(`try host: ${e.message}`); }
       const gone = expirePreviews();
       if (gone) console.log(`Removed ${gone} expired test page(s)`);
@@ -88,6 +89,12 @@ async function main() {
       console.log(syncSite(row.id));
       break;
     }
+    case 'repair': {
+      if (!hostingEnabled()) throw new Error('TENANT_ROOT is not set; nothing to repair');
+      console.log(await checkApi());
+      console.log(JSON.stringify(await repairPending({ force: args[0] === '--force' }), null, 2));
+      break;
+    }
     case 'hosting': {
       const db = getDb();
       console.log({ enabled: hostingEnabled(), tenantRoot: config.hostinger.tenantRoot, username: config.hostinger.username, apiToken: config.hostinger.apiToken ? 'set' : 'MISSING',
@@ -105,6 +112,7 @@ async function main() {
   stats                         quick counts
   sync-all                      (Hostinger) provision pending subdomains + rebuild every tenant docroot
   sync-site <name>              (Hostinger) provision + rebuild one site
+  repair [--force]              (Hostinger) test the API token, re-create every subdomain not yet reachable
   hosting                       (Hostinger) publisher status`);
   }
   closeDb();

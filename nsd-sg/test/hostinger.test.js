@@ -12,7 +12,7 @@ process.env.TENANT_ROOT = path.join(dataDir, 'public_html', 'tenants');
 process.env.HOSTINGER_USERNAME = 'u000000000';
 
 const { buildApp } = await import('../src/server.js');
-const { syncSite, listOrphanDirs, tenantDir } = await import('../src/publish/hostinger.js');
+const { syncSite, listOrphanDirs, tenantDir, repairSite, repairPending, checkApi } = await import('../src/publish/hostinger.js');
 const { getDb } = await import('../src/db/index.js');
 const { reset: resetLimit } = await import('../src/lib/ratelimit.js');
 const { setProbe } = await import('../src/lib/probe.js');
@@ -410,4 +410,43 @@ test('admin can probe an address and mark it ready by hand', async () => {
   assert.ok(getDb().prepare('SELECT hosting_ready_at FROM sites WHERE id = ?').get(row.id).hosting_ready_at);
   assert.match((await get(`/admin/sites/${row.id}`, admin.cookie)).body, /confirmed reachable/);
   answers = true;
+});
+
+test('self-healing: the owner polling triggers a throttled re-provision; admin can repair, repair all and test the API', async () => {
+  answers = false;
+  const row = getDb().prepare("SELECT id FROM sites WHERE subdomain = 'dana'").get();
+  getDb().prepare('UPDATE sites SET hosting_ready_at = NULL, hosting_attempts = 0, hosting_last_attempt_at = NULL WHERE id = ?').run(row.id);
+  const login = await post('/login', '', { email: 'dana@example.com', password: 'correct-horse-battery' });
+  const cookie = cookiesFrom(login);
+  await get(`/sites/${row.id}/status`, cookie);
+  await get(`/sites/${row.id}/status`, cookie);
+  let r = getDb().prepare('SELECT hosting_attempts, hosting_last_attempt_at, hosting_state FROM sites WHERE id = ?').get(row.id);
+  assert.equal(r.hosting_attempts, 1, 'one retry per minute, not one per poll');
+  assert.ok(r.hosting_last_attempt_at);
+  assert.equal(r.hosting_state, 'pending', 'no API token in tests: stays pending, folder rebuilt');
+  assert.match((await get(`/sites/${row.id}`, cookie)).body, /Setting up your address/);
+  // throttle: a direct call right after is skipped; force goes through
+  assert.equal((await repairSite(row.id)).reason, 'tried a moment ago');
+  const forced = await repairSite(row.id, { force: true });
+  assert.equal(forced.ok, true);
+  assert.equal(getDb().prepare('SELECT hosting_attempts FROM sites WHERE id = ?').get(row.id).hosting_attempts, 2);
+  // sweep counts it
+  const sweep = await repairPending({ force: true });
+  assert.ok(sweep.checked >= 1);
+  // API check without a token says so plainly
+  const api = await checkApi();
+  assert.equal(api.ok, false);
+  assert.match(api.reason, /no API token/);
+  // admin buttons
+  let a = await post(`/admin/sites/${row.id}/action`, admin.cookie, { action: 'repair' }, `/admin/sites/${row.id}`);
+  assert.match(decodeURIComponent(String(a.headers['set-cookie'])), /could not create \(no API token/);
+  a = await post('/admin/health/api-check', admin.cookie, {}, '/admin/health');
+  assert.match(decodeURIComponent(String(a.headers['set-cookie'])), /Hostinger API problem: no API token/);
+  a = await post('/admin/health/repair', admin.cookie, {}, '/admin/health');
+  assert.match(decodeURIComponent(String(a.headers['set-cookie'])), /re-asked at Hostinger/);
+  assert.match((await get('/admin/health', admin.cookie)).body, /Address not confirmed/);
+  // once reachable, no more retries
+  answers = true;
+  assert.equal((await get(`/sites/${row.id}/status`, cookie)).json().ready, true);
+  assert.equal((await repairSite(row.id, { force: true })).reason, 'already reachable');
 });

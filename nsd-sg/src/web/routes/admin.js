@@ -2,7 +2,7 @@ import fs from 'node:fs';
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
-import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll } from '../../publish/hostinger.js';
+import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { listHoldsForUser, holdSite, holdZip, evidencePack, evidenceStats } from '../../services/evidence.js';
 import { getDb } from '../../db/index.js';
@@ -224,6 +224,15 @@ export async function registerAdminRoutes(app) {
         flash(reply, r.ready ? 'success' : 'warn', r.ready ? `${site.subdomain}.${config.baseDomain} answers over HTTPS. Marked ready.` : `Not yet: ${r.reason === 'error' ? `publisher error: ${r.detail}` : `HEAD ${r.url} failed${r.detail ? ` (${r.detail})` : ' (non-200 answer)'}`}. Hosting state: ${site.hosting_state}${site.hosting_error ? ` · ${site.hosting_error}` : ''}.`);
         break;
       }
+      case 'repair': {
+        const r = await repairSite(site.id, { force: true });
+        const probe = r.ok ? await checkSiteReady(getSiteById(site.id)) : null;
+        audit({ req, action: 'admin.site.repair', targetType: 'site', targetId: site.id, details: { ...r, ready: probe?.ready ?? null }, severity: 'warn' });
+        flash(reply, r.ok ? 'success' : 'error', r.skipped ? `Nothing to repair: ${r.reason}.` : r.ok
+          ? `Hostinger ${r.existed ? 'already had' : r.provisioned ? 'created' : 'could not create (' + r.reason + ')'} ${site.subdomain}.${config.baseDomain}; folder rebuilt.${probe?.ready ? ' It answers over HTTPS now.' : ' Certificate usually follows within 5–15 min; the owner\'s page keeps checking.'}`
+          : `Hostinger refused: ${r.error}`);
+        break;
+      }
       case 'ready': {
         // Owner can already open it in a browser but our outbound probe cannot reach it: mark it by hand.
         db().prepare('UPDATE sites SET hosting_ready_at = COALESCE(hosting_ready_at, ?) WHERE id = ?').run(new Date().toISOString(), site.id);
@@ -442,6 +451,7 @@ export async function registerAdminRoutes(app) {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
         errors: all("SELECT id, subdomain, hosting_error FROM sites WHERE hosting_state = 'error' ORDER BY updated_at DESC LIMIT 20"),
+        unready: all("SELECT id, subdomain, hosting_state, hosting_error, hosting_attempts, hosting_last_attempt_at, created_at FROM sites WHERE status != 'deleted' AND hosting_ready_at IS NULL ORDER BY created_at DESC LIMIT 50"),
         orphans: listOrphanDirs(),
         envFile: envFileKeys(),
         csrf: csrfTokenFor(req),
@@ -469,6 +479,19 @@ export async function registerAdminRoutes(app) {
     const ok = removePreview(id);
     audit({ req, action: 'try.removed', targetType: 'preview', targetId: id, severity: 'warn', details: { ok } });
     flash(reply, ok ? 'ok' : 'error', ok ? `Test page ${id} removed.` : 'No such test page.');
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/api-check', opts, async (req, reply) => {
+    const r = await checkApi();
+    audit({ req, action: 'hosting.api_check', targetType: 'system', targetId: '-', details: r });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? `Hostinger API works: ${r.count} subdomain${r.count === 1 ? '' : 's'} on the account (${r.names.join(', ')}).` : `Hostinger API problem: ${r.reason}. New sites cannot get an address until this is fixed (nsd-data/.env → HOSTINGER_API_TOKEN, then restart).`);
+    return reply.redirect('/admin/health');
+  });
+  app.post('/admin/health/repair', opts, async (req, reply) => {
+    const r = await repairPending({ force: true });
+    audit({ req, action: 'hosting.repair_all', targetType: 'system', targetId: '-', details: { checked: r.checked, repaired: r.repaired, failed: r.failed } });
+    flash(reply, r.failed ? 'error' : 'success', r.checked ? `Checked ${r.checked} site${r.checked === 1 ? '' : 's'} without a confirmed address: ${r.repaired} re-asked at Hostinger, ${r.failed} failed${r.failed ? ` (${r.details.filter((d) => d.error).map((d) => `${d.subdomain}: ${d.error}`).join('; ').slice(0, 400)})` : ''}.` : 'Every site already answers. Nothing to repair.');
     return reply.redirect('/admin/health');
   });
 

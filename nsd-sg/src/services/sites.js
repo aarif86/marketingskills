@@ -7,7 +7,9 @@ import { deleteSiteStorage } from '../storage/releases.js';
 import { holdSite } from './evidence.js';
 import { probeUrl } from '../lib/probe.js';
 import { publicUrlForSubdomain } from '../config.js';
-import { syncSite as resync, provisionSubdomain, deprovisionSubdomain, isEnabled as hostingEnabled } from '../publish/hostinger.js';
+import { syncSite as resync, provisionSubdomain, deprovisionSubdomain, isEnabled as hostingEnabled, repairSite } from '../publish/hostinger.js';
+import { sendMail } from '../lib/mailer.js';
+import { config } from '../config.js';
 
 export function isReserved(name) {
   return !!getDb().prepare('SELECT 1 FROM reserved_subdomains WHERE name = ?').get(name);
@@ -87,13 +89,32 @@ export async function checkSiteReady(site) {
   const url = publicUrlForSubdomain(site.subdomain);
   if (!hostingEnabled()) return { ready: true, url };
   if (site.hosting_ready_at) return { ready: true, url };
-  if (site.hosting_state === 'error') return { ready: false, reason: 'error', detail: site.hosting_error, url };
   const { ok, detail } = await probeUrl(url);
   if (ok) {
     getDb().prepare('UPDATE sites SET hosting_ready_at = ? WHERE id = ? AND hosting_ready_at IS NULL').run(nowIso(), site.id);
     return { ready: true, url };
   }
-  return { ready: false, reason: 'waiting', detail, url, waitedMs: Date.now() - Date.parse(site.created_at) };
+  // Not answering: while the owner is watching, quietly re-ask Hostinger (throttled to once a minute).
+  let repair = null;
+  try { repair = await repairSite(site.id); } catch { /* recorded on the row */ }
+  const fresh = getDb().prepare('SELECT hosting_state, hosting_error, hosting_attempts FROM sites WHERE id = ?').get(site.id) ?? site;
+  await maybeAlertAdmin({ ...site, ...fresh });
+  return { ready: false, reason: fresh.hosting_state === 'error' ? 'error' : 'waiting', detail: fresh.hosting_error || detail, url, waitedMs: Date.now() - Date.parse(site.created_at), attempts: fresh.hosting_attempts, repair };
+}
+
+/** One email to the admin when an address is still not reachable 30 minutes after the site was made. */
+export async function maybeAlertAdmin(site) {
+  if (!config.admin.email || site.hosting_alerted_at) return false;
+  if (Date.now() - Date.parse(site.created_at) < 30 * 60_000) return false;
+  const db = getDb();
+  const r = db.prepare('UPDATE sites SET hosting_alerted_at = ? WHERE id = ? AND hosting_alerted_at IS NULL').run(nowIso(), site.id);
+  if (!r.changes) return false;
+  await sendMail({
+    to: config.admin.email,
+    subject: `[NSD.SG] ${site.subdomain}.${config.baseDomain} still not reachable after 30 min`,
+    text: `The site ${site.subdomain}.${config.baseDomain} (owner id ${site.user_id}) was created at ${site.created_at} and its address still does not answer over HTTPS.\n\nHosting state: ${site.hosting_state}\nLast error: ${site.hosting_error || '-'}\nRetries so far: ${site.hosting_attempts}\n\nThe app keeps retrying on its own. To look: ${config.publicScheme}://${config.platformHosts[0]}/admin/sites/${site.id}\nIf the subdomain is missing in hPanel > Domains > Subdomains, press "Repair now" there, or check the API token under Admin > System health > "Test Hostinger API".`,
+  }).catch(() => {});
+  return true;
 }
 
 /** Cheap, no network: what we already know. Used to word flash messages honestly right after a publish. */

@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-6', '0.9.6', 'Addresses fix themselves', `- New: if Hostinger fails to create your address on the first try, NSD.SG asks again on its own: every minute while your site page is open, every 2 minutes in the background, and on the hourly check. You do not need to do anything.
+- Admin: “Repair now” on a site, “Repair all stuck addresses” and “Test Hostinger API” on System health, a table of addresses not yet confirmed, and one email per site that is still stuck after 30 minutes.`, 'new,fix', '2026-09-21T06:00:00Z'],
   ['cl-0-9-5', '0.9.5', 'Paid plans are off the showcase by default', `- Admin: a site page shows whether the address is confirmed reachable, with “Check address now” (shows the exact answer) and “Mark ready by hand”.
 - Changed: on Plus, Beta or any plan that may hide from the showcase, your sites are no longer listed unless you tick “Show this site on the public showcase” in the site’s Settings. Free sites are listed as before.`, 'improved', '2026-09-21T05:00:00Z'],
   ['cl-0-9-4', '0.9.4', 'Your site page checks before it says “online”; a file list when there is no home page', `- New: a site (or folder) without a home page now shows a tidy NSD.SG-style list of its files instead of “page not found”. Upload two PDFs and nothing else, and the link just works.
