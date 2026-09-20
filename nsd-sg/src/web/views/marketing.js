@@ -25,13 +25,19 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
 
 <section id="try" class="section try"><div class="container narrow">
   <p class="eyebrow">Try it first · no account needed</p>
-  <h2>See your page online in 10 seconds</h2>
-  <p class="section-lead">Copy the code your AI gave you. Paste it below. Press the button. You get a link that works for 3 hours. Like it? Sign up and keep it at your own address.</p>
-  <form method="post" action="/try" class="form card try-form">
+  <h2>Put your page online for 3 hours</h2>
+  <p class="section-lead">Your AI made you a page. Upload the file or paste the code, press the button, and you get a link you can send to anyone. Like it? Sign up and keep it at your own address.</p>
+  <form method="post" action="/try" enctype="multipart/form-data" class="form card try-form" data-try-form>
     <input type="hidden" name="_csrf" value="${csrf}">
-    <label>Paste the code here <textarea name="html" rows="7" required spellcheck="false" placeholder="It usually starts with <!doctype html> or <html>. Paste all of it."></textarea></label>
-    <button class="btn btn-primary btn-lg" type="submit">Show me my page</button>
-    <p class="muted small"><strong>Where is the code?</strong> In Claude: open the page it made, press the ⋯ menu, then “Copy code”. In ChatGPT or Gemini: press the copy button at the top of the code box. Test pages can be seen by anyone with the link and are deleted after 3 hours.</p>
+    <div class="try-choices">
+      <div class="choice"><h3>Upload the file</h3><p class="muted small">In <strong>Claude</strong>: press <strong>Download</strong> on the page it made. You get a file ending in <code>.html</code>. Choose that file here.</p>
+        <label class="btn btn-ghost file-pick">Choose the file<input type="file" name="file" accept=".html,.htm,text/html" hidden data-try-file></label> <span class="muted small" data-try-filename></span></div>
+      <div class="choice"><h3>Or paste the code</h3><p class="muted small">In <strong>ChatGPT</strong> or <strong>Gemini</strong>: press <strong>Copy</strong> at the top of the code box, then paste it here.</p>
+        <textarea name="html" rows="6" spellcheck="false" placeholder="It usually starts with <!doctype html> or <html>. Paste all of it."></textarea></div>
+    </div>
+    <button class="btn btn-primary btn-lg" type="submit" data-try-submit>Put my page online</button>
+    <div class="bar busy" hidden data-try-bar><span></span></div>
+    <p class="muted small">Anyone with the link can see a test page. It is deleted after 3 hours. No account, no email, nothing to install.</p>
   </form>
 </div></section>
 
@@ -281,12 +287,28 @@ export function changelogPage({ entries }) {
 </div></section>`.toString();
 }
 
-export function tryResultPage({ id, url, expiresAt, user, sites, csrf }) {
+export function tryResultPage({ id, url, expiresAt, status, user, sites, csrf }) {
   const when = expiresLabel(expiresAt);
+  const shown = url.replace(/^https?:\/\//, '');
+  if (!status.ready) {
+    const slow = (status.waitedMs ?? 0) > 60_000;
+    return html`<section class="section try-result" data-try-status="/try/${id}/status"><div class="container narrow">
+  <noscript><meta http-equiv="refresh" content="5"></noscript>
+  <p class="eyebrow">Almost there</p>
+  <h1>Putting your page online…</h1>
+  <ol class="steps wait">
+    <li class="done"><strong>Page saved</strong><span class="muted">We have your page.</span></li>
+    <li class="now"><strong>Setting up the address</strong><span class="muted">${status.reason === 'error' ? 'Something went wrong on our side. It has been logged; we are on it.' : 'Checking that the link answers. This page updates by itself, keep it open.'}</span></li>
+    <li><strong>Ready</strong><span class="muted">Then your link appears here.</span></li>
+  </ol>
+  <p class="muted">${slow ? html`Taking longer than usual. The address <strong>try.${config.baseDomain}</strong> is new, so its padlock (secure connection) can take up to 15 minutes the first time. We keep checking; you can also come back to this page later.` : 'This usually takes a few seconds.'}</p>
+  ${status.reason === 'error' ? html`<p class="muted small">Or <a href="/#try">try again</a> in a minute.</p>` : ''}
+</div></section>`.toString();
+  }
   return html`<section class="section try-result"><div class="container narrow">
   <p class="eyebrow">Your test page is online</p>
   <h1>It works. Here is your link.</h1>
-  <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open it ↗</a></div>
+  <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${shown}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open it ↗</a></div>
   <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> (3 hours from now), then it is deleted.</p>
   <div class="card keep"><h2>Want to keep it?</h2>
     ${user ? html`<p>Put it on one of your sites as the home page, or make a new site for it.</p>
@@ -298,7 +320,7 @@ export function tryResultPage({ id, url, expiresAt, user, sites, csrf }) {
       <a class="btn btn-primary btn-lg" href="/signup?preview=${id}">Keep it at my own address</a>
       <p class="muted small mt">Already have an account? <a href="/login?next=${encodeURIComponent(`/try/${id}`)}">Log in</a> and you can add it to a site you already have.</p>`}
   </div>
-  <p class="muted small">Something wrong with the page? Press the ⋯ menu in your AI tool, copy the code again and <a href="/#try">paste it once more</a>. Each paste makes a new link.</p>
+  <p class="muted small">Something wrong with the page? Get the file or the code from your AI tool again and <a href="/#try">try once more</a>. Each try makes a new link.</p>
 </div></section>`.toString();
 }
 

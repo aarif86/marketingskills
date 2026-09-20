@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
 import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll } from '../../publish/hostinger.js';
+import { tryHostStatus, ensureTryHost } from '../../services/tryit.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -379,6 +380,7 @@ export async function registerAdminRoutes(app) {
   // ---- health ----
   app.get('/admin/health', opts, async (req, reply) => {
     flushTraffic();
+    const tryHost = await tryHostStatus();
     const disk = diskUsage();
     const mem = process.memoryUsage();
     const top = all("SELECT s.subdomain, s.id, SUM(t.bytes) bytes, SUM(t.requests) requests FROM site_traffic_daily t JOIN sites s ON s.id = t.site_id WHERE t.day >= date('now','-7 days') GROUP BY s.id ORDER BY bytes DESC LIMIT 10");
@@ -395,10 +397,22 @@ export async function registerAdminRoutes(app) {
         envFile: envFileKeys(),
         csrf: csrfTokenFor(req),
       } : null,
+      tryHost, csrf: csrfTokenFor(req),
       siteBytes: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
       siteCount: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n,
       releaseCount: q('SELECT COUNT(*) n FROM releases').n,
     }) });
+  });
+
+  app.post('/admin/health/try-host', opts, async (req, reply) => {
+    try {
+      const r = await ensureTryHost();
+      audit({ req, action: 'hosting.try_host', targetType: 'system', targetId: 'try', details: r });
+      flash(reply, 'ok', r.skipped ? 'Hostinger publisher is off; test pages are served by this app.' : `Try address ${r.existed ? 'already existed' : r.provisioned ? 'created' : 'folder written (no API token, create the subdomain in hPanel)'}.`);
+    } catch (e) {
+      flash(reply, 'error', `Could not set up the try address: ${String(e.message).slice(0, 300)}`);
+    }
+    return reply.redirect('/admin/health');
   });
 
   app.post('/admin/health/sync', opts, async (req, reply) => {

@@ -11,7 +11,10 @@ process.env.HOSTINGER_USERNAME = 'u000000000';
 
 const { buildApp } = await import('../src/server.js');
 const { getDb } = await import('../src/db/index.js');
-const { expirePreviews, getPreview, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
+const { expirePreviews, getPreview, setReadyProbe, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
+const { multipart } = await import('./helpers/env.js');
+let probeAnswers = true;
+setReadyProbe(async () => probeAnswers);
 const { tenantDir } = await import('../src/publish/hostinger.js');
 const { reset } = await import('../src/lib/ratelimit.js');
 
@@ -34,7 +37,8 @@ let id = '';
 test('home page has the try box; a paste creates a preview and shows the link page', async () => {
   const home = await get('/');
   assert.match(home.body, /action="\/try"/);
-  assert.match(home.body, /Show me my page/);
+  assert.match(home.body, /Put my page online/);
+  assert.match(home.body, /name="file"/);
   const r = await post('/try', '', { html: PAGE });
   assert.equal(r.statusCode, 302);
   id = r.headers.location.match(/^\/try\/([a-z0-9]{12})$/)[1];
@@ -71,6 +75,42 @@ test('the preview is served on try.<domain> with the bar, the badge and noindex;
   assert.ok(fs.existsSync(path.join(tenantDir('try'), '_nsd-expired.html')));
 });
 
+test('the result page waits until the link really answers, then shows it; the status endpoint drives the wait', async () => {
+  probeAnswers = false;
+  const made = await post('/try', '', { html: PAGE });
+  const idw = made.headers.location.split('/').pop();
+  const waiting = await get(`/try/${idw}`);
+  assert.match(waiting.body, /Putting your page online/);
+  assert.match(waiting.body, new RegExp(`data-try-status="/try/${idw}/status"`));
+  assert.doesNotMatch(waiting.body, /Here is your link/);
+  assert.equal((await get(`/try/${idw}/status`)).json().ready, false);
+  probeAnswers = true;
+  const st = (await get(`/try/${idw}/status`)).json();
+  assert.equal(st.ready, true);
+  assert.match(st.url, new RegExp(`try\\.nsd\\.test/${idw}/`));
+  assert.match((await get(`/try/${idw}`)).body, /Here is your link/);
+  probeAnswers = false; // once confirmed it stays ready
+  assert.equal((await get(`/try/${idw}/status`)).json().ready, true);
+  probeAnswers = true;
+});
+
+test('uploading the .html file works like pasting; other files are refused', async () => {
+  const csrf = csrfFrom((await get('/')).body);
+  let mp = multipart({ _csrf: csrf }, [{ name: 'quiz.html', data: PAGE.replace('Ramadan quiz', 'Uploaded quiz'), type: 'text/html' }]);
+  let r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.statusCode, 302, r.body);
+  const idu = r.headers.location.split('/').pop();
+  assert.match((await get(`/${idu}/`, '', 'try.nsd.test')).body, /Uploaded quiz/);
+  mp = multipart({ _csrf: csrf }, [{ name: 'photo.png', data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), type: 'image/png' }]);
+  r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.headers.location, '/#try');
+  assert.match(flashOf(r), /Choose the \.html file/);
+  mp = multipart({ _csrf: csrf }, []);
+  r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.match(flashOf(r), /Choose the file or paste the code first/);
+  reset('tryIt:127.0.0.1');
+});
+
 test('junk, oversized pastes and too many pastes are refused in plain words', async () => {
   const junk = await post('/try', '', { html: 'hello there this is not a page at all' });
   assert.equal(junk.statusCode, 302);
@@ -78,7 +118,7 @@ test('junk, oversized pastes and too many pastes are refused in plain words', as
   assert.match(flashOf(junk), /does not look like a web page/);
   const big = await post('/try', '', { html: '<html>' + 'x'.repeat(TRY_MAX_BYTES) + '</html>' });
   assert.match(flashOf(big), /bigger than 1 MB/);
-  for (let i = 0; i < 5; i++) await post('/try', '', { html: PAGE }); // 3 so far this hour + 5 = over the limit of 5
+  for (let i = 0; i < 5; i++) await post('/try', '', { html: PAGE }); // limit is 5 per hour
   const limited = await post('/try', '', { html: PAGE });
   assert.equal(limited.statusCode, 429);
   reset('tryIt:127.0.0.1');

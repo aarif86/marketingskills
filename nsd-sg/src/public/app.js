@@ -75,6 +75,36 @@
     });
   });
 
+  // ---- try it: pick a file = go; show progress while it uploads ----
+  var tryForm = document.querySelector('[data-try-form]');
+  if (tryForm) {
+    var tryFile = tryForm.querySelector('[data-try-file]');
+    var tryName = tryForm.querySelector('[data-try-filename]');
+    var tryBtn = tryForm.querySelector('[data-try-submit]');
+    var tryBar = tryForm.querySelector('[data-try-bar]');
+    if (tryFile) tryFile.addEventListener('change', function () {
+      if (!tryFile.files.length) return;
+      if (tryName) tryName.textContent = tryFile.files[0].name;
+      if (typeof tryForm.requestSubmit === 'function') tryForm.requestSubmit(); else tryForm.submit();
+    });
+    tryForm.addEventListener('submit', function () {
+      tryBtn.disabled = true; tryBtn.textContent = 'Putting your page online…';
+      if (tryBar) tryBar.hidden = false;
+    });
+  }
+
+  // ---- try it result page: ask the server until the link really answers, then show it ----
+  var waiting = document.querySelector('[data-try-status]');
+  if (waiting) {
+    var statusUrl = waiting.getAttribute('data-try-status');
+    var tick = function () {
+      fetch(statusUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.ready) window.location.reload(); else setTimeout(tick, 3000);
+      }).catch(function () { setTimeout(tick, 5000); });
+    };
+    setTimeout(tick, 2000);
+  }
+
   // ---- confirmations ----
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault(); });

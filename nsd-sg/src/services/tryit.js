@@ -126,7 +126,8 @@ export async function createPreview({ html, ip = '' }) {
   const dir = previewDir(id);
   fs.mkdirSync(dir, { recursive: true, mode: 0o750 });
   fs.writeFileSync(path.join(dir, 'index.html'), html, { mode: 0o640 });
-  getDb().prepare('INSERT INTO previews (id, ip, bytes, expires_at) VALUES (?, ?, ?, ?)').run(id, String(ip).slice(0, 64), bytes, expiresAt);
+  // Same-process serving (VPS/local) answers the moment the file exists; on Hostinger the probe below decides.
+  getDb().prepare('INSERT INTO previews (id, ip, bytes, expires_at, ready_at) VALUES (?, ?, ?, ?, ?)').run(id, String(ip).slice(0, 64), bytes, expiresAt, hostingEnabled() ? null : nowIso());
   if (hostingEnabled()) {
     try {
       await ensureTryHost();
@@ -139,6 +140,53 @@ export async function createPreview({ html, ip = '' }) {
     }
   }
   return { id, url: previewUrl(id), expiresAt };
+}
+
+// ---- readiness -------------------------------------------------------------------------------------
+// On Hostinger the app never serves try.<baseDomain> itself, so "it is online" is only true once LiteSpeed answers
+// over HTTPS. The result page shows the link only after this probe succeeds (a brand-new `try` host waits on its
+// certificate for up to ~15 minutes the first time; after that every preview is ready in seconds).
+let probeImpl = async (url) => {
+  const res = await fetch(url, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(6000) });
+  return res.status === 200;
+};
+export function setReadyProbe(fn) { probeImpl = fn ?? probeImpl; }
+
+/** { ready, reason, url } for a live preview. Marks ready_at the first time the probe succeeds. */
+export async function checkReady(id) {
+  const row = getPreview(id);
+  if (!row) return { ready: false, reason: 'gone' };
+  const url = previewUrl(id);
+  if (row.ready_at) return { ready: true, url };
+  if (row.error) return { ready: false, reason: 'error', detail: row.error, url };
+  if (!hostingEnabled()) return { ready: true, url };
+  let ok = false;
+  let detail = '';
+  try { ok = await probeImpl(url); } catch (e) { detail = String(e.cause?.code ?? e.code ?? e.message).slice(0, 120); }
+  if (ok) {
+    getDb().prepare('UPDATE previews SET ready_at = ? WHERE id = ? AND ready_at IS NULL').run(nowIso(), id);
+    return { ready: true, url };
+  }
+  return { ready: false, reason: 'waiting', detail, url, waitedMs: Date.now() - Date.parse(row.created_at + (row.created_at.endsWith('Z') ? '' : 'Z')) };
+}
+
+/** Admin view of the shared try host. */
+export async function tryHostStatus() {
+  const db = getDb();
+  const out = {
+    enabled: hostingEnabled(),
+    live: countLive(),
+    ready: db.prepare('SELECT COUNT(*) n FROM previews WHERE ready_at IS NOT NULL AND claimed_at IS NULL AND expires_at > ?').get(nowIso()).n,
+    lastError: db.prepare("SELECT error, created_at FROM previews WHERE error != '' ORDER BY created_at DESC LIMIT 1").get() ?? null,
+    dir: hostingEnabled() ? fs.existsSync(path.join(tenantDir(TRY_LABEL), '.htaccess')) : null,
+    url: `${config.publicScheme}://${TRY_LABEL}.${config.baseDomain}/`,
+    answers: null,
+    detail: '',
+  };
+  if (hostingEnabled()) {
+    try { out.answers = await probeImpl(out.url); } catch (e) { out.answers = false; out.detail = String(e.cause?.code ?? e.code ?? e.message).slice(0, 120); }
+  }
+  return out;
 }
 
 /** Live preview row (not expired, not claimed) or null. */

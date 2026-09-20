@@ -81,7 +81,7 @@ ${Date.now() - new Date(site.created_at).getTime() < 45 * 60_000 ? html`<p class
     <noscript><button class="btn btn-primary" type="submit">Upload</button></noscript>
   </form>
   <details class="paste-box" ${!site.current_release_id ? 'open' : ''}>
-    <summary><strong>Paste the code from Claude, ChatGPT or Gemini</strong> <span class="muted">· the easy way, nothing to download</span></summary>
+    <summary><strong>Paste the code from Claude, ChatGPT or Gemini</strong> <span class="muted">· or, if your AI gave you a file, use “Choose files” above</span></summary>
     <form method="post" action="/sites/${site.id}/paste" class="form">
       <input type="hidden" name="_csrf" value="${csrf}">
       <label>Which page? <span class="muted">(leave empty for your home page)</span>

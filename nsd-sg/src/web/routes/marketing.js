@@ -9,7 +9,7 @@ import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
 import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage } from '../views/marketing.js';
-import { createPreview, getPreview, claimPreview, previewUrl, TryError } from '../../services/tryit.js';
+import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
 import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
@@ -26,24 +26,56 @@ export async function registerMarketingRoutes(app) {
 
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req) }) }));
 
-  // ---- Try it: paste HTML, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
+  // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
   app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {
+    const back = (msg) => { flash(reply, 'error', msg); return reply.redirect('/#try'); };
+    let htmlText = '';
+    let source = 'paste';
+    if (req.isMultipart?.()) {
+      const fields = {};
+      let tooBig = false;
+      for await (const part of req.parts()) {
+        if (part.type === 'field') { fields[part.fieldname] = String(part.value).slice(0, TRY_MAX_BYTES + 1); continue; }
+        if (!part.filename) { part.file.resume(); continue; }
+        const chunks = []; let size = 0;
+        for await (const c of part.file) { size += c.length; if (size > TRY_MAX_BYTES) { tooBig = true; part.file.resume(); break; } chunks.push(c); }
+        if (!tooBig && chunks.length) { htmlText = Buffer.concat(chunks).toString('utf8'); source = 'file'; }
+      }
+      req.csrfFromMultipart = fields._csrf ?? '';
+      req.body = { _csrf: fields._csrf };
+      let rejected = false;
+      await csrfGuard(req, { code: (c) => ({ send: (m) => { rejected = m; return c; } }) });
+      if (rejected) return back('That page sat open too long. Refresh it and try again.');
+      if (tooBig) return back('That file is bigger than 1 MB. Test pages are for a single page; sign up to publish something bigger.');
+      if (!htmlText) htmlText = String(fields.html ?? '');
+    } else {
+      htmlText = String(req.body?.html ?? '');
+    }
+    if (!htmlText.trim()) return back('Choose the file or paste the code first, then press the button.');
+    const problem = validatePaste(htmlText);
+    if (problem) return back(source === 'file' ? problem.replace('Copy the whole code, from the first line to the last, and paste it again.', 'Choose the .html file your AI gave you (not a picture, PDF or Word file).') : problem);
     try {
-      const r = await createPreview({ html: String(req.body?.html ?? ''), ip: req.ip });
-      audit({ req, action: 'try.create', targetType: 'preview', targetId: r.id, details: { bytes: Buffer.byteLength(String(req.body?.html ?? ''), 'utf8') } });
+      const r = await createPreview({ html: htmlText, ip: req.ip });
+      audit({ req, action: 'try.create', targetType: 'preview', targetId: r.id, details: { bytes: Buffer.byteLength(htmlText, 'utf8'), source } });
       return reply.redirect(`/try/${r.id}`);
     } catch (e) {
       if (!(e instanceof TryError)) throw e;
-      flash(reply, 'error', e.message);
-      return reply.redirect('/#try');
+      return back(e.message);
     }
   });
   app.get('/try/:id', async (req, reply) => {
     const id = String(req.params.id);
     const row = getPreview(id);
     if (!row) return reply.code(404).type('text/html; charset=utf-8').send(marketingLayout({ title: 'Test page', body: tryGonePage(), user: req.user, flash: readFlash(req, reply) }));
+    const status = await checkReady(id);
     const sites = req.user ? listSitesForUser(req.user.id).filter((s) => s.status !== 'suspended') : [];
-    return render(req, reply, { title: 'Your test page is online', description: 'A test page on NSD.SG, live for 3 hours.', body: tryResultPage({ id, url: previewUrl(id), expiresAt: row.expires_at, user: req.user, sites, csrf: csrfTokenFor(req) }) });
+    return render(req, reply, { title: status.ready ? 'Your test page is online' : 'Putting your page online', description: 'A test page on NSD.SG, live for 3 hours.', body: tryResultPage({ id, url: previewUrl(id), expiresAt: row.expires_at, status, user: req.user, sites, csrf: csrfTokenFor(req) }) });
+  });
+  // Polled by the result page until the preview really answers on try.<baseDomain>.
+  app.get('/try/:id/status', async (req, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    const r = await checkReady(String(req.params.id));
+    return { ready: r.ready, reason: r.reason ?? null, url: r.url ?? null };
   });
   // Signed-in users can drop a test page onto one of their sites as its home page.
   app.post('/try/:id/claim', { preHandler: requireUser }, async (req, reply) => {

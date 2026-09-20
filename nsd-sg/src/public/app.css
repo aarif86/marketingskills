@@ -81,7 +81,7 @@ details{border-bottom:1px solid var(--line);padding:16px 0}summary{cursor:pointe
 .form label{display:block;margin-bottom:16px;font-weight:600;font-size:.92rem}.form label small,.form label .muted{font-weight:400;color:var(--muted);display:block;margin-top:4px}
 .form input:not([type=checkbox]):not([type=file]),.form select,.form textarea,.filters input,.filters select,.form-inline input,.form-inline select{width:100%;background:var(--bg3);border:1.5px solid var(--line);border-radius:12px;color:var(--text);font:inherit;font-size:16px;padding:12px 15px;margin-top:6px;outline:0;transition:border-color .2s,box-shadow .3s var(--spring)}
 .form input:focus,.form textarea:focus,.form select:focus,.filters input:focus,.form-inline input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(var(--accent-rgb),.16)}.form input[disabled]{opacity:.6}
-.form .domain-input{margin-top:6px;border-radius:12px}.form .domain-input input{margin:0;border:0;background:transparent;box-shadow:none}
+.form .domain-input{margin-top:6px;border-radius:12px}.form .domain-input input,.form .domain-input input:not([type=checkbox]):not([type=file]),.form .domain-input input:focus{margin:0;border:0;background:transparent;box-shadow:none;border-radius:0}
 .check{display:flex!important;gap:10px;align-items:flex-start;font-weight:400!important}.check input{margin-top:5px;accent-color:var(--accent)}.checks{display:flex;flex-wrap:wrap;gap:16px;margin:8px 0 16px}
 .form-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.form-inline input,.form-inline select{width:auto;flex:1;min-width:120px;margin:0}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.filters input{flex:1;min-width:200px;margin:0}.filters select{width:auto;margin:0}
@@ -184,3 +184,10 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .try .try-form{text-align:left;margin-top:8px}.try .try-form textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;line-height:1.45;min-height:160px}.try .try-form .btn{margin-top:4px}
 .try-result .try-link{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:18px 0 10px}.try-result .try-link>a:first-child{font-family:ui-monospace,Menlo,monospace;font-size:1.05rem;color:var(--ok);overflow-wrap:anywhere}
 .try-result .keep{margin-top:22px}.try-result .keep select{font:inherit;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line-2);background:rgba(255,255,255,.04);color:var(--text);min-width:220px}
+
+/* try it 0.8.1: two choices, progress, waiting steps */
+.try-choices{display:grid;gap:16px;grid-template-columns:1fr;margin-bottom:14px}@media(min-width:760px){.try-choices{grid-template-columns:1fr 1fr}}
+.try-choices .choice{border:1px solid var(--line);border-radius:var(--r);padding:16px;background:rgba(255,255,255,.02)}.try-choices .choice h3{margin:0 0 6px;font-size:1.05rem}.try-choices .choice p{margin:0 0 12px}
+.try-choices .file-pick{cursor:pointer}.try-form textarea{margin-top:0}
+.bar.busy span{width:40%;animation:slide 1.1s ease-in-out infinite}@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+.steps.wait{grid-template-columns:1fr;margin:18px 0}.steps.wait li.now strong::after{content:"";display:inline-block;width:12px;height:12px;margin-left:10px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}@keyframes spin{to{transform:rotate(360deg)}}

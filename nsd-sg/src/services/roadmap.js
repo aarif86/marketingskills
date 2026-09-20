@@ -130,6 +130,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-8-1', '0.8.1', 'Try it: upload the file, and we check the link before showing it', `- New: on the home page you can now upload the .html file your AI gave you, not only paste the code. Picking the file starts it straight away.
+- Changed: after you press the button, the page shows “Putting your page online…” and only shows the link once it really answers. If the try address is brand new and its padlock is still being issued, it says so and keeps checking instead of sending you to a broken link.
+- Fixed: the web address box on sign-up looked like a box inside a box.
+- Admin: System health shows whether try.nsd.sg answers, with a button to set it up or repair it.`, 'new,fix', '2026-09-20T22:00:00Z'],
   ['cl-0-8-0', '0.8.0', 'Try it first, and plainer words everywhere', `- New: paste the code on the home page without an account and see it online at try.nsd.sg in seconds. The link works for 3 hours. Press “Keep it” to sign up and move the page to your own address; signed-in users can drop it onto a site they already have.
 - Changed: the whole site now uses everyday words. “Publish a version” is “put your page online”, “versions” are “older copies”, “HTTPS” is “the padlock”. Same product, less jargon.`, 'new,improved', '2026-09-20T20:00:00Z'],
   ['cl-0-7-0', '0.7.0', 'Paste HTML, get a link', `- New: on your site page, paste the HTML straight from Claude or ChatGPT and it is live — no download, no upload. Give it a page name for an address like name.nsd.sg/proposal, or leave it blank for the home page.

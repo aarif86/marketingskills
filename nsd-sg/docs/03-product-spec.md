@@ -17,7 +17,8 @@ Positioning notes:
 
 ## User journeys
 
-**Try it (no account, 0.8.0).** Home page → paste the code → `/try/<id>` shows the link `try.nsd.sg/<id>/`, which
+**Try it (no account, 0.8.0/0.8.1).** Home page → upload the .html file or paste the code → `/try/<id>` waits until the
+preview answers, then shows the link `try.nsd.sg/<id>/`, which
 works for 3 hours. From there: “Keep it at my own address” → `/signup?preview=<id>` (the site name becomes
 required and the page is moved to the new site as `index.html`), or, signed in, pick an existing site on the result
 page or `/sites/new?preview=<id>`. The preview is deleted once kept or expired.

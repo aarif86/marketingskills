@@ -245,6 +245,13 @@ ${h.hosting.errors.length ? html`<table class="table small"><tbody>${h.hosting.e
 <p class="muted">Secrets file <code>DATA_DIR/.env</code>: ${h.hosting.envFile ? html`present (keys: <code>${h.hosting.envFile.join(', ') || 'none'}</code>)` : 'not found'}. Read at process start — restart the Node.js app in hPanel after editing.</p>
 ${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root (no site owns them): ${h.hosting.orphans.map((o) => html`<form method="post" action="/admin/health/orphan" class="inline">${hidden(h.hosting.csrf, { name: o })}<code>${o}</code> <button class="btn btn-ghost btn-sm" type="submit">remove</button></form> `)}</p>` : ''}
 <form method="post" action="/admin/health/sync" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-primary btn-sm" type="submit">Sync now</button></form> <span class="muted small">provisions pending subdomains and rebuilds every tenant folder (the hourly cron does the same)</span></div>` : ''}
+<div class="card"><h2>Test pages (try.${h.baseDomain})</h2>
+<p>${h.tryHost.live} live test page${h.tryHost.live === 1 ? '' : 's'} (${h.tryHost.ready} confirmed reachable). ${h.tryHost.enabled
+  ? html`Folder <code>tenants/try/</code>: <strong>${h.tryHost.dir ? 'present' : 'missing'}</strong> · <a href="${h.tryHost.url}" target="_blank" rel="noopener">${h.tryHost.url}</a> answers over HTTPS: <strong class="${h.tryHost.answers ? 'ok' : 'warn'}">${h.tryHost.answers ? 'yes' : `no${h.tryHost.detail ? ` (${h.tryHost.detail})` : ''}`}</strong>. A new subdomain needs 5–15 min for its certificate; until then visitors see a browser SSL error and the result page keeps waiting.`
+  : 'Served by this app (no Hostinger publisher).'}</p>
+${h.tryHost.lastError ? html`<p class="muted small">Last error (${formatDate(h.tryHost.lastError.created_at)}): <code>${h.tryHost.lastError.error}</code></p>` : ''}
+${h.tryHost.enabled ? html`<form method="post" action="/admin/health/try-host" class="inline">${hidden(h.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Set up / repair the try address</button></form>` : ''}
+</div>
 <div class="card"><h2>Checks</h2><ul class="plain">
   <li>Platform hosts: <code>${config.platformHosts.join(', ')}</code> · tenants: <code>*.${h.baseDomain}</code></li>
   <li>Health endpoint: <code>GET /healthz</code> (use for uptime monitoring)</li>

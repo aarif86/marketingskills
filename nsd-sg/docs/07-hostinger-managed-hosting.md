@@ -113,7 +113,9 @@ there is no separate restart button in the new hPanel.
   10-minute maintenance timer while it is awake and by the hourly `sync-all` cron otherwise, so on managed hosting a
   preview can outlive its 3 hours by up to an hour. `try` is a reserved name. Caps: 1 MB per paste, 5 pastes per IP
   per hour, 2000 live previews in total. Like any new subdomain, the certificate for `try.nsd.sg` takes 5–15 min
-  the first time.
+  the first time; the result page (`/try/<id>`) polls `/try/<id>/status`, which HEAD-requests the preview URL from
+  the app and only shows the link once LiteSpeed answers 200 over HTTPS (`previews.ready_at`). `/admin/health`
+  shows whether the try host answers and has a set-up/repair button.
 - **Without an API token** the app still builds docroots; subdomains stay `pending` and must be created from the
   MCP (`hosting_createWebsiteSubdomainV1`, directory `tenants/<name>`) or hPanel. `/admin/health` lists them.
 - **Backups:** `DATA_DIR` is the whole state (SQLite + releases). hPanel backups cover the account; for an off-box
