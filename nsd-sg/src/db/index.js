@@ -85,9 +85,9 @@ export const DEFAULT_PLANS = [
   {
     id: 'beta',
     name: 'Beta',
-    description: 'For invited beta testers: 3 sites, no badge, own domain welcome. Free for 3 months, then S$6/month.',
+    description: 'For invited beta testers: 3 sites, no badge, your own domain. Free for 30 days, then S$6/month.',
     price_cents_month: 600,
-    trial_days: 90,
+    trial_days: 30,
     is_public: 0,
     is_default: 0,
     sort_order: 25,

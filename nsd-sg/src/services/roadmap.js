@@ -124,14 +124,14 @@ const SEED_ROADMAP = [
   ['rm-badge', 'Powered-by badge with a demo page', 'Free sites carry a small badge; Plus removes it. See exactly what it looks like at /badge.', 'shipped', 'design', 901],
   ['rm-showcase', 'Public showcase of hosted sites', 'Every live site listed at /showcase; Plus and Beta can opt out.', 'shipped', 'platform', 902],
   ['rm-hitpay', 'Card payments through HitPay', 'Plus and Beta subscriptions billed monthly by card, activated automatically.', 'shipped', 'billing', 903],
-  ['rm-promo', 'Promo codes for beta testers', 'Codes that unlock the Beta plan: 3 sites, no badge, 90 days free.', 'shipped', 'billing', 904],
+  ['rm-promo', 'Promo codes for beta testers', 'Codes that unlock the Beta plan: 3 sites, no badge, 30 days free.', 'shipped', 'billing', 904],
   ['rm-steps', 'Three-step guide on every site page', 'Claim → publish → open, with an SSL heads-up for brand-new addresses.', 'shipped', 'dashboard', 905],
   ['rm-mobile', 'Mobile-first redesign', 'New navigation drawer, pill buttons and motion across the whole site.', 'shipped', 'design', 906],
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
   ['cl-0-11-0', '0.11.0', 'Publish straight from Claude; 30 free days; Plus leads with your own domain', `- New: Connect to Claude. Make a token, add NSD.SG to Claude (web, Desktop or Claude Code) once, then say “publish this as my-site” and get a live link back. Claude can publish, update, list and delete your own sites, within your plan, with the same name checks as the dashboard.
-- Changed: new Free accounts get 30 days. Everyone who signed up before keeps their dates. Warnings appear at 7 days and 1 day left.
+- Changed: new Free and Beta accounts get 30 days. Everyone who signed up before keeps their dates. Warnings appear at 7 days and 1 day left.
 - Changed: pricing now leads with what people actually pay for: your own domain name on Plus. Prices unchanged.`, 'new,improved', '2026-09-21T09:00:00Z'],
   ['cl-0-10-0', '0.10.0', 'Connect your own domain name, by yourself', `- New: on Plus and Beta, open your site’s Settings, type a domain you bought (like mybusiness.sg), and we show the two records to add where you bought it, in plain words. Press “Check the records” and the site connects, padlock included. Your name.nsd.sg address keeps working.
 - Admin: a queue of domains waiting to be connected, and a monthly-recurring revenue figure on the overview.`, 'new', '2026-09-21T08:00:00Z'],

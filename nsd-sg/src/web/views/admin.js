@@ -286,7 +286,7 @@ ${h.domains.active.length ? html`<p class="muted small">Connected: ${h.domains.a
 
 export function promoPage({ codes, plans, csrf }) {
   return html`<h1>Promo codes <span class="muted">(${codes.length})</span></h1>
-<p class="muted">A code moves the user onto the chosen plan with a fresh trial (the plan's <code>trial_days</code>). Beta = 3 sites, no badge, 90 days free, then S$6/mo via HitPay.</p>
+<p class="muted">A code moves the user onto the chosen plan with a fresh trial (the plan's <code>trial_days</code>). Beta = 3 sites, no badge, 30 days free, then S$6/mo via HitPay.</p>
 <form method="post" action="/admin/promo" class="card form">${hidden(csrf, { action: 'create' })}
   <div class="grid three tight">
     <label>Code <input name="code" placeholder="ASATIZAH-2026" maxlength="32" required style="text-transform:uppercase"></label>
