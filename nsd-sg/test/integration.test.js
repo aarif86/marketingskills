@@ -222,6 +222,19 @@ test('admin removes branding, suspends and restores a site, reserves a name', as
 
   r = await post('/admin/reserved', admin.cookie, { action: 'add', names: 'brandx brandy', reason: 'trademark' });
   assert.equal((await get('/api/availability?name=brandx')).json().reason, 'That name is reserved.');
+  // Blocked words match inside any name; system words cannot be removed; admin words can.
+  assert.equal((await get('/api/availability?name=hamas-relief')).json().reason, 'That name is not available.');
+  assert.equal((await get('/api/availability?name=israel')).json().reason, 'That name is reserved.');
+  assert.equal((await get('/api/availability?name=israeli-food')).json().available, true, 'country names are exact-match only');
+  assert.equal((await get('/api/availability?name=badwordshop')).json().available, true);
+  r = await post('/admin/reserved', admin.cookie, { action: 'add-word', words: 'badword', reason: 'test' });
+  assert.equal(r.statusCode, 302);
+  assert.equal((await get('/api/availability?name=badwordshop')).json().reason, 'That name is not available.');
+  assert.match((await get('/admin/reserved', admin.cookie)).body, /Blocked words/);
+  r = await post('/admin/reserved', admin.cookie, { action: 'remove-word', word: 'badword' });
+  assert.equal((await get('/api/availability?name=badwordshop')).json().available, true);
+  r = await post('/admin/reserved', admin.cookie, { action: 'remove-word', word: 'terror' });
+  assert.equal((await get('/api/availability?name=terrorsg')).json().reason, 'That name is not available.', 'system word stays');
 });
 
 test('admin plan override removes branding for the user; suspending the user takes the site offline', async () => {

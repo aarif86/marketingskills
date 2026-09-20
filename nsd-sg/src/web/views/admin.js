@@ -183,13 +183,21 @@ ${plans.map((p) => html`<tr><td><code>${p.id}</code></td><td>${p.name}</td><td>$
 </form>`.toString();
 }
 
-export function reservedPage({ names, csrf }) {
+export function reservedPage({ names, words = [], csrf }) {
   return html`<h1>Reserved names <span class="muted">(${names.length})</span></h1>
+<p class="muted">Two lists. <strong>Reserved names</strong> block one exact name (“bet” stops bet.${config.baseDomain} only). <strong>Blocked words</strong> stop any name that contains the word anywhere (“terror” stops terrorist, antiterror, terror-sg). Attempts are logged in the audit log.</p>
 <form method="post" action="/admin/reserved" class="card form">${hidden(csrf, { action: 'add' })}
   <label>Add names (space or comma separated) <textarea name="names" rows="2" placeholder="brandname anotherone"></textarea></label>
   <label>Reason <input name="reason" placeholder="trademark / partner / abuse" maxlength="100"></label>
   <button class="btn btn-primary btn-tiny">Reserve</button></form>
-<div class="card"><div class="chips">${names.map((n) => html`<form method="post" action="/admin/reserved" class="chip">${hidden(csrf, { action: 'remove', name: n.name })}<span title="${n.reason}">${n.name}</span>${n.reason === 'system' ? '' : html`<button aria-label="remove ${n.name}">✕</button>`}</form>`)}</div></div>`.toString();
+<div class="card"><div class="chips">${names.map((n) => html`<form method="post" action="/admin/reserved" class="chip">${hidden(csrf, { action: 'remove', name: n.name })}<span title="${n.reason}">${n.name}</span>${n.reason === 'system' ? '' : html`<button aria-label="remove ${n.name}">✕</button>`}</form>`)}</div></div>
+<h1 id="words">Blocked words <span class="muted">(${words.length})</span></h1>
+<p class="muted">Matched inside any name, so keep these to words with no innocent use. Country names do not belong here (“oman” would block “woman”); put those in Reserved names above.</p>
+<form method="post" action="/admin/reserved" class="card form">${hidden(csrf, { action: 'add-word' })}
+  <label>Add words (space or comma separated) <textarea name="words" rows="2" placeholder="hamas taliban"></textarea></label>
+  <label>Reason <input name="reason" placeholder="terror / hate / scam" maxlength="100"></label>
+  <button class="btn btn-primary btn-tiny">Block</button></form>
+<div class="card"><div class="chips">${words.map((w) => html`<form method="post" action="/admin/reserved" class="chip">${hidden(csrf, { action: 'remove-word', word: w.word })}<span title="${w.reason}">${w.word}</span>${w.reason === 'system' ? '' : html`<button aria-label="remove ${w.word}">✕</button>`}</form>`)}</div></div>`.toString();
 }
 
 export function abusePage({ reports, status, csrf }) {

@@ -12,6 +12,7 @@ import {
 } from '../../services/users.js';
 import {
   getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
+  listBlockedWords, addBlockedWord, removeBlockedWord,
 } from '../../services/sites.js';
 import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents, listPromoCodes, createPromoCode, deletePromoCode } from '../../services/plans.js';
 import { listReleases, listReleaseFiles, diskUsage } from '../../storage/releases.js';
@@ -329,9 +330,23 @@ export async function registerAdminRoutes(app) {
     return reply.redirect('/admin/roadmap');
   });
 
-  app.get('/admin/reserved', opts, async (req, reply) => render(req, reply, { title: 'Reserved names', active: 'reserved', body: V.reservedPage({ names: listReserved(), csrf: csrfTokenFor(req) }) }));
+  app.get('/admin/reserved', opts, async (req, reply) => render(req, reply, { title: 'Reserved names', active: 'reserved', body: V.reservedPage({ names: listReserved(), words: listBlockedWords(), csrf: csrfTokenFor(req) }) }));
   app.post('/admin/reserved', opts, async (req, reply) => {
     const b = req.body ?? {};
+    if (b.action === 'add-word') {
+      const words = String(b.words ?? '').split(/[\s,]+/).filter(Boolean).slice(0, 200);
+      let n = 0;
+      for (const w of words) if (addBlockedWord(w, String(b.reason ?? 'admin').slice(0, 100))) n++;
+      audit({ req, action: 'admin.blocked_word.add', targetType: 'blocked_word', targetId: words.join(','), details: { count: n }, severity: 'warn' });
+      flash(reply, 'success', `Blocked ${n} word${n === 1 ? '' : 's'}. Any name containing ${n === 1 ? 'it' : 'them'} is refused from now on.`);
+      return reply.redirect('/admin/reserved#words');
+    }
+    if (b.action === 'remove-word') {
+      removeBlockedWord(String(b.word ?? ''));
+      audit({ req, action: 'admin.blocked_word.remove', targetType: 'blocked_word', targetId: b.word, severity: 'warn' });
+      flash(reply, 'success', 'Word removed.');
+      return reply.redirect('/admin/reserved#words');
+    }
     if (b.action === 'remove') { removeReserved(String(b.name ?? '')); audit({ req, action: 'admin.reserved.remove', targetType: 'reserved', targetId: b.name }); flash(reply, 'success', 'Removed.'); }
     else {
       const names = String(b.names ?? '').split(/[\s,]+/).filter(Boolean).slice(0, 200);

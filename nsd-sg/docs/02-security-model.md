@@ -70,3 +70,15 @@ posture Blogspot, Carrd and WordPress.com take.
 - [ ] SPF/DKIM/DMARC for the sending domain of transactional email.
 - [ ] Abuse mailbox (`abuse@nsd.sg`) exists and is read.
 - [ ] `ufw` and `fail2ban` enabled (done by `setup-vps.sh`); SSH key-only auth.
+
+## Name blocklists (0.9.0)
+
+Two lists guard subdomain registration, both editable at `/admin/reserved`:
+
+- **Reserved names** (`reserved_subdomains`): exact match. Seeded with infrastructure names, Singapore
+  government/bank/brand names, ToS categories and politically charged names (israel, palestine, gaza, hamas,
+  hezbollah, idf, zionist, taliban, alqaeda, isis). Country names stay here, never in the wildcard list.
+- **Blocked words** (`blocked_words`): matched as a substring anywhere in a name. Seeded from
+  `BLOCKED_SUBSTRINGS` in `src/lib/subdomain.js` plus hamas, hezbollah, taliban, alqaeda, zionis. The live list
+  is loaded into memory at boot and after every admin change (`loadBlockedWords`), so checks stay in-process.
+  System-seeded words cannot be removed from admin. Every refused attempt is logged (`security.blocked_name`).

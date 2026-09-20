@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-0', '0.9.0', 'Blocked words you can manage yourself', `- New: Admin → Reserved names has a second list, Blocked words. A blocked word is refused anywhere inside a name (“terror” stops terrorist and terror-sg). Add or remove words without a deploy.
+- Changed: hamas, hezbollah, taliban, alqaeda and zionis are blocked words; israel, palestine, gaza, hamas, hezbollah, idf, zionist, taliban, alqaeda and isis are reserved exact names.`, 'new', '2026-09-21T01:00:00Z'],
   ['cl-0-8-3', '0.8.3', 'Small fixes: time zone, menu order, plainer words', `- Changed: test-page times now say “Singapore time” so nobody has to guess.
 - Changed: the menu follows the order of the home page (Try it → Who it’s for → How it works), links land just below the menu bar, and the menu shows which part you are reading.
 - Changed: “Teachers and asatizah” is now “Teachers and educators”, in words everyone knows.`, 'improved', '2026-09-21T00:30:00Z'],

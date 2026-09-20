@@ -1,5 +1,5 @@
 // Site (tenant) lifecycle: naming, ownership, status. File contents live in storage/releases.js.
-import { getDb } from '../db/index.js';
+import { getDb, loadBlockedWords } from '../db/index.js';
 import { newId, nowIso } from '../lib/ids.js';
 import { normalizeSubdomain, validateSubdomainSyntax } from '../lib/subdomain.js';
 import { entitlementsFor } from './plans.js';
@@ -158,6 +158,25 @@ export function addReserved(name, reason = 'admin') {
 
 export function removeReserved(name) {
   getDb().prepare('DELETE FROM reserved_subdomains WHERE name = ?').run(name);
+}
+
+// ---- blocked words (admin; matched inside any name) ----------------------------------
+
+export function listBlockedWords() {
+  return getDb().prepare('SELECT * FROM blocked_words ORDER BY word').all();
+}
+
+export function addBlockedWord(word, reason = 'admin') {
+  const w = String(word ?? '').trim().toLowerCase();
+  if (!/^[a-z0-9-]{2,40}$/.test(w)) return false;
+  getDb().prepare('INSERT OR IGNORE INTO blocked_words (word, reason) VALUES (?, ?)').run(w, reason);
+  loadBlockedWords();
+  return true;
+}
+
+export function removeBlockedWord(word) {
+  getDb().prepare("DELETE FROM blocked_words WHERE word = ? AND reason != 'system'").run(String(word ?? '').toLowerCase());
+  loadBlockedWords();
 }
 
 // ---- traffic counters -----------------------------------------------------------------

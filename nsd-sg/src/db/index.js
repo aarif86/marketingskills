@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { config } from '../config.js';
 import { seedRoadmap } from '../services/roadmap.js';
+import { BLOCKED_SUBSTRINGS, setBlockedWords } from '../lib/subdomain.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,6 +52,7 @@ export function migrate(conn = getDb()) {
   }
   seedPlans(conn);
   seedReserved(conn);
+  seedBlockedWords(conn);
   seedRoadmap(conn);
 }
 
@@ -138,7 +140,24 @@ export const RESERVED_SUBDOMAINS = [
   'google', 'facebook', 'meta', 'instagram', 'apple', 'microsoft', 'amazon', 'paypal', 'stripe',
   'whatsapp', 'telegram', 'tiktok', 'youtube', 'netflix', 'x', 'twitter',
   'acme', 'letsencrypt', '_acme-challenge', 'wpad', 'isatap',
+  // Politically charged names: exact matches only (country names inside other words are innocent).
+  'israel', 'palestine', 'gaza', 'hamas', 'hezbollah', 'idf', 'zionist', 'taliban', 'alqaeda', 'isis',
 ];
+
+// Words refused anywhere inside a name. Seeded once; admin adds/removes at /admin/reserved. These have no
+// innocent use inside another word (unlike country names, which stay exact-match above).
+export const SEED_BLOCKED_WORDS = [...BLOCKED_SUBSTRINGS, 'hamas', 'hezbollah', 'taliban', 'alqaeda', 'zionis'];
+
+function seedBlockedWords(conn) {
+  const insert = conn.prepare('INSERT OR IGNORE INTO blocked_words (word, reason) VALUES (?, ?)');
+  conn.transaction((words) => { for (const w of words) insert.run(w, 'system'); })(SEED_BLOCKED_WORDS);
+  loadBlockedWords(conn);
+}
+
+/** Push the table into the in-memory matcher used by every name check. Call after any admin change. */
+export function loadBlockedWords(conn = getDb()) {
+  setBlockedWords(conn.prepare('SELECT word FROM blocked_words').all().map((r) => r.word));
+}
 
 function seedReserved(conn) {
   const insert = conn.prepare('INSERT OR IGNORE INTO reserved_subdomains (name, reason) VALUES (?, ?)');

@@ -23,9 +23,17 @@ export const BLOCKED_SUBSTRINGS = [
 ];
 
 /** Which blocked term (if any) a name contains. Used by the registration watchdog to log attempts. */
+// Live list: seeded from BLOCKED_SUBSTRINGS, then replaced by the blocked_words table (admin edits it at /admin/reserved).
+let liveBlocked = BLOCKED_SUBSTRINGS.slice();
+export function setBlockedWords(words) {
+  const clean = [...new Set((words ?? []).map((w) => String(w).trim().toLowerCase()).filter(Boolean))];
+  liveBlocked = clean.length ? clean : BLOCKED_SUBSTRINGS.slice();
+}
+export function blockedWords() { return liveBlocked.slice(); }
+
 export function blockedTermIn(name) {
   const n = String(name ?? '').toLowerCase();
-  return BLOCKED_SUBSTRINGS.find((s) => n.includes(s)) ?? null;
+  return liveBlocked.find((s) => n.includes(s)) ?? null;
 }
 
 export function normalizeSubdomain(input) {
@@ -47,9 +55,7 @@ export function validateSubdomainSyntax(name) {
   if (name.includes('--')) return 'Consecutive hyphens are not allowed.';
   if (/^xn--/.test(name)) return 'Punycode names are not allowed.';
   if (/^\d+$/.test(name)) return 'Names cannot be numbers only.';
-  for (const s of BLOCKED_SUBSTRINGS) {
-    if (name.includes(s)) return 'That name is not available.';
-  }
+  if (blockedTermIn(name)) return 'That name is not available.';
   return null;
 }
 
