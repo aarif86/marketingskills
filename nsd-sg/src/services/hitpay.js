@@ -22,7 +22,7 @@ async function api(method, path, body) {
   const text = await res.text();
   let json;
   try { json = JSON.parse(text); } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(`HitPay ${method} ${path} -> ${res.status}: ${(json.message ?? text).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`HitPay ${method} ${path} -> ${res.status}: ${String(json.message ?? text).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300)}`);
   return json;
 }
 
