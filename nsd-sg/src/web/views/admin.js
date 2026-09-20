@@ -6,7 +6,7 @@ const stat = (label, value, sub = '') => html`<div class="stat"><div class="stat
 const hidden = (csrf, extra = {}) => html`<input type="hidden" name="_csrf" value="${csrf}">${Object.entries(extra).map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}`;
 
 export function overview({ stats, alerts, recentUsers, recentDeploys, extensions, upgrades, csrf }) {
-  return html`<h1>Overview</h1>
+  return html`<div class="page-head"><h1>Overview</h1><div class="actions"><a class="btn btn-ghost btn-sm" href="/admin/health">System health</a><a class="btn btn-ghost btn-sm" href="/admin/audit">Audit log</a><a class="btn btn-ghost btn-sm" href="/admin/abuse">Abuse reports</a></div></div>
 <div class="stats">
   ${stat('Users', stats.users, `${stats.usersActive} active · +${stats.usersNew7d} this week`)}
   ${stat('Sites', stats.sites, `${stats.live} live · ${stats.suspended} suspended`)}

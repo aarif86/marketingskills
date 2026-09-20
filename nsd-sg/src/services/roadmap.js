@@ -113,10 +113,19 @@ export function deleteChangelog(id) { getDb().prepare('DELETE FROM changelog WHE
 
 // ---- seed: the real history of the product so the pages are never empty -------------------------
 const SEED_ROADMAP = [
+  ['rm-mcp', 'Publish straight from Claude', 'Add NSD.SG to Claude once, then say “publish this as my-site” and get a live link back. Tokens you can revoke, same rules as the dashboard.', 'shipped', 'platform', 8],
+  ['rm-lifecycle', 'Clear rules when a free period ends', 'Site stays online, changes pause; own domain off after 30 days, holding page after 60, removed after 150 with emails before each step.', 'shipped', 'billing', 11],
+  ['rm-file-list', 'A tidy file list when there is no home page', 'Upload a few PDFs and nothing else, and visitors get a clean NSD.SG-style list instead of “page not found”.', 'shipped', 'platform', 12],
+  ['rm-self-heal', 'Addresses that fix themselves', 'If Hostinger misses creating an address, NSD.SG retries on its own and tells admin if it stays stuck.', 'shipped', 'platform', 13],
+  ['rm-abuse-tools', 'Blocked words, evidence holds and share cards', 'Admin-managed blocked words, 90-day evidence copies of removed sites, and proper link previews on WhatsApp and Telegram.', 'shipped', 'admin', 14],
+  ['rm-domain-buy', 'Buy a domain inside NSD.SG', 'Search, pay and connect a name without leaving the site. Needs a registrar arrangement first.', 'planned', 'billing', 21],
+  ['rm-capacity', 'Capacity gauge and waitlist mode', 'Admin sees how close the hosting is to its limits; sign-ups switch to a waitlist automatically near the ceiling.', 'planned', 'admin', 22],
+  ['rm-email-gate', 'Confirm your email before the first publish', 'A small gate that keeps throwaway accounts from putting pages online.', 'planned', 'admin', 23],
+  ['rm-vs-pages', 'Honest comparisons with Vercel and shared hosting', 'Two pages that show what a one-page site really costs elsewhere.', 'planned', 'design', 45],
   ['rm-try-it', 'Try it before you sign up', 'Paste the code on the home page, no account, and get a link that works for 3 hours. Sign up to keep it at your own address.', 'shipped', 'platform', 9],
   ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'shipped', 'platform', 10],
   ['rm-custom-domain', 'Connect your own domain', 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Plus and Beta.', 'shipped', 'platform', 20],
-  ['rm-expiry-emails', 'Reminder emails before your free period ends', 'A heads-up at day 76, a grace period, and a clear path to extend or upgrade — no surprises.', 'planned', 'billing', 30],
+  ['rm-expiry-emails', 'Reminder emails before your free period ends', 'Emails 7 days and 1 day before, on the day, and before a site is removed. First extension is granted instantly.', 'shipped', 'billing', 30],
   ['rm-analytics', 'Simple visitor stats per site', 'Visits and top pages for each site, privacy-friendly, no cookies.', 'planned', 'dashboard', 40],
   ['rm-demo-video', 'A 60-second "upload to live" walkthrough', 'Short video on the home page showing claim → upload → open.', 'planned', 'design', 50],
   ['rm-psl', 'Stronger isolation between sites', 'Registering nsd.sg on the Public Suffix List so browsers treat every site as fully separate.', 'planned', 'platform', 5],
@@ -130,6 +139,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-1', '0.12.1', 'Admin menu shows every link; roadmap caught up', `- Fixed: the admin menu wraps onto a second line instead of hiding System health, Audit log and Abuse reports. The Overview also has buttons for all three.
+- Changed: the public roadmap now lists everything shipped this week and what is planned next.`, 'fix,improved', '2026-09-21T11:00:00Z'],
   ['cl-0-12-0', '0.12.0', 'More time in one click, and clear rules when a free period ends', `- New: your first extension is instant. Press “Get more time” on the Plan page and you have another 30 days on the spot. A second one goes to a person.
 - New: reminder emails 7 days and 1 day before your free period ends, and on the day.
 - Changed: when a free period ends, the site stays online but cannot be changed. An own domain stops answering after 30 days, visitors see a holding page after 60 days, and the site is removed after 150 days, with an email a week before. Paid plans are never affected.
