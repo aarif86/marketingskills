@@ -50,6 +50,21 @@
     targets.forEach(function (el) { io.observe(el); });
   }
 
+  // ---- highlight the nav link for the section on screen (home page only) ----
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a[href^="/#"]'));
+  if (navLinks.length && (location.pathname === '/' || location.pathname === '') && 'IntersectionObserver' in window) {
+    var byId = {};
+    navLinks.forEach(function (a) { var id = a.getAttribute('href').slice(2); var sec = document.getElementById(id); if (sec) byId[id] = a; });
+    var mark = function (id) { navLinks.forEach(function (a) { a.classList.toggle('active', a === byId[id]); }); };
+    var seen = {};
+    var so = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting; });
+      var current = Object.keys(byId).filter(function (id) { return seen[id]; })[0];
+      if (current) mark(current); else if (window.scrollY < 200) mark(null);
+    }, { rootMargin: '-40% 0px -50% 0px', threshold: 0 });
+    Object.keys(byId).forEach(function (id) { so.observe(document.getElementById(id)); });
+  }
+
   // ---- scroll to top ----
   var top = document.createElement('button');
   top.type = 'button'; top.className = 'to-top'; top.setAttribute('aria-label', 'Back to top');

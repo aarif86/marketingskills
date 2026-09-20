@@ -51,7 +51,7 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
   <p class="section-lead">People who are not web designers, but who now make web pages with AI and need to hand them to someone else without it looking like a test.</p>
   <div class="grid three">
     <div class="card"><h3><span class="ico">💼</span>People who share their work</h3><p>Consultants, trainers, coaches, freelancers. A proposal, a price calculator, an explainer, a checklist, a one-page pitch.</p><p class="eg">yourname.${baseDomain}/proposal</p></div>
-    <div class="card"><h3><span class="ico">📖</span>Teachers and asatizah</h3><p>A lesson page, a du‘a list, a quiz for the class, the term timetable. Send it to the parents’ WhatsApp group. It opens on any phone.</p><p class="eg">ustazname.${baseDomain}/quiz</p></div>
+    <div class="card"><h3><span class="ico">📖</span>Teachers and educators</h3><p>A lesson page, a class quiz, a reading list, the term timetable. Send it to the parents’ WhatsApp group. It opens on any phone.</p><p class="eg">teachername.${baseDomain}/quiz</p></div>
     <div class="card"><h3><span class="ico">📅</span>Event and community organisers</h3><p>The programme, the timings, the map, how to register. It only needs to live for three weeks, but it has to look trustworthy for all of them.</p><p class="eg">event.${baseDomain}</p></div>
     <div class="card"><h3><span class="ico">🧪</span>People trying out an idea</h3><p>You made something last night and want feedback this morning. Send a proper link. Change it tonight. Every older copy is kept.</p><p class="eg">project.${baseDomain}</p></div>
     <div class="card"><h3><span class="ico">🏪</span>Small businesses with one page</h3><p>Opening hours, what you do, how to reach you. The page the AI wrote for you, on a Singapore address, for free.</p><p class="eg">shopname.${baseDomain}</p></div>
@@ -208,7 +208,7 @@ export function showcasePage({ sites, baseDomain, previews = [] }) {
   <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically; Plus lets you stay off the list.</p>
   ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
   ${previews.length ? html`<div class="sc-temp"><h2>Test pages right now <span class="muted">${previews.length}</span></h2>
-  <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown.</p>
+  <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown (Singapore time).</p>
   <ul class="showcase temp">${previews.map((p) => html`<li><a href="${p.url}" target="_blank" rel="noopener nofollow"><span class="sc-name">try.${baseDomain}/<i>${p.id}</i></span><span class="sc-title muted"><span class="pill pill-temp">test page</span> gone at ${p.gone}</span><span class="arrow">↗</span></a></li>`)}</ul></div>` : ''}
   <p class="muted small mt">Something here breaks our <a href="/terms">terms</a>? <a href="/report">Report it</a>.</p>
 </div></section>`.toString();
@@ -317,7 +317,7 @@ export function tryResultPage({ id, url, expiresAt, status, user, sites, csrf })
   <p class="eyebrow">Your test page is online</p>
   <h1>It works. Here is your link.</h1>
   <div class="card try-link"><a href="${url}" target="_blank" rel="noopener">${shown}</a><a class="btn btn-primary" href="${url}" target="_blank" rel="noopener">Open in a new tab ↗</a></div>
-  <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when}</strong> (3 hours from now), then it is deleted.</p>
+  <p class="muted">Anyone with this link can see the page. It stops working at <strong>${when} Singapore time</strong> (3 hours from now), then it is deleted.</p>
   <div class="try-frame-wrap"><div class="bd-bar"><span></span><span></span><span></span><em>${shown}</em></div><iframe class="try-frame" src="${url}" title="Your test page, live" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div>
   <div class="card keep"><h2>Want to keep it?</h2>
     ${user ? html`<p>Put it on one of your sites as the home page, or make a new site for it.</p>

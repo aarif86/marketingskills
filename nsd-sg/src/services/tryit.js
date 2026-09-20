@@ -63,7 +63,7 @@ function previewBar({ id, expiresAt }) {
   const report = platformUrl(`/report?site=${TRY_LABEL}`);
   const style = (s) => s.split(';').filter(Boolean).map((x) => x + ' !important').join(';');
   const bar = `<div data-nsd="try-bar" style="${style('position:fixed;top:0;left:0;right:0;z-index:2147483646;height:44px;display:flex;align-items:center;justify-content:center;gap:12px;padding:0 12px;box-sizing:border-box;background:#111114;color:#fff;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.3);flex-wrap:nowrap;overflow:hidden;white-space:nowrap')}">` +
-    `<span style="${style('color:#c9c9d4')}">Test page · gone at ${esc(expiresLabel(expiresAt))}</span>` +
+    `<span style="${style('color:#c9c9d4')}">Test page · gone at ${esc(expiresLabel(expiresAt))} Singapore time</span>` +
     `<a href="${esc(keep)}" style="${style('color:#fff;background:#7c5cff;text-decoration:none;padding:7px 12px;border-radius:999px;font-weight:600')}">Keep it at my own address →</a>` +
     `<a href="${esc(report)}" style="${style('color:#8a8a99;text-decoration:none;font-size:11px')}">Report</a>` +
     `</div><style>html{margin-top:44px !important}</style>`;

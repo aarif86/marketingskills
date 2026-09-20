@@ -130,6 +130,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-8-3', '0.8.3', 'Small fixes: time zone, menu order, plainer words', `- Changed: test-page times now say “Singapore time” so nobody has to guess.
+- Changed: the menu follows the order of the home page (Try it → Who it’s for → How it works), links land just below the menu bar, and the menu shows which part you are reading.
+- Changed: “Teachers and asatizah” is now “Teachers and educators”, in words everyone knows.`, 'improved', '2026-09-21T00:30:00Z'],
   ['cl-0-8-2', '0.8.2', 'Drop the file, see it live, three free tries', `- New: drag the .html file anywhere into the try box and it goes online. Your page opens in a new tab and is shown live on that page, with the link next to it.
 - Changed: three test pages free without an account, then we ask you to make a free account. Test pages that are live also appear at the bottom of the showcase, clearly marked as temporary.
 - Admin: the test-page panel lists every live test page with a Remove button.
