@@ -113,7 +113,7 @@ export function deleteChangelog(id) { getDb().prepare('DELETE FROM changelog WHE
 
 // ---- seed: the real history of the product so the pages are never empty -------------------------
 const SEED_ROADMAP = [
-  ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'planned', 'platform', 10],
+  ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'shipped', 'platform', 10],
   ['rm-custom-domain', 'Connect your own domain', 'Point www.yourdomain.sg at your NSD.SG site with a guided DNS check. Add-on for Plus and Beta.', 'planned', 'platform', 20],
   ['rm-expiry-emails', 'Reminder emails before your free period ends', 'A heads-up at day 76, a grace period, and a clear path to extend or upgrade — no surprises.', 'planned', 'billing', 30],
   ['rm-analytics', 'Simple visitor stats per site', 'Visits and top pages for each site, privacy-friendly, no cookies.', 'planned', 'dashboard', 40],
@@ -129,6 +129,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-6-0', '0.6.0', 'Continue with Google', `- New: sign up or log in with your Google account — one click, no password to remember. If you already have an account with the same email, it is linked automatically.`, 'new', '2026-09-20T14:00:00Z'],
   ['cl-0-5-6', '0.5.6', 'Cancelling keeps what you paid for, exactly', `- Changed: when you cancel a paid plan you keep it until the end of the month you already paid for (last charge + 1 month), the same as any subscription service. Previously it was 30 days from the day you cancelled.
 - Fixed: HitPay error messages in admin no longer show raw HTML.`, 'improved', '2026-09-20T13:00:00Z'],
   ['cl-0-5-5', '0.5.5', 'Cancelling never shortens time you were already given', `- Fixed: if an admin extended your plan and you later cancel a subscription, the later date is kept instead of being replaced by the 30-day grace period.`, 'fix', '2026-09-20T11:30:00Z'],

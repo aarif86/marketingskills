@@ -116,6 +116,12 @@ export const config = Object.freeze({
     pass: env('SMTP_PASS', ''),
     from: env('SMTP_FROM', `NSD.SG <${env('SMTP_USER', `no-reply@${baseDomain}`)}>`), // Hostinger rejects senders other than the mailbox
   },
+  // "Continue with Google" — hidden until both are set. Redirect URI must match the Google Cloud OAuth client.
+  google: {
+    clientId: env('GOOGLE_CLIENT_ID', ''),
+    clientSecret: env('GOOGLE_CLIENT_SECRET', ''),
+    redirectUri: env('GOOGLE_REDIRECT_URI', `${env('PUBLIC_SCHEME', isProd ? 'https' : 'http')}://${env('PLATFORM_HOSTS', `${baseDomain},www.${baseDomain}`).split(',')[0].trim()}/auth/google/callback`),
+  },
   tlsAskToken: env('TLS_ASK_TOKEN', ''),
   // HitPay (or any) hosted payment links per plan id: PAY_LINK_PLUS, PAY_LINK_BETA, ... Upgrade buttons open them.
   hitpay: {

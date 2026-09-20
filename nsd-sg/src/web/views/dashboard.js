@@ -147,7 +147,7 @@ export function accountPage({ user, sessions, csrf }) {
 <form method="post" action="/account/profile" class="form card"><input type="hidden" name="_csrf" value="${csrf}">
   <h2>Profile</h2>
   <label>Name <input name="name" value="${user.name}" maxlength="80"></label>
-  <label>Email <input value="${user.email}" disabled> ${user.email_verified_at ? html`<small class="ok">Confirmed</small>` : html`<small class="warn">Not confirmed</small>`}</label>
+  <label>Email <input value="${user.email}" disabled> ${user.email_verified_at ? html`<small class="ok">Confirmed</small>` : html`<small class="warn">Not confirmed</small>`}${user.google_sub ? html`<small class="ok">Signed in with Google. To also log in with a password, use “Forgot password” once to set one.</small>` : ''}</label>
   <button class="btn btn-primary" type="submit">Save</button>
   ${!user.email_verified_at ? html`<button class="btn btn-ghost" type="submit" formaction="/resend-verification">Resend confirmation</button>` : ''}
 </form>

@@ -64,6 +64,17 @@
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   });
 
+  // ---- Continue with Google: carry the site name typed on the signup form ----
+  document.querySelectorAll('[data-google-start]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var inp = document.querySelector('input[name=subdomain]');
+      if (!inp || !inp.value.trim()) return;
+      var u = new URL(a.href, window.location.origin);
+      u.searchParams.set('name', inp.value.trim().toLowerCase());
+      a.href = u.pathname + u.search;
+    });
+  });
+
   // ---- confirmations ----
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault(); });

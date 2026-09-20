@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
   role                TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
   status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','disabled','pending')),
   email_verified_at   TEXT,
+  -- (migration 007 adds google_sub: Google account id when signed up / linked via Google)
   plan_id             TEXT NOT NULL REFERENCES plans(id),
   plan_started_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   plan_expires_at     TEXT,                           -- NULL = never

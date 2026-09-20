@@ -80,6 +80,8 @@ win over both:
 
 ```
 HOSTINGER_API_TOKEN=…        # hPanel → Account → API tokens. Needed for self-serve subdomain creation.
+GOOGLE_CLIENT_ID=…           # Google Cloud Console → Credentials → OAuth client (Web). Redirect URI https://nsd.sg/auth/google/callback
+GOOGLE_CLIENT_SECRET=…       # "Continue with Google" stays hidden until both are set; restart (Redeploy) after adding.
 ADMIN_PASSWORD=…             # optional; otherwise generated on first boot
 SMTP_HOST=smtp.hostinger.com SMTP_PORT=465 SMTP_USER=noreply@nsd.sg SMTP_PASS=…
 HITPAY_API_KEY=…             # HitPay → Developers → API keys. Enables API subscriptions + webhook activation.

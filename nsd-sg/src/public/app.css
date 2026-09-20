@@ -165,3 +165,7 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .flash-info{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.35)}
 .promo-box{padding:14px 16px;border:1px solid rgba(139,92,246,.4);background:rgba(139,92,246,.07);border-radius:var(--r);margin:0 0 16px}.promo-box h3{margin:0 0 10px}.promo-box .compare{margin-bottom:10px}.promo-box .compare th{text-align:left;font-weight:600}.promo-box .compare .hl{color:var(--text)}.promo-box .compare td:first-child{color:var(--muted)}
 .rm-files{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}.rm-files a{font-size:.85rem}
+
+/* ---- Continue with Google ---- */
+.oauth{margin:0 0 18px}.btn-google{width:100%;gap:10px;background:#fff;color:#1f1f1f;border-color:#dadce0}.btn-google:hover{background:#f3f4f6;color:#1f1f1f}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.85rem;margin:16px 0 0}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}

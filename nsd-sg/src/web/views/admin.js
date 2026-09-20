@@ -53,7 +53,7 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/users/${user.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const o = ent.overrides;
   return html`<p class="crumb"><a href="/admin/users">Users</a> / ${user.email}</p>
-<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}</p></div>
+<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}${user.google_sub ? ' · Google-linked' : ''}</p></div>
 <div class="actions">
   ${user.status !== 'active' ? act({ action: 'activate' }, 'Activate', 'btn-primary') : ''}
   ${user.status === 'active' ? act({ action: 'suspend' }, 'Suspend', 'btn-danger', 'Suspend this user and take all their sites offline?') : ''}
