@@ -13,7 +13,7 @@ import {
 } from '../../services/users.js';
 import {
   getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
-  listBlockedWords, addBlockedWord, removeBlockedWord,
+  listBlockedWords, addBlockedWord, removeBlockedWord, checkSiteReady,
 } from '../../services/sites.js';
 import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents, listPromoCodes, createPromoCode, deletePromoCode } from '../../services/plans.js';
 import { listReleases, listReleaseFiles, diskUsage } from '../../storage/releases.js';
@@ -217,6 +217,20 @@ export async function registerAdminRoutes(app) {
         audit({ req, action: 'admin.site.suspend', targetType: 'site', targetId: site.id, details: { reason: b.reason }, severity: 'warn' });
         flash(reply, 'success', 'Site suspended.');
         break;
+      case 'probe': {
+        // Ask the address right now and show exactly what came back, so "why is it still setting up" is answerable.
+        const r = await checkSiteReady(site);
+        audit({ req, action: 'admin.site.probe', targetType: 'site', targetId: site.id, details: r });
+        flash(reply, r.ready ? 'success' : 'warn', r.ready ? `${site.subdomain}.${config.baseDomain} answers over HTTPS. Marked ready.` : `Not yet: ${r.reason === 'error' ? `publisher error: ${r.detail}` : `HEAD ${r.url} failed${r.detail ? ` (${r.detail})` : ' (non-200 answer)'}`}. Hosting state: ${site.hosting_state}${site.hosting_error ? ` · ${site.hosting_error}` : ''}.`);
+        break;
+      }
+      case 'ready': {
+        // Owner can already open it in a browser but our outbound probe cannot reach it: mark it by hand.
+        db().prepare('UPDATE sites SET hosting_ready_at = COALESCE(hosting_ready_at, ?) WHERE id = ?').run(new Date().toISOString(), site.id);
+        audit({ req, action: 'admin.site.mark_ready', targetType: 'site', targetId: site.id, severity: 'warn' });
+        flash(reply, 'success', 'Marked ready. The owner\'s site page shows the Open button now.');
+        break;
+      }
       case 'unsuspend':
         setSiteStatus(site.id, site.current_release_id ? 'live' : 'empty', '');
         audit({ req, action: 'admin.site.unsuspend', targetType: 'site', targetId: site.id });

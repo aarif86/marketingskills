@@ -396,3 +396,18 @@ test('Hostinger docroot: folders without index.html get a generated file list', 
   assert.match(read('dana', 'index.html'), /data-nsd="badge"/);
   assert.match(read('dana', 'docs/index.html'), /b\.pdf/);
 });
+
+test('admin can probe an address and mark it ready by hand', async () => {
+  answers = false;
+  const row = getDb().prepare("SELECT id FROM sites WHERE subdomain = 'dana'").get();
+  getDb().prepare('UPDATE sites SET hosting_ready_at = NULL WHERE id = ?').run(row.id);
+  let r = await post(`/admin/sites/${row.id}/action`, admin.cookie, { action: 'probe' }, `/admin/sites/${row.id}`);
+  assert.equal(r.statusCode, 302);
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Not yet: HEAD http:\/\/dana\.nsd\.test\//);
+  const page = await get(`/admin/sites/${row.id}`, admin.cookie);
+  assert.match(page.body, /not yet confirmed/);
+  r = await post(`/admin/sites/${row.id}/action`, admin.cookie, { action: 'ready' }, `/admin/sites/${row.id}`);
+  assert.ok(getDb().prepare('SELECT hosting_ready_at FROM sites WHERE id = ?').get(row.id).hosting_ready_at);
+  assert.match((await get(`/admin/sites/${row.id}`, admin.cookie)).body, /confirmed reachable/);
+  answers = true;
+});

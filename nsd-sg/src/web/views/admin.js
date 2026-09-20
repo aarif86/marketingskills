@@ -124,9 +124,11 @@ export function siteDetail({ site, owner, ent, files, releases, traffic, reports
   return html`<p class="crumb"><a href="/admin/sites">Sites</a> / ${site.subdomain}</p>
 <div class="page-head"><div><h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${pill(site.status)}</h1>
 <p class="muted">${site.title} · owner <a href="/admin/users/${site.user_id}">${owner?.email ?? '?'}</a> (${owner?.plan_id ?? '?'}) · ${files.length} files · ${formatBytes(site.storage_bytes)} current / ${formatBytes(site.total_storage_bytes)} total · created ${formatDate(site.created_at)} · deployed ${timeAgo(site.last_deployed_at)}</p>
-${site.status === 'suspended' ? html`<p class="flash flash-error">Suspended: ${site.suspended_reason || 'no reason recorded'}</p>` : ''}</div>
+${site.status === 'suspended' ? html`<p class="flash flash-error">Suspended: ${site.suspended_reason || 'no reason recorded'}</p>` : ''}
+${site.hosting_state !== undefined ? html`<p class="muted small">Hosting: <strong>${site.hosting_state}</strong>${site.hosting_error ? html` · error: <code>${site.hosting_error}</code>` : ''} · address ${site.hosting_ready_at ? html`confirmed reachable ${timeAgo(site.hosting_ready_at)}` : html`<strong class="warn">not yet confirmed</strong> (owner sees “setting up”)`}</p>` : ''}</div>
 <div class="actions"><a class="btn btn-ghost" href="${url}" target="_blank" rel="noopener">Open ↗</a>
   ${site.status === 'suspended' ? act({ action: 'unsuspend' }, 'Unsuspend', 'btn-primary') : ''}
+  ${site.hosting_ready_at ? '' : html`${act({ action: 'probe' }, 'Check address now')} ${act({ action: 'ready' }, 'Mark ready by hand', '', 'Only if you have opened the site in a browser with the padlock yourself. Mark it ready?')}`}
   ${site.branding_removed ? act({ action: 'branding', value: 'shown' }, 'Restore badge') : act({ action: 'branding', value: 'removed' }, 'Remove badge')}
 </div></div>
 
