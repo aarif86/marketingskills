@@ -6,6 +6,7 @@ const { validateSubdomainSyntax, tenantFromHost, normalizeSubdomain } = await im
 const { sanitizeRelativePath, isJunkPath } = await import('../src/lib/paths.js');
 const { isAllowedFileName, contentTypeFor } = await import('../src/lib/mime.js');
 const { injectBranding } = await import('../src/serve/branding.js');
+const { injectSocial, pageTitle, pageDescription } = await import('../src/serve/social.js');
 const { __test: tenant } = await import('../src/serve/tenant.js');
 const { hashPassword, verifyPassword, validatePasswordStrength } = await import('../src/lib/password.js');
 const { html, esc } = await import('../src/lib/html.js');
@@ -123,4 +124,25 @@ test('html template escapes interpolations', () => {
   assert.equal(out, '<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>');
   assert.equal(esc(`"'&`), '&quot;&#39;&amp;');
   assert.equal(html`<i>${[1, 2]}</i>`.toString(), '<i>12</i>');
+});
+
+test('share tags: added from the page title/description when missing, left alone when present', () => {
+  const page = '<!doctype html><html><head><title>Ramadan &amp; Quiz</title><meta name="description" content="Ten questions for P5."></head><body><p>x</p></body></html>';
+  const out = injectSocial(Buffer.from(page), { url: 'https://ustaz.nsd.sg/quiz', siteName: 'ustaz.nsd.sg', image: 'https://nsd.sg/assets/social-site.png' }).toString();
+  assert.equal(pageTitle(page), 'Ramadan & Quiz');
+  assert.equal(pageDescription(page), 'Ten questions for P5.');
+  assert.match(out, /<head><meta property="og:type" content="website">/);
+  assert.match(out, /og:title" content="Ramadan &amp; Quiz"/);
+  assert.match(out, /og:description" content="Ten questions for P5\."/);
+  assert.match(out, /og:url" content="https:\/\/ustaz\.nsd\.sg\/quiz"/);
+  assert.match(out, /og:image" content="https:\/\/nsd\.sg\/assets\/social-site\.png"/);
+  assert.match(out, /twitter:card" content="summary_large_image"/);
+  const noDesc = '<html><head><title>T</title></head><body><p>This first paragraph is long enough to serve as a description.</p></body></html>';
+  assert.match(injectSocial(Buffer.from(noDesc), { siteName: 'a.nsd.sg' }).toString(), /og:description" content="This first paragraph is long enough/);
+  const own = '<html><head><meta property="og:title" content="Mine"><meta property="og:image" content="https://x/y.png"></head><body></body></html>';
+  assert.equal(injectSocial(Buffer.from(own), { siteName: 'a.nsd.sg', image: 'https://nsd.sg/i.png' }).toString(), own);
+  const ownImage = '<html><head><title>T</title><meta property="og:image" content="https://x/y.png"></head><body></body></html>';
+  const o2 = injectSocial(Buffer.from(ownImage), { siteName: 'a.nsd.sg', image: 'https://nsd.sg/i.png' }).toString();
+  assert.doesNotMatch(o2, /nsd\.sg\/i\.png/, 'never overrides a page that brings its own image');
+  assert.match(o2, /og:title" content="T"/);
 });

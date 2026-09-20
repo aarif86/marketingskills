@@ -16,7 +16,9 @@ import { releaseDir, resolveWithin } from '../storage/releases.js';
 import { injectBranding } from './branding.js';
 import { esc } from '../lib/html.js';
 import { TRY_LABEL } from '../publish/hostinger.js';
-import { getPreview, readPreviewHtml, renderPreview, PAGES as TRY_PAGES } from '../services/tryit.js';
+import { getPreview, readPreviewHtml, renderPreviewPage, renderPreviewShell, PAGES as TRY_PAGES } from '../services/tryit.js';
+import { injectSocial } from './social.js';
+import { platformUrl, publicUrlForSubdomain } from '../config.js';
 
 const MAX_HTML_INJECT_BYTES = 5 * 1024 * 1024;
 
@@ -143,12 +145,13 @@ function serveTryPreview(req, reply) {
   const parsed = requestPath(req.raw.url ?? '/');
   if (!parsed || parsed.parts.length === 0) return sendPage(reply, 200, TRY_PAGES.root());
   const [id, ...rest] = parsed.parts;
-  if (rest.length > 1 || (rest.length === 1 && rest[0] !== 'index.html')) return sendPage(reply, 404, TRY_PAGES.gone());
+  const want = rest.length === 0 ? 'shell' : rest.length === 1 && rest[0] === 'index.html' ? 'shell' : rest.length === 1 && rest[0] === 'page.html' ? 'page' : null;
+  if (!want) return sendPage(reply, 404, TRY_PAGES.gone());
   const row = getPreview(id);
   const html = row ? readPreviewHtml(id) : null;
   if (!row || html === null) return sendPage(reply, 404, TRY_PAGES.gone());
   if (rest.length === 0 && !parsed.trailingSlash) return reply.code(301).header('Cache-Control', 'no-store').redirect(`/${id}/`);
-  const body = renderPreview(html, { id, expiresAt: row.expires_at });
+  const body = want === 'page' ? renderPreviewPage(html) : renderPreviewShell(html, { id, expiresAt: row.expires_at });
   reply.header('Content-Type', 'text/html; charset=utf-8').header('Content-Length', String(body.length)).header('Cache-Control', 'no-store').code(200);
   return req.method === 'HEAD' ? reply.send() : reply.send(body);
 }
@@ -161,7 +164,10 @@ function brandingRemovedFor(site) {
 
 function sendHtml(req, reply, site, abs, status) {
   let body = fs.readFileSync(abs);
-  if (body.length <= MAX_HTML_INJECT_BYTES && !brandingRemovedFor(site)) body = injectBranding(body);
+  if (body.length <= MAX_HTML_INJECT_BYTES) {
+    if (!brandingRemovedFor(site)) body = injectBranding(body);
+    body = injectSocial(body, { url: `${publicUrlForSubdomain(site.subdomain)}${(req.raw.url ?? '/').split('?')[0]}`, siteName: `${site.subdomain}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png') });
+  }
   reply.header('Content-Type', 'text/html; charset=utf-8');
   reply.header('Content-Length', String(body.length));
   recordTraffic(site.id, body.length);

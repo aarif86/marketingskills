@@ -110,6 +110,7 @@ test('empty site shows coming-soon; ZIP upload publishes; branding injected; uns
   assert.equal(t.statusCode, 200);
   assert.match(t.body, /<h1>Alice<\/h1>/);
   assert.match(t.body, /data-nsd="badge"/);
+  assert.match(t.body, /og:site_name" content="alice\.nsd\.test"/, 'share tags added to hosted pages');
   assert.match(t.body, /Powered by NasarDigital/);
   assert.equal(t.headers['content-type'], 'text/html; charset=utf-8');
   assert.equal(t.headers['x-content-type-options'], 'nosniff');

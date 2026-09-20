@@ -59,11 +59,17 @@ test('home page has the try box; a paste creates a preview and shows the link pa
 test('the preview is served on try.<domain> with the bar, the badge and noindex; nothing else on that host', async () => {
   const r = await get(`/${id}/`, '', 'try.nsd.test');
   assert.equal(r.statusCode, 200);
-  assert.match(r.body, /Ramadan quiz/);
-  assert.match(r.body, /data-nsd="try-bar"/);
+  assert.match(r.body, /data-nsd="try-bar"/, 'shell has the bar');
+  assert.match(r.body, /<iframe src="\.\/page\.html"/, 'page sits in a frame below the bar');
   assert.match(r.body, /Keep it at my own address/);
-  assert.match(r.body, /data-nsd="badge"/);
+  assert.match(r.body, /aria-label="Hide this bar"/);
+  assert.match(r.body, /property="og:title" content="Quiz · test page on NSD\.SG"/);
+  assert.match(r.body, /og:image" content="http:\/\/nsd\.test\/assets\/social-try\.png"/);
   assert.match(r.body, /name="robots" content="noindex/);
+  const pg = await get(`/${id}/page.html`, '', 'try.nsd.test');
+  assert.match(pg.body, /Ramadan quiz/);
+  assert.match(pg.body, /data-nsd="badge"/);
+  assert.doesNotMatch(pg.body, /try-bar/);
   assert.equal(r.headers['x-robots-tag'], 'noindex, nofollow');
   assert.equal(r.headers['cache-control'], 'no-store');
   assert.match(r.headers['content-security-policy'], /frame-ancestors 'self' http:\/\/nsd\.test/);
@@ -76,6 +82,7 @@ test('the preview is served on try.<domain> with the bar, the badge and noindex;
   assert.equal((await app.inject({ method: 'POST', url: `/${id}/`, headers: { host: 'try.nsd.test' } })).statusCode, 405);
   // Hostinger docroot: rendered copy under tenants/try/<id>/ plus the shared root files.
   assert.match(fs.readFileSync(path.join(tenantDir('try'), id, 'index.html'), 'utf8'), /data-nsd="try-bar"/);
+  assert.match(fs.readFileSync(path.join(tenantDir('try'), id, 'page.html'), 'utf8'), /Ramadan quiz[\s\S]*data-nsd="badge"/);
   assert.match(fs.readFileSync(path.join(tenantDir('try'), '.htaccess'), 'utf8'), /X-Robots-Tag[\s\S]*ErrorDocument 404 \/_nsd-expired\.html/);
   assert.ok(fs.existsSync(path.join(tenantDir('try'), '_nsd-expired.html')));
 });
@@ -105,7 +112,7 @@ test('uploading the .html file works like pasting; other files are refused', asy
   let r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
   assert.equal(r.statusCode, 302, r.body);
   const idu = r.headers.location.split('/').pop();
-  assert.match((await get(`/${idu}/`, '', 'try.nsd.test')).body, /Uploaded quiz/);
+  assert.match((await get(`/${idu}/page.html`, '', 'try.nsd.test')).body, /Uploaded quiz/);
   mp = multipart({ _csrf: csrf }, [{ name: 'photo.png', data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), type: 'image/png' }]);
   r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
   assert.equal(r.headers.location, '/#try');

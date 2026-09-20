@@ -20,6 +20,8 @@ import { nowIso } from '../lib/ids.js';
 import { esc } from '../lib/html.js';
 import { extensionOf, HTML_EXTENSIONS } from '../lib/mime.js';
 import { injectBranding } from '../serve/branding.js';
+import { injectSocial } from '../serve/social.js';
+import { platformUrl, publicUrlForSubdomain } from '../config.js';
 import { entitlementsFor } from '../services/plans.js';
 import { releaseDir } from '../storage/releases.js';
 
@@ -161,20 +163,24 @@ function brandingRemovedFor(site, owner) {
 }
 
 /** Copy a release tree into `dst`, injecting the badge into HTML files. Returns file count. */
-function materialise(srcRoot, dstRoot, { badge }) {
+function materialise(srcRoot, dstRoot, { badge, social = null }) {
   let count = 0;
-  (function walk(src, dst) {
+  (function walk(src, dst, rel = '') {
     for (const ent of fs.readdirSync(src, { withFileTypes: true })) {
       if (ent.name.startsWith('.')) continue; // never publish dotfiles (also blocks .htaccess overrides)
       const s = path.join(src, ent.name);
       const d = path.join(dst, ent.name);
       if (ent.isDirectory()) {
         fs.mkdirSync(d, { recursive: true, mode: 0o755 });
-        walk(s, d);
+        walk(s, d, `${rel}${ent.name}/`);
       } else if (ent.isFile()) {
-        if (badge && HTML_EXTENSIONS.has(extensionOf(ent.name))) {
-          const buf = fs.readFileSync(s);
-          fs.writeFileSync(d, buf.length <= MAX_HTML_INJECT_BYTES ? injectBranding(buf) : buf, { mode: 0o644 });
+        if ((badge || social) && HTML_EXTENSIONS.has(extensionOf(ent.name))) {
+          let buf = fs.readFileSync(s);
+          if (buf.length <= MAX_HTML_INJECT_BYTES) {
+            if (badge) buf = injectBranding(buf);
+            if (social) buf = injectSocial(buf, { ...social, url: `${social.base}/${ent.name === 'index.html' ? rel : `${rel}${ent.name}`}` });
+          }
+          fs.writeFileSync(d, buf, { mode: 0o644 });
         } else {
           fs.copyFileSync(s, d);
           fs.chmodSync(d, 0o644);
@@ -231,7 +237,7 @@ export function syncSite(siteId) {
       const src = releaseDir(site.id, site.current_release_id);
       if (!fs.existsSync(src)) throw new PublishError(`release directory missing: ${site.current_release_id}`);
       const badge = !brandingRemovedFor(site, owner);
-      files = materialise(src, build, { badge });
+      files = materialise(src, build, { badge, social: { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png') } });
       const has404 = fs.existsSync(path.join(build, '404.html'));
       fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404 }));
     }

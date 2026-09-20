@@ -92,3 +92,11 @@ maintenance timer and `sync-all`. Admin downloads a single hold (`/admin/evidenc
 pack for an account (`/admin/users/<id>/evidence.zip`: user record without hash, sessions, audit rows, sites incl.
 deleted, releases, plan events, IPs, test pages from those IPs, held files; capped at 200 MB). Both downloads are
 audited. Every audit row records the User-Agent (migration 012). Retention is stated on /privacy and /terms.
+
+## Test-page shell and share previews (0.9.2)
+
+`try.<domain>/<id>/` serves a shell (`index.html`: preview bar, × to hide until next load, share tags) with the
+pasted page in a same-origin frame at `page.html` (noindex + badge only). The shell's Open Graph tags point at
+`/assets/social-try.png`, so chat apps show an NSD.SG card, never the pasted page's own logo. Hosted site pages get
+default share tags on the way out (`src/serve/social.js`: title, meta description or first paragraph, og:url,
+`/assets/social-site.png`) unless the page already has `og:title`; a page with its own `og:image` keeps it.

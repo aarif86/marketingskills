@@ -130,6 +130,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-2', '0.9.2', 'Test-page bar no longer covers your header; nicer link previews', `- Fixed: the test-page bar now sits above the page instead of over it, so a page with its own menu at the top is not cut off. There is an × to hide the bar; it comes back on the next load.
+- New: sharing a test link on WhatsApp or Telegram shows an NSD.SG card (“… · test page on NSD.SG”, when it expires) instead of whatever logo the pasted page referenced.
+- New: real sites get a share preview too when the page has none: the page title, its description or first paragraph, the address, and an NSD.SG card image. Pages that already carry their own preview tags are left alone.`, 'fix,new', '2026-09-21T03:00:00Z'],
   ['cl-0-9-1', '0.9.1', 'Evidence holds and the acceptable-use line', `- New: when a site is suspended or deleted, a copy of its files is kept for 90 days where only admin can reach it. Expired test pages are kept for 7 days. Admin can download one hold, or an evidence pack for a whole account (record, logins, every audit row, sites, IPs, held files).
 - Changed: every audit row now records the browser, not only logins.
 - Changed: Terms section 3 (acceptable use) and section 7 name the content we do not host and the 90-day hold; the Privacy page says how long security records are kept.`, 'new', '2026-09-21T02:00:00Z'],

@@ -17,6 +17,7 @@ import { injectBranding } from '../serve/branding.js';
 import { deployFiles, tempFile, StorageError } from '../storage/releases.js';
 import { isEnabled as hostingEnabled, provisionSubdomain, tenantDir, htaccess, TRY_LABEL } from '../publish/hostinger.js';
 import { holdPreview } from './evidence.js';
+import { pageTitle, socialTags } from '../serve/social.js';
 
 export const TRY_TTL_MS = 3 * 60 * 60_000;
 export const TRY_MAX_BYTES = 1024 * 1024;
@@ -57,30 +58,40 @@ export function validatePaste(text) {
   return null;
 }
 
-// ---- the preview bar -----------------------------------------------------------------------------
+// ---- what visitors get -----------------------------------------------------------------------------
+// Two files per preview: page.html is the pasted page (noindex + badge, nothing else touched) and index.html is a
+// thin shell that shows the preview bar ABOVE the page in a frame, so the page's own header is never covered.
+// The shell carries the share-preview tags, so WhatsApp/Telegram cards describe the test page, not whatever
+// logo the pasted page happened to reference.
 
-function previewBar({ id, expiresAt }) {
-  const keep = platformUrl(`/signup?preview=${encodeURIComponent(id)}`);
-  const report = platformUrl(`/report?site=${TRY_LABEL}`);
-  const style = (s) => s.split(';').filter(Boolean).map((x) => x + ' !important').join(';');
-  const bar = `<div data-nsd="try-bar" style="${style('position:fixed;top:0;left:0;right:0;z-index:2147483646;height:44px;display:flex;align-items:center;justify-content:center;gap:12px;padding:0 12px;box-sizing:border-box;background:#111114;color:#fff;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.3);flex-wrap:nowrap;overflow:hidden;white-space:nowrap')}">` +
-    `<span style="${style('color:#c9c9d4')}">Test page · gone at ${esc(expiresLabel(expiresAt))} Singapore time</span>` +
-    `<a href="${esc(keep)}" style="${style('color:#fff;background:#7c5cff;text-decoration:none;padding:7px 12px;border-radius:999px;font-weight:600')}">Keep it at my own address →</a>` +
-    `<a href="${esc(report)}" style="${style('color:#8a8a99;text-decoration:none;font-size:11px')}">Report</a>` +
-    `</div><style>html{margin-top:44px !important}</style>`;
-  return bar;
-}
-
-/** Full HTML served to visitors: noindex + bar + the normal badge. */
-export function renderPreview(rawHtml, { id, expiresAt }) {
+/** The pasted page as served inside the frame. */
+export function renderPreviewPage(rawHtml) {
   let out = String(rawHtml);
   const meta = '<meta name="robots" content="noindex,nofollow">';
   if (/<head[^>]*>/i.test(out)) out = out.replace(/<head[^>]*>/i, (m) => m + meta);
   else out = meta + out;
-  const bar = previewBar({ id, expiresAt });
-  if (/<\/body\s*>/i.test(out)) out = out.replace(/<\/body\s*>/i, (m) => bar + m);
-  else out += bar;
   return injectBranding(Buffer.from(out, 'utf8'));
+}
+
+/** The shell at try.<domain>/<id>/: bar on top, the page below in a frame, × hides the bar until the next load. */
+export function renderPreviewShell(rawHtml, { id, expiresAt }) {
+  const keep = platformUrl(`/signup?preview=${encodeURIComponent(id)}`);
+  const report = platformUrl(`/report?site=${TRY_LABEL}`);
+  const when = expiresLabel(expiresAt);
+  const title = pageTitle(rawHtml) || 'Test page';
+  const url = previewUrl(id);
+  const social = socialTags('', { url, siteName: `try.${config.baseDomain}`, image: platformUrl('/assets/social-try.png'), title: `${title} · test page on NSD.SG`, description: `Put online in one click with NSD.SG, no account needed. This test link works until ${when} Singapore time. Make yours free at ${config.platformHosts[0]}.` });
+  return Buffer.from(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>${esc(title)} · test page on NSD.SG</title>${social}
+<style>html,body{margin:0;height:100%;background:#fff}
+.nsd-bar{position:fixed;top:0;left:0;right:0;height:44px;z-index:10;display:flex;align-items:center;justify-content:center;gap:12px;padding:0 48px 0 12px;box-sizing:border-box;background:#111114;color:#fff;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;white-space:nowrap;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.nsd-bar .t{color:#c9c9d4}.nsd-bar .keep{color:#fff;background:#7c5cff;text-decoration:none;padding:7px 12px;border-radius:999px;font-weight:600}.nsd-bar .rep{color:#8a8a99;text-decoration:none;font-size:11px}
+.nsd-bar button{position:absolute;right:8px;top:8px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.wrap{position:fixed;top:44px;left:0;right:0;bottom:0;overflow:auto;-webkit-overflow-scrolling:touch}.wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+body.bare .nsd-bar{display:none}body.bare .wrap{top:0}
+@media(max-width:600px){.nsd-bar{font-size:12px;gap:8px}.nsd-bar .rep{display:none}.nsd-bar .t{overflow:hidden;text-overflow:ellipsis}}</style></head>
+<body><div class="nsd-bar" data-nsd="try-bar"><span class="t">Test page · gone at ${esc(when)} Singapore time</span><a class="keep" href="${esc(keep)}">Keep it at my own address →</a><a class="rep" href="${esc(report)}">Report</a><button type="button" aria-label="Hide this bar" title="Hide until next load" onclick="document.body.classList.add('bare')">×</button></div>
+<div class="wrap"><iframe src="./page.html" title="${esc(title)}"></iframe></div></body></html>`, 'utf8');
 }
 
 // ---- Hostinger: the shared `try` docroot ------------------------------------------------------------
@@ -137,7 +148,8 @@ export async function createPreview({ html, ip = '' }) {
       await ensureTryHost();
       const hdir = hostedDir(id);
       fs.mkdirSync(hdir, { recursive: true, mode: 0o755 });
-      fs.writeFileSync(path.join(hdir, 'index.html'), renderPreview(html, { id, expiresAt }), { mode: 0o644 });
+      fs.writeFileSync(path.join(hdir, 'page.html'), renderPreviewPage(html), { mode: 0o644 });
+      fs.writeFileSync(path.join(hdir, 'index.html'), renderPreviewShell(html, { id, expiresAt }), { mode: 0o644 });
     } catch (e) {
       // Recorded, not fatal: the platform page still shows the link; sync-all retries provisioning.
       getDb().prepare('UPDATE previews SET error = ? WHERE id = ?').run(String(e.message).slice(0, 300), id);
@@ -293,4 +305,4 @@ export function expirePreviews() {
   return doomed.length;
 }
 
-export const __test = { ID_RE, previewDir, hostedDir, previewBar };
+export const __test = { ID_RE, previewDir, hostedDir };
