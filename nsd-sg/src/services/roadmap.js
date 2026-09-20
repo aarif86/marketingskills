@@ -118,7 +118,7 @@ const SEED_ROADMAP = [
   ['rm-expiry-emails', 'Reminder emails before your free period ends', 'A heads-up at day 76, a grace period, and a clear path to extend or upgrade — no surprises.', 'planned', 'billing', 30],
   ['rm-analytics', 'Simple visitor stats per site', 'Visits and top pages for each site, privacy-friendly, no cookies.', 'planned', 'dashboard', 40],
   ['rm-demo-video', 'A 60-second "upload to live" walkthrough', 'Short video on the home page showing claim → upload → open.', 'planned', 'design', 50],
-  ['rm-psl', 'Stronger isolation between sites', 'Registering nsd.sg on the Public Suffix List so browsers treat every site as fully separate.', 'in_progress', 'platform', 5],
+  ['rm-psl', 'Stronger isolation between sites', 'Registering nsd.sg on the Public Suffix List so browsers treat every site as fully separate.', 'planned', 'platform', 5],
   ['rm-zip-drop', 'Drag-and-drop ZIP or folder upload', 'Drop a ZIP, files or a whole folder; every upload is a version you can roll back to.', 'shipped', 'dashboard', 900],
   ['rm-badge', 'Powered-by badge with a demo page', 'Free sites carry a small badge; Plus removes it. See exactly what it looks like at /badge.', 'shipped', 'design', 901],
   ['rm-showcase', 'Public showcase of hosted sites', 'Every live site listed at /showcase; Plus and Beta can opt out.', 'shipped', 'platform', 902],

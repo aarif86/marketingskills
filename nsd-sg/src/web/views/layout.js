@@ -44,7 +44,7 @@ ${raw(header({
 <main>${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
-<div><div class="brand small">NSD<span>.SG</span></div><p>Create with AI. Deploy with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>.</p></div>
+<div><div class="brand small">NSD<span>.SG</span></div><p>Create with AI. Deploy with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
 <div><h4>Product</h4><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">Changelog</a><a href="/faq">FAQ</a></div>
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
 <div><h4>Trust</h4><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a></div>
