@@ -25,6 +25,7 @@ import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCoo
 import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
 import { listDomainsForSite, getDomainForSite, addDomain, removeDomain, checkDomain, instructionsFor } from '../../services/domains.js';
 import { listTokens, createToken, revokeToken } from '../../services/tokens.js';
+import { autoExtendOrQueue } from '../../services/lifecycle.js';
 
 const liveWord = (site) => (knownReady(site) ? 'is online' : 'is saved and will be online as soon as your address is ready (see below)');
 
@@ -388,9 +389,16 @@ export async function registerDashboardRoutes(app) {
     const reason = String(req.body?.reason ?? '').slice(0, 60);
     const note = String(req.body?.note ?? '').trim().slice(0, 500);
     if (!reason || note.length < 20) { flash(reply, 'error', 'Pick a reason and tell us a little more (at least 20 characters) so we can say yes.'); return reply.redirect('/billing'); }
+    const auto = autoExtendOrQueue({ user: req.user });
+    if (auto.auto) {
+      audit({ req, action: 'plan.auto_extended', targetType: 'user', targetId: req.user.id, details: { days: auto.days, reason } });
+      flash(reply, 'success', `Done. You have ${auto.days} more days, until ${auto.until.slice(0, 10)}. No need to wait for anyone.`);
+      return reply.redirect('/billing');
+    }
+    if (auto.reason) { flash(reply, 'error', auto.reason); return reply.redirect('/billing'); }
     const r = requestExtension({ userId: req.user.id, note: `${reason}: ${note}` });
     audit({ req, action: 'plan.extension_requested', targetType: 'user', targetId: req.user.id });
-    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Free extension submitted. We review requests within 3–5 working days and confirm by email — check back here for the new expiry date.' : r.reason);
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Second extension request sent. A person looks at these within 3–5 working days and you get an email. Or skip the wait and move to Plus.' : r.reason);
     return reply.redirect('/billing');
   });
 

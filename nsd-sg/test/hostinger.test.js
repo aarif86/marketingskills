@@ -167,11 +167,13 @@ test('promo code moves a user to the beta plan; showcase lists live sites; badge
   assert.equal(getDb().prepare("SELECT uses FROM promo_codes WHERE code = 'BETA-TEST'").get().uses, 1, 'second redeem refused');
   assert.match(bill.body, /unlocked Beta/, 'comparison box shows what the code unlocked');
   assert.match(bill.body, /Remove promo code/);
-  // extension request -> pending state replaces the form
+  // first extension is instant; the second one becomes a pending request that replaces the form
+  r = await post('/billing/extend', dave, { reason: 'Still building my site', note: 'A portfolio for my freelance work, launching next month.' }, '/billing');
+  assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Done\. You have 30 more days/);
   r = await post('/billing/extend', dave, { reason: 'Still building my site', note: 'A portfolio for my freelance work, launching next month.' }, '/billing');
   const bill2 = await get('/billing', dave);
   assert.match(bill2.body, /Free extension submitted/);
-  assert.doesNotMatch(bill2.body, /Request free extension/);
+  assert.doesNotMatch(bill2.body, /Get more time<\/button>/);
   // remove the promo -> back to free with the old expiry; the code stays used
   const before = getDb().prepare("SELECT prev_expires_at FROM promo_redemptions WHERE code = 'BETA-TEST'").get().prev_expires_at;
   r = await post('/billing/promo/remove', dave, {}, '/billing');

@@ -112,12 +112,17 @@ export async function checkDomain(domain, site) {
 
 /** Which site answers for this hostname (custom domains only; *.baseDomain is handled elsewhere). */
 let serveStmt;
-export function siteLabelForHostname(hostname) {
+/** { label, off } for an active custom hostname; `off` when the owner's free period ended 30+ days ago. */
+export function customHostLookup(hostname) {
   const h = String(hostname ?? '').toLowerCase().replace(/\.$/, '');
   const apex = h.startsWith('www.') ? h.slice(4) : h;
-  serveStmt ??= getDb().prepare("SELECT s.subdomain FROM custom_domains d JOIN sites s ON s.id = d.site_id WHERE d.hostname = ? AND d.status = 'active' AND s.status != 'deleted'");
-  return serveStmt.get(apex)?.subdomain ?? null;
+  serveStmt ??= getDb().prepare("SELECT s.subdomain, u.plan_expires_at FROM custom_domains d JOIN sites s ON s.id = d.site_id JOIN users u ON u.id = s.user_id WHERE d.hostname = ? AND d.status = 'active' AND s.status != 'deleted'");
+  const row = serveStmt.get(apex);
+  if (!row) return null;
+  const gone = row.plan_expires_at ? (Date.now() - Date.parse(row.plan_expires_at)) / 86400000 : 0;
+  return { label: row.subdomain, off: gone >= 30 };
 }
+export function siteLabelForHostname(hostname) { const r = customHostLookup(hostname); return r && !r.off ? r.label : null; }
 
 // ---- admin ----
 export function listDomainsWaiting() {

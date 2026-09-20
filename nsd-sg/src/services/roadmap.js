@@ -130,6 +130,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-0', '0.12.0', 'More time in one click, and clear rules when a free period ends', `- New: your first extension is instant. Press “Get more time” on the Plan page and you have another 30 days on the spot. A second one goes to a person.
+- New: reminder emails 7 days and 1 day before your free period ends, and on the day.
+- Changed: when a free period ends, the site stays online but cannot be changed. An own domain stops answering after 30 days, visitors see a holding page after 60 days, and the site is removed after 150 days, with an email a week before. Paid plans are never affected.
+- Fixed: the pricing page now matches the plans (Plus leads with your own domain, “1 GB”, off the showcase by default).`, 'new,improved,fix', '2026-09-21T10:00:00Z'],
   ['cl-0-11-0', '0.11.0', 'Publish straight from Claude; 30 free days; Plus leads with your own domain', `- New: Connect to Claude. Make a token, add NSD.SG to Claude (web, Desktop or Claude Code) once, then say “publish this as my-site” and get a live link back. Claude can publish, update, list and delete your own sites, within your plan, with the same name checks as the dashboard.
 - Changed: new Free and Beta accounts get 30 days. Everyone who signed up before keeps their dates. Warnings appear at 7 days and 1 day left.
 - Changed: pricing now leads with what people actually pay for: your own domain name on Plus. Prices unchanged.`, 'new,improved', '2026-09-21T09:00:00Z'],

@@ -10,7 +10,8 @@ import multipart from '@fastify/multipart';
 import { config } from './config.js';
 import { getDb } from './db/index.js';
 import { tenantFromHost } from './lib/subdomain.js';
-import { siteLabelForHostname } from './services/domains.js';
+import { customHostLookup } from './services/domains.js';
+import { lifecycleSweep } from './services/lifecycle.js';
 import { serveTenant } from './serve/tenant.js';
 import { loadSession, csrfGuard, platformSecurityHeaders } from './web/middleware.js';
 import { ensureBootstrapAdmin, purgeExpiredSessions } from './services/users.js';
@@ -68,8 +69,9 @@ export async function buildApp({ logger = true } = {}) {
     }
     const host = String(req.headers.host ?? '').toLowerCase().split(':')[0];
     if (!config.platformHosts.includes(host)) {
-      const custom = siteLabelForHostname(host);
-      if (custom) { req.isTenant = true; await serveTenant(req, reply, custom); return reply; }
+      const custom = customHostLookup(host);
+      if (custom?.off) return reply.code(302).header('Cache-Control', 'no-store').redirect(`${config.publicScheme}://${custom.label}.${config.baseDomain}${(req.raw.url ?? '/').split('?')[0]}`);
+      if (custom) { req.isTenant = true; await serveTenant(req, reply, custom.label); return reply; }
     }
     if (config.isProd && !config.platformHosts.includes(host)) {
       // Unknown host (raw IP, stray domain): refuse rather than serve the platform under a foreign name.
@@ -137,6 +139,7 @@ export async function buildApp({ logger = true } = {}) {
       const p = expirePreviews();
       const ev = purgeEvidence();
       if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
+      lifecycleSweep().then((r) => { if (r.reminded || r.dormant || r.warned || r.deleted) app.log.info(r, 'plan lifecycle'); }).catch((e) => app.log.error(e));
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());
   if (hostingEnabled()) {

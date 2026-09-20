@@ -56,6 +56,16 @@ Quota and expiry errors are plain sentences carrying the upgrade URL. Dashboard 
 walks through adding the connector. Free trial is 30 days for new sign-ups (migration 018; existing users keep
 their stamped expiry); dashboard warns at 7 and 1 days left.
 
+## Plan lifecycle (0.12.0)
+
+`src/services/lifecycle.js`. First extension request is granted instantly (`auto_extended` plan event, +trial_days);
+later ones queue for admin. `lifecycleSweep()` (maintenance timer + `sync-all`) emails once per expiry date
+(`plan_notices`): 7 days and 1 day before, day 0 ("paused"), +60 dormant, +143 deletion warning; at +150 the
+sites are deleted (evidence hold) and the account kept. Serving: own domains redirect to the nsd.sg address from
++30 days (app: `customHostLookup().off`; Hostinger: RewriteCond on HTTP_HOST in the site's .htaccess); from +60
+the site shows a holding page (app `PAGES.dormant`; Hostinger docroot mode `dormant`). Paid subscriptions have
+`plan_expires_at` NULL and are untouched.
+
 ## Pages
 
 | Route | Who | Purpose |

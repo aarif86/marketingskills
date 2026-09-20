@@ -5,6 +5,7 @@ import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
+const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
 export function homePage({ baseDomain, plans, csrf = '' }) {
   return html`
@@ -99,7 +100,7 @@ export function homePage({ baseDomain, plans, csrf = '' }) {
       <ul>
         ${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}
         <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
-        <li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
+        <li>${space(p.limits.max_storage_bytes)} of space</li>
         <li>Last ${p.limits.max_releases} copies kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
         ${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}
@@ -133,9 +134,9 @@ export function pricingPage({ plans }) {
   <p class="section-lead">Start free for 30 days. Plus gives you your own domain name, no badge, and more sites.</p>
   <div class="grid pricing">${plans.map((p) => html`
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
-    <ul><li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${Math.round(p.limits.max_storage_bytes / 1024 / 1024)} MB of space</li>
+    <ul>${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}<li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${space(p.limits.max_storage_bytes)} of space</li>
     <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
-    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li><li>${p.features.custom_domains ? 'Your own domain name, like mybusiness.sg' : 'yourname.' + config.baseDomain + ' only'}</li><li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
+    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li>${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}<li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
     <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
@@ -176,7 +177,7 @@ export function termsPage() {
   <h3>3. Acceptable use</h3><p>You may not use the Service for phishing, malware, scams, impersonation, harassment, adult content, gambling, copyright infringement, unlawful content under Singapore law, or anything that harms the Service or its users. The Service also does not host content that promotes or advocates LGBTQ+ lifestyles, causes, events or related advocacy, or content that promotes terrorism, extremism or hatred of any group. We decide what falls under these categories and may remove such content without notice. You may not attempt to access other users' data or bypass platform controls, including the mandatory branding badge on free plans.</p>
   <h3>4. Branding</h3><p>Sites on plans that include the “Powered by NasarDigital · nsd.sg” badge must display it. Removing, hiding or obscuring it by any technical means is a breach of these terms and may result in suspension.</p>
   <h3>5. Names</h3><p>Subdomains are allocated first-come, first-served, subject to reserved-name rules. We may reclaim names that infringe third-party rights, mislead visitors, or belong to inactive accounts after 6 months of inactivity, with notice where possible.</p>
-  <h3>6. Free plans and expiry</h3><p>Free plans run for the stated period and may be extended at our discretion. When a plan expires and is not extended or upgraded, the site may be taken offline and later deleted after notice.</p>
+  <h3>6. Free plans and expiry</h3><p>Free periods run for the stated number of days. The first extension is granted automatically; further extensions are at our discretion. When a free period ends and is not extended or upgraded: the site stays online but cannot be changed; any own domain stops answering after 30 days; after 60 days visitors see a holding page; after 150 days the site and its files are removed and the address becomes available to others. We email reminders before each step to the address on the account.</p>
   <h3>7. Suspension and termination</h3><p>We may suspend or remove sites and accounts that breach these terms, at any time, with or without notice depending on severity. When a site is suspended or deleted, we keep a copy of its files for up to 90 days, together with the account's security logs, so that abuse can be investigated and reported to the authorities where required.</p>
   <h3>8. Availability and liability</h3><p>The Service is provided “as is”. We aim for high availability and keep backups but do not guarantee either. To the extent permitted by law, our liability is limited to the fees paid in the preceding 3 months.</p>
   <h3>9. Changes</h3><p>We may update these terms; continued use after notice means acceptance.</p>

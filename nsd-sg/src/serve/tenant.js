@@ -19,6 +19,7 @@ import { TRY_LABEL } from '../publish/hostinger.js';
 import { getPreview, readPreviewHtml, renderPreviewPage, renderPreviewShell, PAGES as TRY_PAGES } from '../services/tryit.js';
 import { injectSocial } from './social.js';
 import { readListing, listingPage } from './listing.js';
+import { isDormant } from '../services/lifecycle.js';
 import { platformUrl, publicUrlForSubdomain } from '../config.js';
 
 const MAX_HTML_INJECT_BYTES = 5 * 1024 * 1024;
@@ -49,6 +50,7 @@ const PAGES = {
   empty: (label) => page('Coming soon', `<h1>Coming soon.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> belongs to someone, but there is no page on it yet.</p>`),
   suspended: () => page('Site unavailable', `<h1>This site is unavailable.</h1><p>NSD.SG has switched it off. If it is yours, log in to NSD.SG to see why.</p>`),
   notFoundFile: () => page('Page not found', `<h1>Page not found.</h1><p>There is no page with that name on this site. Check the link and try again.</p>`),
+  dormant: (label) => page('This page has moved on', `<h1>This page has moved on.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> was made with NSD.SG and its free period has ended. If it is yours, <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/billing">log in to bring it back</a> in a minute.</p>`),
   methodNotAllowed: () => page('Not allowed', `<h1>Not allowed.</h1><p>Sites on NSD.SG only show pages; they cannot receive forms or data.</p>`),
 };
 
@@ -94,6 +96,7 @@ export async function serveTenant(req, reply, label) {
   if (!site) return sendPage(reply, 404, PAGES.notFoundSite(label));
   if (site.status === 'suspended' || site.owner_status !== 'active') return sendPage(reply, 451, PAGES.suspended());
   if (!site.current_release_id) return sendPage(reply, 200, PAGES.empty(label));
+  if (isDormant({ plan_expires_at: site.plan_expires_at })) return sendPage(reply, 200, PAGES.dormant(label));
 
   const parsed = requestPath(req.raw.url ?? '/');
   if (!parsed) return sendPage(reply, 404, PAGES.notFoundFile());

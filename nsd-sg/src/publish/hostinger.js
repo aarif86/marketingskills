@@ -155,7 +155,19 @@ const PAGES = {
   empty: (label) => page('Coming soon', `<h1>Coming soon.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> belongs to someone, but there is no page on it yet.</p>`),
   suspended: () => page('Site unavailable', `<h1>This site is unavailable.</h1><p>NSD.SG has switched it off. If it is yours, log in to <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/">NSD.SG</a> to see why.</p>`),
   notFoundFile: () => page('Page not found', `<h1>Page not found.</h1><p>There is no page with that name on this site. Check the link and try again.</p>`),
+  dormant: (label) => page('This page has moved on', `<h1>This page has moved on.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> was made with NSD.SG and its free period has ended. If it is yours, <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/billing">log in to bring it back</a> in a minute.</p>`),
 };
+
+const daysExpired = (u) => (u?.plan_expires_at ? Math.max(0, (Date.now() - Date.parse(u.plan_expires_at)) / 86400000) : 0);
+const catchAll = (label) => `\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %{REQUEST_URI} !^/index\\.html$\nRewriteRule ^ /index.html [L]\n</IfModule>\n`;
+/** Own domains stop answering 30 days after the free period ended: LiteSpeed redirects them to the nsd.sg address. */
+function expiredDomainRules(siteId, owner, label) {
+  if (daysExpired(owner) < 30) return '';
+  const rows = getDb().prepare("SELECT hostname FROM custom_domains WHERE site_id = ? AND status = 'active'").all(siteId);
+  if (!rows.length) return '';
+  const hosts = rows.map((r) => r.hostname.replace(/\./g, '\\.')).join('|');
+  return `\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %{HTTP_HOST} ^(www\\.)?(${hosts})$ [NC]\nRewriteRule ^(.*)$ ${publicUrlForSubdomain(label)}/$1 [R=302,L]\n</IfModule>\n`;
+}
 
 function brandingRemovedFor(site, owner) {
   if (site.branding_removed) return true;
@@ -243,6 +255,10 @@ export function syncSite(siteId) {
       fs.writeFileSync(path.join(build, 'index.html'), PAGES.suspended());
       // Every path on a suspended site shows the notice (LiteSpeed has no clean 451 for static vhosts).
       fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404: false }) + '\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %{REQUEST_URI} !^/index\\.html$\nRewriteRule ^ /index.html [L]\n</IfModule>\n');
+    } else if (daysExpired(owner) >= 60) {
+      mode = 'dormant';
+      fs.writeFileSync(path.join(build, 'index.html'), PAGES.dormant(label));
+      fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404: false }) + catchAll(label));
     } else if (!site.current_release_id) {
       mode = 'empty';
       fs.writeFileSync(path.join(build, 'index.html'), PAGES.empty(label));
@@ -256,7 +272,7 @@ export function syncSite(siteId) {
       files = materialise(src, build, { badge, social });
       writeListings(build, { host: social.siteName, badge, social });
       const has404 = fs.existsSync(path.join(build, '404.html'));
-      fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404 }));
+      fs.writeFileSync(path.join(build, '.htaccess'), htaccess({ has404 }) + expiredDomainRules(site.id, owner, label));
     }
     fs.writeFileSync(path.join(build, '_nsd-404.html'), PAGES.notFoundFile());
     swapIn(label, build);

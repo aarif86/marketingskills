@@ -9,6 +9,7 @@ import { syncAll, syncSite, listOrphanDirs, isEnabled as hostingEnabled, provisi
 import { expireStalePending } from './services/hitpay.js';
 import { expirePreviews, ensureTryHost } from './services/tryit.js';
 import { purgeEvidence } from './services/evidence.js';
+import { lifecycleSweep } from './services/lifecycle.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -73,6 +74,7 @@ async function main() {
       try { await ensureTryHost(); } catch (e) { console.log(`try host: ${e.message}`); }
       const gone = expirePreviews();
       if (gone) console.log(`Removed ${gone} expired test page(s)`);
+      console.log('lifecycle:', JSON.stringify(await lifecycleSweep()));
       const purged = purgeEvidence();
       if (purged) console.log(`Purged ${purged} expired evidence hold(s)`);
       const timedOut = expireStalePending();

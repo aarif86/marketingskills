@@ -243,12 +243,12 @@ ${planBanner(ent)}
   </ul>
   ${ent.plan.trial_days && pendingExtension ? html`<div class="flash flash-info ext-pending"><strong>Free extension submitted</strong> on ${formatDate(pendingExtension.created_at)}. We review requests within 3–5 working days and confirm by email. Check back here — the expiry date above updates when it is approved.</div>` : ''}
   ${ent.plan.trial_days && !pendingExtension ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
-    <h3>Need more time?</h3><p class="muted small">Ask for another ${ent.plan.trial_days >= 60 ? `${Math.round(ent.plan.trial_days / 30)} months` : `${ent.plan.trial_days} days`} free. Tell us why — we say yes to most real projects.</p>
+    <h3>Need more time?</h3><p class="muted small">Your first extension is instant: ${ent.plan.trial_days >= 60 ? `${Math.round(ent.plan.trial_days / 30)} more months` : `${ent.plan.trial_days} more days`}, no waiting. After that a person looks at each request.</p>
     <label>Reason <select name="reason" required><option value="">Choose one…</option>
       <option>Still building my site</option><option>Showing it to clients or an employer</option><option>Student or learning project</option>
       <option>Community, mosque or non-profit site</option><option>Waiting for budget approval to upgrade</option><option>Something else</option></select></label>
     <label>In your own words <textarea name="note" rows="3" maxlength="500" minlength="20" required placeholder="What is the site for, and what happens in the next 3 months?"></textarea></label>
-    <button class="btn btn-ghost" type="submit">Request free extension</button></form>` : ''}
+    <button class="btn btn-ghost" type="submit">Get more time</button></form>` : ''}
   <hr><h3>Have a promo code?</h3>
   <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. ASATIZAH-2026" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
 </div>
