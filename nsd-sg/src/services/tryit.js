@@ -82,16 +82,16 @@ export function renderPreviewShell(rawHtml, { id, expiresAt }) {
   const title = pageTitle(rawHtml) || 'Test page';
   const url = previewUrl(id);
   const social = socialTags('', { url, siteName: `try.${config.baseDomain}`, image: platformUrl('/assets/social-try.png'), title: `${title} · test page on NSD.SG`, description: `Put online in one click with NSD.SG, no account needed. This test link works until ${when} Singapore time. Make yours free at ${config.platformHosts[0]}.` });
-  return Buffer.from(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+  return Buffer.from(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
 <title>${esc(title)} · test page on NSD.SG</title>${social}
-<style>html,body{margin:0;height:100%;background:#fff}
-.nsd-bar{position:fixed;top:0;left:0;right:0;height:44px;z-index:10;display:flex;align-items:center;justify-content:center;gap:12px;padding:0 48px 0 12px;box-sizing:border-box;background:#111114;color:#fff;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;white-space:nowrap;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.3)}
-.nsd-bar .t{color:#c9c9d4}.nsd-bar .keep{color:#fff;background:#7c5cff;text-decoration:none;padding:7px 12px;border-radius:999px;font-weight:600}.nsd-bar .rep{color:#8a8a99;text-decoration:none;font-size:11px}
-.nsd-bar button{position:absolute;right:8px;top:8px;width:28px;height:28px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;line-height:1;cursor:pointer}
-.wrap{position:fixed;top:44px;left:0;right:0;bottom:0;overflow:auto;-webkit-overflow-scrolling:touch}.wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
-body.bare .nsd-bar{display:none}body.bare .wrap{top:0}
-@media(max-width:600px){.nsd-bar{font-size:12px;gap:8px}.nsd-bar .rep{display:none}.nsd-bar .t{overflow:hidden;text-overflow:ellipsis}}</style></head>
-<body><div class="nsd-bar" data-nsd="try-bar"><span class="t">Test page · gone at ${esc(when)} Singapore time</span><a class="keep" href="${esc(keep)}">Keep it at my own address →</a><a class="rep" href="${esc(report)}">Report</a><button type="button" aria-label="Hide this bar" title="Hide until next load" onclick="document.body.classList.add('bare')">×</button></div>
+<style>html,body{margin:0;height:100%;background:#fff}body{display:flex;flex-direction:column}
+.nsd-bar{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px 14px;flex-wrap:wrap;min-height:44px;padding:8px 48px 8px 12px;padding-top:max(8px,env(safe-area-inset-top));box-sizing:border-box;background:#111114;color:#fff;font:500 13px/1.3 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.nsd-bar .t{color:#c9c9d4;text-align:center}.nsd-bar .keep{color:#fff;background:#7c5cff;text-decoration:none;padding:7px 12px;border-radius:999px;font-weight:600;white-space:nowrap}.nsd-bar .rep{color:#8a8a99;text-decoration:none;font-size:11px}
+.nsd-bar button{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.wrap{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}.wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+body.bare .nsd-bar{display:none}
+.nsd-bar .short{display:none}@media(max-width:600px){.nsd-bar{font-size:12px;gap:8px 10px;padding-right:44px}.nsd-bar .rep{display:none}.nsd-bar .long{display:none}.nsd-bar .short{display:inline}.nsd-bar .keep{padding:6px 10px}}</style></head>
+<body><div class="nsd-bar" data-nsd="try-bar"><span class="t"><span class="long">Test page · gone at ${esc(when)} Singapore time</span><span class="short">Test page · gone ${esc(when)} SGT</span></span><a class="keep" href="${esc(keep)}"><span class="long">Keep it at my own address →</span><span class="short">Keep it →</span></a><a class="rep" href="${esc(report)}">Report</a><button type="button" aria-label="Hide this bar" title="Hide until next load" onclick="document.body.classList.add('bare')">×</button></div>
 <div class="wrap"><iframe src="./page.html" title="${esc(title)}"></iframe></div></body></html>`, 'utf8');
 }
 
@@ -120,9 +120,28 @@ export function ensureTryHost() {
     fs.writeFileSync(path.join(root, '.htaccess'), htaccess({ has404: false, errorDoc: '/_nsd-expired.html', extra: ['<IfModule mod_headers.c>', '  Header always set X-Robots-Tag "noindex, nofollow"', '  Header always set Cache-Control "no-store"', '</IfModule>'] }));
     fs.writeFileSync(path.join(root, '_nsd-expired.html'), PAGES.gone());
     fs.writeFileSync(path.join(root, 'index.html'), PAGES.root());
+    rerenderPreviews();
     return r;
   })().catch((e) => { tryHostReady = null; throw e; });
   return tryHostReady;
+}
+
+/** Rewrite the hosted copy of every live preview with the current shell/page rendering. Runs once per boot. */
+export function rerenderPreviews() {
+  if (!hostingEnabled()) return 0;
+  let n = 0;
+  for (const row of getDb().prepare('SELECT * FROM previews WHERE claimed_at IS NULL AND expires_at > ?').all(nowIso())) {
+    const html = readPreviewHtml(row.id);
+    if (html === null) continue;
+    try {
+      const hdir = hostedDir(row.id);
+      fs.mkdirSync(hdir, { recursive: true, mode: 0o755 });
+      fs.writeFileSync(path.join(hdir, 'page.html'), renderPreviewPage(html), { mode: 0o644 });
+      fs.writeFileSync(path.join(hdir, 'index.html'), renderPreviewShell(html, { id: row.id, expiresAt: row.expires_at }), { mode: 0o644 });
+      n++;
+    } catch { /* next */ }
+  }
+  return n;
 }
 
 // ---- lifecycle -------------------------------------------------------------------------------------

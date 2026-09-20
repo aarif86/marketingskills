@@ -11,7 +11,7 @@ process.env.HOSTINGER_USERNAME = 'u000000000';
 
 const { buildApp } = await import('../src/server.js');
 const { getDb } = await import('../src/db/index.js');
-const { expirePreviews, getPreview, setReadyProbe, removePreview, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
+const { expirePreviews, getPreview, setReadyProbe, removePreview, rerenderPreviews, TRY_MAX_BYTES } = await import('../src/services/tryit.js');
 const { multipart } = await import('./helpers/env.js');
 let probeAnswers = true;
 setReadyProbe(async () => probeAnswers);
@@ -63,6 +63,11 @@ test('the preview is served on try.<domain> with the bar, the badge and noindex;
   assert.match(r.body, /<iframe src="\.\/page\.html"/, 'page sits in a frame below the bar');
   assert.match(r.body, /Keep it at my own address/);
   assert.match(r.body, /aria-label="Hide this bar"/);
+  assert.match(r.body, /class="short">Keep it →/, 'short labels for phones');
+  // an old-format hosted copy is rewritten by the boot-time re-render
+  fs.writeFileSync(path.join(tenantDir('try'), id, 'index.html'), '<html>old bar</html>');
+  assert.ok(rerenderPreviews() >= 1);
+  assert.match(fs.readFileSync(path.join(tenantDir('try'), id, 'index.html'), 'utf8'), /<iframe src="\.\/page\.html"/);
   assert.match(r.body, /property="og:title" content="Quiz · test page on NSD\.SG"/);
   assert.match(r.body, /og:image" content="http:\/\/nsd\.test\/assets\/social-try\.png"/);
   assert.match(r.body, /name="robots" content="noindex/);

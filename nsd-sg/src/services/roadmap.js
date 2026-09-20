@@ -130,6 +130,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-9-8', '0.9.8', 'Test-page bar fits on a phone', `- Fixed: on phones the bar above a test page cut its words off. It now wraps onto two lines with shorter labels, and the × is always reachable. Older test links get the new bar too.
+- Fixed: the try box, the result page, site page buttons and admin tables now fit a phone screen.`, 'fix', '2026-09-21T07:00:00Z'],
   ['cl-0-9-7', '0.9.7', 'Admin menu no longer hides its last links', `- Fixed: on a normal laptop width the admin menu silently cut off Abuse reports, Audit log and System health. It now switches to the menu button earlier instead of clipping.`, 'fix', '2026-09-21T06:30:00Z'],
   ['cl-0-9-6', '0.9.6', 'Addresses fix themselves', `- New: if Hostinger fails to create your address on the first try, NSD.SG asks again on its own: every minute while your site page is open, every 2 minutes in the background, and on the hourly check. You do not need to do anything.
 - Admin: “Repair now” on a site, “Repair all stuck addresses” and “Test Hostinger API” on System health, a table of addresses not yet confirmed, and one email per site that is still stuck after 30 minutes.`, 'new,fix', '2026-09-21T06:00:00Z'],
