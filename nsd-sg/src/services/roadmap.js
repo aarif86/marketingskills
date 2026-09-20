@@ -129,6 +129,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-6-1', '0.6.1', 'Promo tidy-ups', `- Fixed: a promo code that people already used can be retired by admin instead of failing to delete.
+- Changed: once you pay for a plan, the promo comparison box disappears and the code can no longer be removed — your subscription is what keeps the plan now.`, 'fix', '2026-09-20T15:00:00Z'],
   ['cl-0-6-0', '0.6.0', 'Continue with Google', `- New: sign up or log in with your Google account — one click, no password to remember. If you already have an account with the same email, it is linked automatically.`, 'new', '2026-09-20T14:00:00Z'],
   ['cl-0-5-6', '0.5.6', 'Cancelling keeps what you paid for, exactly', `- Changed: when you cancel a paid plan you keep it until the end of the month you already paid for (last charge + 1 month), the same as any subscription service. Previously it was 30 days from the day you cancelled.
 - Fixed: HitPay error messages in admin no longer show raw HTML.`, 'improved', '2026-09-20T13:00:00Z'],

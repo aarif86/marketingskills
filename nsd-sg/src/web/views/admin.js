@@ -268,7 +268,7 @@ export function promoPage({ codes, plans, csrf }) {
   <button class="btn btn-primary btn-tiny">Create code</button></form>
 <div class="card"><table class="table"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Note</th><th></th></tr></thead><tbody>
 ${codes.map((c) => html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses}</td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td class="muted small">${c.note}</td>
-  <td><form method="post" action="/admin/promo" class="inline" data-confirm="Delete ${c.code}?">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">Delete</button></form></td></tr>`)}
+  <td><form method="post" action="/admin/promo" class="inline" data-confirm="${c.redeemed > 0 ? `Retire ${c.code}? It was redeemed ${c.redeemed} time(s), so it is kept for the records but nobody can use it again.` : `Delete ${c.code}?`}">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">${c.redeemed > 0 ? 'Retire' : 'Delete'}</button></form></td></tr>`)}
 ${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td></tr>`}
 </tbody></table></div>`.toString();
 }

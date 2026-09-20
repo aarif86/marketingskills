@@ -134,8 +134,20 @@ export function createPromoCode({ code, planId, maxUses = 10, expiresAt = null, 
   return { ok: true, code: c };
 }
 
+/**
+ * Delete an unused code outright. A code that has been redeemed is kept for the records (redemptions reference it)
+ * and is retired instead: expired now and capped at its current uses, so nobody else can redeem it.
+ */
 export function deletePromoCode(code) {
-  getDb().prepare('DELETE FROM promo_codes WHERE code = ?').run(String(code).toUpperCase());
+  const db = getDb();
+  const c = String(code ?? '').toUpperCase();
+  const used = db.prepare('SELECT COUNT(*) AS n FROM promo_redemptions WHERE code = ?').get(c).n;
+  if (used > 0) {
+    db.prepare("UPDATE promo_codes SET expires_at = ?, max_uses = MIN(max_uses, uses) WHERE code = ?").run(nowIso(), c);
+    return { ok: true, retired: true, used };
+  }
+  const r = db.prepare('DELETE FROM promo_codes WHERE code = ?').run(c);
+  return { ok: r.changes > 0, deleted: r.changes > 0 };
 }
 
 /** Redeem a code for a user: assigns the code's plan (fresh trial) and records the redemption. */
@@ -171,6 +183,10 @@ export function removePromo({ userId }) {
   const db = getDb();
   const r = activePromoFor(userId);
   if (!r) return { ok: false, reason: 'No promo code is active on your account.' };
+  // A paying subscriber is on the plan because they pay for it; removing the code must not drop them to Free.
+  if (db.prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'active'").get(userId)) {
+    return { ok: false, reason: 'You have an active paid subscription, so the promo code no longer applies. Cancel the subscription first if you want to leave the plan.' };
+  }
   const prev = getPlan(r.prev_plan_id) ?? getDefaultPlan();
   const now = nowIso();
   db.transaction(() => {

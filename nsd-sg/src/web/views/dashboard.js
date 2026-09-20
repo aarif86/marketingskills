@@ -196,9 +196,9 @@ export function billingPage({ user, ent, plans, events, storageUsed, siteCount, 
   return html`<h1>Plan &amp; billing</h1>
 ${planBanner(ent)}
 <div class="grid two">
-<div class="card"><h2>Current plan: ${ent.plan.name}${promo ? html` <span class="pill pill-live">promo</span>` : ''}</h2>
+<div class="card"><h2>Current plan: ${ent.plan.name}${promo && !activeSub ? html` <span class="pill pill-live">promo</span>` : ''}</h2>
   <p>${ent.plan.description}</p>
-  ${promo && freePlan ? planCompare(freePlan, ent, promo, csrf) : ''}
+  ${promo && freePlan && !activeSub ? planCompare(freePlan, ent, promo, csrf) : ''}
   <ul class="plain">
     <li>Sites: <strong>${siteCount} / ${ent.limits.max_sites}</strong></li>
     <li>Storage: <strong>${formatBytes(storageUsed)} / ${formatBytes(ent.limits.max_storage_bytes)}</strong><div class="meter"><span style="width:${pct}%"></span></div></li>

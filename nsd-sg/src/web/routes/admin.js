@@ -285,9 +285,9 @@ export async function registerAdminRoutes(app) {
   app.post('/admin/promo', opts, async (req, reply) => {
     const b = req.body ?? {};
     if (b.action === 'delete') {
-      deletePromoCode(String(b.code ?? ''));
-      audit({ req, action: 'admin.promo.delete', targetType: 'promo', targetId: String(b.code ?? '') });
-      flash(reply, 'success', 'Deleted.');
+      const r = deletePromoCode(String(b.code ?? ''));
+      audit({ req, action: 'admin.promo.delete', targetType: 'promo', targetId: String(b.code ?? ''), details: r });
+      flash(reply, r.ok ? 'success' : 'error', r.retired ? `Code retired: it was redeemed ${r.used} time${r.used === 1 ? '' : 's'}, so it stays in the records but can no longer be used.` : r.ok ? 'Deleted.' : 'No such code.');
     } else {
       const days = Number(b.expires_days) || 0;
       const r = createPromoCode({ code: b.code, planId: String(b.plan_id ?? 'beta'), maxUses: b.max_uses, expiresAt: days > 0 ? new Date(Date.now() + days * 86400000).toISOString() : null, note: b.note, actorId: req.user.id });

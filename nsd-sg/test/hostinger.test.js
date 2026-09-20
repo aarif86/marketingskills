@@ -320,3 +320,32 @@ test('paidUntil: end of paid month, with a floor for failed renewals and unknown
   assert.ok(floorFailed > Date.now() + 2.9 * 86400000 && floorFailed < Date.now() + 3.1 * 86400000, 'failed renewal -> ~3 day floor');
   assert.ok(new Date(paidUntil(null)).getTime() > Date.now(), 'unknown date still gives a floor');
 });
+
+test('promo: a redeemed code is retired not deleted; an unused code is deleted; paying subscribers cannot remove their promo', async () => {
+  const { getDb: db } = await import('../src/db/index.js');
+  const { createPromoCode, deletePromoCode, redeemPromoCode, removePromo } = await import('../src/services/plans.js');
+  const { reset } = await import('../src/lib/ratelimit.js');
+  reset('signup:127.0.0.1'); // this file has already signed up several users from the same test IP
+  const signup = await post('/signup', '', { email: 'ivy@example.com', password: 'correct-horse-battery', agree: '1' });
+  assert.equal(signup.statusCode, 302);
+  const ivy = db().prepare("SELECT id FROM users WHERE email = 'ivy@example.com'").get();
+  assert.equal(createPromoCode({ code: 'USED1', planId: 'beta', maxUses: 5 }).ok, true);
+  assert.equal(createPromoCode({ code: 'FRESH1', planId: 'beta', maxUses: 5 }).ok, true);
+  assert.equal(redeemPromoCode({ userId: ivy.id, code: 'USED1' }).ok, true);
+  const r1 = deletePromoCode('USED1');
+  assert.deepEqual({ ok: r1.ok, retired: r1.retired, used: r1.used }, { ok: true, retired: true, used: 1 });
+  const row = db().prepare("SELECT * FROM promo_codes WHERE code = 'USED1'").get();
+  assert.ok(row, 'kept for the records');
+  assert.ok(new Date(row.expires_at) <= new Date(), 'expired now');
+  assert.equal(deletePromoCode('FRESH1').deleted, true);
+  assert.equal(db().prepare("SELECT COUNT(*) n FROM promo_codes WHERE code = 'FRESH1'").get().n, 0);
+  // Paying subscriber: promo removal refused, billing page hides the promo box.
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_ivy', ?, 'beta', 'active', 'x')").run(ivy.id);
+  const rem = removePromo({ userId: ivy.id });
+  assert.equal(rem.ok, false);
+  assert.match(rem.reason, /active paid subscription/);
+  const cookie = cookiesFrom(signup);
+  const page = await app.inject({ method: 'GET', url: '/billing', headers: { host: H, cookie } });
+  assert.doesNotMatch(page.body, /unlocked Beta/);
+  assert.match(page.body, /Subscription/);
+});
