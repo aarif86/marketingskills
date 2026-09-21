@@ -91,6 +91,10 @@ export const config = Object.freeze({
   sessionCookieName: isProd ? '__Host-nsd_session' : 'nsd_session',
   sessionTtlSeconds: int('SESSION_TTL_SECONDS', 60 * 60 * 24 * 14),
   trustProxy: env('TRUST_PROXY', ''),
+  // Behind Cloudflare, also trust its edge ranges so req.ip is the visitor, not Cloudflare (rate limits, audit).
+  trustCloudflare: env('TRUST_CLOUDFLARE', '') === '1',
+  // Custom-domain www CNAME target; set to an un-proxied record (origin.<domain>) when Cloudflare fronts *.<domain>.
+  domainCnameTarget: env('DOMAIN_CNAME_TARGET', ''),
   admin: {
     email: env('ADMIN_EMAIL', ''),
     password: env('ADMIN_PASSWORD', ''),

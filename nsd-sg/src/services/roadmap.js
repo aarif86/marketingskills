@@ -139,6 +139,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-4', '0.12.4', 'Ready for Cloudflare in front', `- New: settings so NSD.SG can sit behind Cloudflare (real visitor addresses kept, customer domains pointed at an un-proxied door), and a maintenance page Cloudflare can show instead of the provider’s error page. Setup guide in the docs.`, 'improved', '2026-09-21T13:00:00Z'],
   ['cl-0-12-2', '0.12.2', 'A banner that knows when the hosting is under maintenance', `- New: NSD.SG reads its hosting provider’s status page every 10 minutes. If maintenance or a problem touches the Singapore servers, every page shows a short bar saying so, with the expected end time in Singapore time. It goes away on its own.
 - Changed: “What’s new” is now in the dashboard menu, and the home page shows the latest release under the headline.`, 'new,improved', '2026-09-21T12:00:00Z'],
   ['cl-0-12-1', '0.12.1', 'Admin menu shows every link; roadmap caught up', `- Fixed: the admin menu wraps onto a second line instead of hiding System health, Audit log and Abuse reports. The Overview also has buttons for all three.

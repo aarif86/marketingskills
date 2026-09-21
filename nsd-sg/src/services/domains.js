@@ -48,7 +48,7 @@ export function getDomainForSite(id, siteId) {
 
 /** The two records the owner adds at their registrar, in plain words. */
 export function instructionsFor(domain, site) {
-  const target = `${site.subdomain}.${config.baseDomain}`;
+  const target = config.domainCnameTarget || `${site.subdomain}.${config.baseDomain}`;
   const ip = config.serverIp;
   return {
     verify: { type: 'TXT', name: `_nsd-verify.${domain.hostname}`, host: '_nsd-verify', value: `nsd-verify=${domain.verify_token}` },
