@@ -25,7 +25,7 @@ test('maintenance on the Singapore servers becomes a plain-words bar on every pa
   setFetch(async () => ({ ok: true, json: async () => summary }));
   const r = await refresh({ force: true });
   assert.equal(r.ok, true);
-  for (const u of ['/', '/pricing', '/login']) assert.match((await get(u)).body, /class="host-bar warn"[\s\S]*servers in Singapore/, u);
+  for (const u of ['/', '/pricing', '/login']) { const b = (await get(u)).body; assert.match(b, /class="host-bar warn"[\s\S]*servers in Singapore/, u); assert.doesNotMatch(b, /Planned maintenance/, 'only the live one shows'); }
   // a failed read keeps the last good notices
   setFetch(async () => { throw new Error('boom'); });
   const r2 = await refresh({ force: true });

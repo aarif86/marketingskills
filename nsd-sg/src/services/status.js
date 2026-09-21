@@ -77,6 +77,8 @@ export async function refresh({ force = false } = {}) {
 export function currentNotices() {
   const cur = load();
   if (Date.now() - (cur.fetched_at ?? 0) >= REFRESH_MS) refresh().catch(() => {});
-  return cur.notices ?? [];
+  const all = cur.notices ?? [];
+  const warn = all.filter((n) => n.level === 'warn');
+  return (warn.length ? warn : all).slice(0, 1); // one clear sentence, never a stack of them
 }
 export function statusInfo() { return load(); }

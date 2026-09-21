@@ -10,8 +10,8 @@ const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 
 export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   return html`
 <section class="hero"><div class="container">
+  ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
   <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
-  ${latest ? html`<a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a>` : ''}
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
   <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours.</p>
   <form class="hero-form" action="/signup" method="get">
