@@ -12,6 +12,7 @@ import { getDb } from './db/index.js';
 import { tenantFromHost } from './lib/subdomain.js';
 import { customHostLookup } from './services/domains.js';
 import { lifecycleSweep } from './services/lifecycle.js';
+import { refresh as refreshStatus } from './services/status.js';
 import { serveTenant } from './serve/tenant.js';
 import { loadSession, csrfGuard, platformSecurityHeaders } from './web/middleware.js';
 import { ensureBootstrapAdmin, purgeExpiredSessions } from './services/users.js';
@@ -139,6 +140,7 @@ export async function buildApp({ logger = true } = {}) {
       const p = expirePreviews();
       const ev = purgeEvidence();
       if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
+      refreshStatus().catch(() => {});
       lifecycleSweep().then((r) => { if (r.reminded || r.dormant || r.warned || r.deleted) app.log.info(r, 'plan lifecycle'); }).catch((e) => app.log.error(e));
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());

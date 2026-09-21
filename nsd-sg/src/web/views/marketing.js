@@ -7,10 +7,11 @@ const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
-export function homePage({ baseDomain, plans, csrf = '' }) {
+export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   return html`
 <section class="hero"><div class="container">
   <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
+  ${latest ? html`<a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a>` : ''}
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
   <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours.</p>
   <form class="hero-form" action="/signup" method="get">

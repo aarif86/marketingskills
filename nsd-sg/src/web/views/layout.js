@@ -1,6 +1,13 @@
 // Page shells. Three variants: marketing (public), app (signed-in dashboard), admin.
 import { html, raw, esc } from '../../lib/html.js';
 import { config } from '../../config.js';
+import { currentNotices } from '../../services/status.js';
+
+function hostingBar() {
+  const n = currentNotices();
+  if (!n.length) return '';
+  return html`<div class="host-bar ${n.some((x) => x.level === 'warn') ? 'warn' : 'info'}" data-host-bar="${n.map((x) => x.id).join(',')}" role="status">${n.map((x) => html`<p>${x.text}${x.url ? html` <a href="${x.url}" target="_blank" rel="noopener">Details</a>` : ''}</p>`)}<button type="button" aria-label="Hide" data-host-bar-close>×</button></div>`;
+}
 
 const brand = html`<a class="brand" href="/">NSD<span>.SG</span></a>`;
 
@@ -41,7 +48,7 @@ ${raw(header({
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Sign up free</a>`,
   }))}
-<main>${flashBox(flash)}${raw(body)}</main>
+${hostingBar()}<main>${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
 <div><div class="brand small">NSD<span>.SG</span></div><p>Make it with AI. Put it online with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
@@ -61,6 +68,7 @@ export function appLayout({ title, body, user, flash, csrf, active = '' }) {
     ['/account', 'Account', 'account'],
     ['/billing', 'Plan & payment', 'billing'],
     ['/connect', 'Connect to Claude', 'connect'],
+    ['/changelog', 'What’s new', 'changelog'],
     ['/roadmap#suggest', 'Feedback', 'feedback'],
   ];
   return html`${head(title)}<body class="app">
@@ -70,7 +78,7 @@ ${raw(header({
     ctas: html`<span class="muted small nav-email">${user.email}</span>
 <form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Log out</button></form>`,
   }))}
-<main class="container app-main">${flashBox(flash)}${raw(body)}</main>
+${hostingBar()}<main class="container app-main">${flashBox(flash)}${raw(body)}</main>
 <footer class="site-footer slim"><div class="container"><span><a href="/">NSD.SG</a> · a <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> product</span><span><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
@@ -97,7 +105,7 @@ ${raw(header({
     ctas: html`<a class="btn btn-ghost btn-sm" href="/dashboard">My dashboard</a>
 <form method="post" action="/logout" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost btn-sm" type="submit">Log out</button></form>`,
   }))}
-<main class="container app-main">${flashBox(flash)}${raw(body)}</main>
+${hostingBar()}<main class="container app-main">${flashBox(flash)}${raw(body)}</main>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
 }

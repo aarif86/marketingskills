@@ -6,6 +6,7 @@ import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKe
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { listHoldsForUser, holdSite, holdZip, evidencePack, evidenceStats } from '../../services/evidence.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
+import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
 import { getDb } from '../../db/index.js';
 import { audit } from '../../lib/audit.js';
 import { nowIso } from '../../lib/ids.js';
@@ -459,7 +460,7 @@ export async function registerAdminRoutes(app) {
         envFile: envFileKeys(),
         csrf: csrfTokenFor(req),
       } : null,
-      tryHost, evidence: evidenceStats(), csrf: csrfTokenFor(req), domains: { waiting: listDomainsWaiting(), active: listDomainsActive() },
+      tryHost, evidence: evidenceStats(), hostStatus: statusInfo(), csrf: csrfTokenFor(req), domains: { waiting: listDomainsWaiting(), active: listDomainsActive() },
       siteBytes: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
       siteCount: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n,
       releaseCount: q('SELECT COUNT(*) n FROM releases').n,
@@ -504,6 +505,12 @@ export async function registerAdminRoutes(app) {
     else if (action === 'disable') setDomainStatus(id, 'disabled', 'disabled by admin');
     audit({ req, action: `admin.domain.${action}`, targetType: 'domain', targetId: id, severity: 'warn' });
     flash(reply, 'success', action === 'connected' ? 'Marked connected. The owner sees it on their settings page.' : 'Domain disabled.');
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/status', opts, async (req, reply) => {
+    const r = await refreshStatus({ force: true });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? `Hostinger status read: ${r.overall || 'ok'} · ${r.notices.length} notice${r.notices.length === 1 ? '' : 's'} affecting us.` : `Could not read the status page: ${r.error}`);
     return reply.redirect('/admin/health');
   });
 

@@ -142,6 +142,9 @@ export const config = Object.freeze({
     username: env('HOSTINGER_USERNAME', ''),
     apiToken: env('HOSTINGER_API_TOKEN', ''),
     apiBase: env('HOSTINGER_API_BASE', 'https://developers.hostinger.com'),
+    // Self-aware maintenance banner: Statuspage summary feed + the server we sit on (hPanel > Hosting > Plan details).
+    statusUrl: env('HOSTINGER_STATUS_URL', 'https://statuspage.hostinger.com/api/v2/summary.json'),
+    serverName: env('HOSTINGER_SERVER', ''),
   },
   version: JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version,
   rootDir: path.join(__dirname, '..'),

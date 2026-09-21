@@ -142,6 +142,15 @@
     setTimeout(tick, 2000);
   }
 
+  // ---- hosting status bar: hide for this browser session only ----
+  var hb = document.querySelector('[data-host-bar]');
+  if (hb) {
+    var key = 'nsd_hostbar_' + hb.getAttribute('data-host-bar');
+    try { if (sessionStorage.getItem(key)) hb.hidden = true; } catch (e) { /* private mode */ }
+    var hbClose = hb.querySelector('[data-host-bar-close]');
+    if (hbClose) hbClose.addEventListener('click', function () { hb.hidden = true; try { sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ } });
+  }
+
   // ---- confirmations ----
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault(); });
