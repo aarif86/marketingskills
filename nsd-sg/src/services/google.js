@@ -102,6 +102,6 @@ export async function resolveUser(identity) {
   }
   // No password chosen: a random one is stored; "Forgot password" lets them set one later if they want email login too.
   user = await createUser({ email: identity.email, password: newToken(24), name: identity.name, verified: true });
-  db.prepare('UPDATE users SET google_sub = ?, updated_at = ? WHERE id = ?').run(identity.sub, nowIso(), user.id);
+  db.prepare('UPDATE users SET google_sub = ?, password_set = 0, updated_at = ? WHERE id = ?').run(identity.sub, nowIso(), user.id);
   return { user: findUserById(user.id), created: true, linked: false };
 }

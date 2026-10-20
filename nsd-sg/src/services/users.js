@@ -77,7 +77,7 @@ export async function authenticate(email, password) {
 
 export async function changePassword(userId, newPassword) {
   const db = getDb();
-  db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(await hashPassword(newPassword), nowIso(), userId);
+  db.prepare('UPDATE users SET password_hash = ?, password_set = 1, updated_at = ? WHERE id = ?').run(await hashPassword(newPassword), nowIso(), userId);
   // Any password change invalidates every other session.
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }

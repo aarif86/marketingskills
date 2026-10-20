@@ -186,10 +186,11 @@ export function accountPage({ user, sessions, csrf }) {
   ${!user.email_verified_at ? html`<button class="btn btn-ghost" type="submit" formaction="/resend-verification">Resend confirmation</button>` : ''}
 </form>
 <form method="post" action="/account/password" class="form card"><input type="hidden" name="_csrf" value="${csrf}">
-  <h2>Password</h2>
-  <label>Current password <input type="password" name="current" required autocomplete="current-password"></label>
+  <h2>${user.password_set === 0 ? 'Set a password' : 'Password'}</h2>
+  ${user.password_set === 0 ? html`<p class="muted small">You signed up with Google, so there is no password yet. Set one if you also want to log in with your email.</p>`
+    : html`<label>Current password <input type="password" name="current" required autocomplete="current-password"></label>`}
   <label>New password <input type="password" name="password" required minlength="10" autocomplete="new-password"></label>
-  <button class="btn btn-primary" type="submit">Change password</button>
+  <button class="btn btn-primary" type="submit">${user.password_set === 0 ? 'Set password' : 'Change password'}</button>
 </form>
 </div>
 <div class="card"><h2>Sessions</h2>
@@ -200,7 +201,7 @@ export function accountPage({ user, sessions, csrf }) {
 <div class="card"><h2>Account status</h2><p>${user.status} · ${user.role} · member since ${formatDate(user.created_at)}</p></div>
 ${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><p class="muted">Deletes all your sites and disables your account.</p>
 <form method="post" action="/account/delete" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}">
-<input type="password" name="password" placeholder="password" required><input name="confirm" placeholder="type DELETE" required autocomplete="off"><button class="btn btn-danger" type="submit">Delete my account</button></form></div>` : ''}`.toString();
+${user.password_set === 0 ? '' : html`<input type="password" name="password" placeholder="password" required>`}<input name="confirm" placeholder="type DELETE" required autocomplete="off"><button class="btn btn-danger" type="submit">Delete my account</button></form>${user.password_set === 0 ? html`<p class="muted small">You signed up with Google, so no password is needed — just type DELETE.</p>` : ''}</div>` : ''}`.toString();
 }
 
 function planCompare(freePlan, ent, promo, csrf) {

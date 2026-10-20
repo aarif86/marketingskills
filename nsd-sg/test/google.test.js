@@ -74,6 +74,16 @@ test('callback: wrong state is refused; correct state creates a verified user, c
   const again = await app.inject({ method: 'GET', url: `/auth/google/callback?code=def&state=${flow3.state}`, headers: { host: H, cookie: flow3.cookie } });
   assert.equal(again.headers.location, '/account');
   assert.equal(getDb().prepare("SELECT COUNT(*) n FROM users WHERE email = 'gary@example.com'").get().n, 1);
+  // No password was ever chosen: the account page offers "Set a password" and deletion needs only DELETE.
+  const sess = cookiesFrom(again);
+  const acct = await app.inject({ method: 'GET', url: '/account', headers: { host: H, cookie: sess } });
+  assert.match(acct.body, /Set a password/);
+  assert.match(acct.body, /no password is needed/);
+  assert.doesNotMatch(acct.body, /name="current"/);
+  const csrf = csrfFrom(acct.body);
+  const del = await app.inject({ method: 'POST', url: '/account/delete', headers: { host: H, cookie: sess, origin: `http://${H}`, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrf, confirm: 'DELETE' }).toString() });
+  assert.equal(del.statusCode, 302);
+  assert.equal(getDb().prepare("SELECT status, password_set FROM users WHERE email = 'gary@example.com'").get().status, 'disabled');
 });
 
 test('callback links an existing password account by verified email; unverified Google email is refused', async () => {

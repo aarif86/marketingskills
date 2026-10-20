@@ -322,7 +322,7 @@ export async function registerDashboardRoutes(app) {
 
   app.post('/account/password', { preHandler: requireUser }, async (req, reply) => {
     const b = req.body ?? {};
-    const ok = await verifyPasswordForUser(req.user.id, String(b.current ?? ''));
+    const ok = req.user.password_set === 0 ? true : await verifyPasswordForUser(req.user.id, String(b.current ?? '')); // Google-only accounts have no password yet
     if (!ok) { flash(reply, 'error', 'Current password is incorrect.'); return reply.redirect('/account'); }
     const err = validatePasswordStrength(String(b.password ?? ''));
     if (err) { flash(reply, 'error', err); return reply.redirect('/account'); }
@@ -342,8 +342,8 @@ export async function registerDashboardRoutes(app) {
   });
 
   app.post('/account/delete', { preHandler: requireUser }, async (req, reply) => {
-    const ok = await verifyPasswordForUser(req.user.id, String(req.body?.password ?? ''));
-    if (!ok || req.body?.confirm !== 'DELETE') { flash(reply, 'error', 'Password incorrect or confirmation missing.'); return reply.redirect('/account'); }
+    const ok = req.user.password_set === 0 ? true : await verifyPasswordForUser(req.user.id, String(req.body?.password ?? ''));
+    if (!ok || req.body?.confirm !== 'DELETE') { flash(reply, 'error', req.user.password_set === 0 ? 'Type DELETE to confirm.' : 'Password incorrect or confirmation missing.'); return reply.redirect('/account'); }
     if (req.user.role === 'admin') { flash(reply, 'error', 'Admin accounts cannot self-delete. Demote first.'); return reply.redirect('/account'); }
     for (const s of listSitesForUser(req.user.id)) deleteSite(s.id);
     setUserStatus(req.user.id, 'disabled');
