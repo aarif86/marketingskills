@@ -199,7 +199,7 @@ export function accountPage({ user, sessions, csrf }) {
   <form method="post" action="/account/sessions/revoke" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-ghost" type="submit">Sign out everywhere</button></form>
 </div>
 <div class="card"><h2>Account status</h2><p>${user.status} · ${user.role} · member since ${formatDate(user.created_at)}</p></div>
-${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><p class="muted">Deletes all your sites and disables your account.</p>
+${user.role !== 'admin' ? html`<div class="card danger"><h2>Delete account</h2><p class="muted">Removes all your sites and your account for good. Your site names and email become free again; you can sign up afresh any time.</p>
 <form method="post" action="/account/delete" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}">
 ${user.password_set === 0 ? '' : html`<input type="password" name="password" placeholder="password" required>`}<input name="confirm" placeholder="type DELETE" required autocomplete="off"><button class="btn btn-danger" type="submit">Delete my account</button></form>${user.password_set === 0 ? html`<p class="muted small">You signed up with Google, so no password is needed — just type DELETE.</p>` : ''}</div>` : ''}`.toString();
 }

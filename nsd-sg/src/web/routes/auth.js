@@ -81,7 +81,7 @@ export async function registerAuthRoutes(app) {
       return back(`Google sign-in failed: ${String(e.message).slice(0, 160)}`);
     }
     const { user, created, linked } = await google.resolveUser(identity);
-    if (user.status === 'disabled') return back('This account has been disabled. Contact support.');
+    if (user.status === 'disabled') return back('This account has been disabled by NSD.SG. Email us if you think that is a mistake.');
     if (user.status === 'suspended') return back('This account is suspended. Check your email or contact support.');
     audit({ req, actor: user, action: created ? 'auth.signup' : 'auth.login', targetType: 'user', targetId: user.id, details: { via: 'google', linked } });
     let siteMsg = '';
@@ -154,7 +154,7 @@ export async function registerAuthRoutes(app) {
     if (!r.ok) {
       audit({ req, action: 'auth.login_failed', targetType: 'user', targetId: email, details: { reason: r.reason }, severity: r.reason === 'locked' ? 'warn' : 'info' });
       const msg = r.reason === 'locked' ? 'Too many failed attempts. This account is locked for 15 minutes.'
-        : r.reason === 'disabled' ? 'This account has been disabled. Contact support.'
+        : r.reason === 'disabled' ? 'This account has been disabled by NSD.SG. Email us if you think that is a mistake.'
         : 'Email or password is incorrect.';
       return render(req, reply, 'Log in', loginPage({ csrf: csrfTokenFor(req), next, email, error: msg, googleEnabled: google.enabled() }));
     }

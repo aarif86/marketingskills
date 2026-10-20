@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-1', '0.13.1', 'Delete my account really deletes it', `- Fixed: deleting your own account used to leave it switched off, so your email was still taken and logging in again said “contact support”. It is now removed for good, with a copy kept for 90 days as our records require, and you can sign up again any time.`, 'fix', '2026-10-20T11:30:00Z'],
   ['cl-0-13-0', '0.13.0', 'Evidence packs fit for a police report', `- New: every evidence pack opens with SUMMARY.txt in plain words (who, when, which IPs, which sites, what was removed), carries a SHA-256 manifest of every file and a chain-of-custody note, and lists every version ever uploaded with the IP and browser that sent it. All times are given in Singapore time as well as UTC.
 - New: legal hold. One switch on an account keeps its held files, packs and visitor logs until an admin lifts it, instead of the usual 90 days.
 - New: a pack is stored on the server automatically before an account is deleted permanently, and admin can store one on demand with a reason (e.g. a police report number). Stored packs are listed under System health.

@@ -83,7 +83,13 @@ test('callback: wrong state is refused; correct state creates a verified user, c
   const csrf = csrfFrom(acct.body);
   const del = await app.inject({ method: 'POST', url: '/account/delete', headers: { host: H, cookie: sess, origin: `http://${H}`, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrf, confirm: 'DELETE' }).toString() });
   assert.equal(del.statusCode, 302);
-  assert.equal(getDb().prepare("SELECT status, password_set FROM users WHERE email = 'gary@example.com'").get().status, 'disabled');
+  assert.equal(getDb().prepare("SELECT COUNT(*) n FROM users WHERE email = 'gary@example.com'").get().n, 0, 'really deleted');
+  // and the same Google account can sign up again afresh
+  const flow4 = await start('?name=gary2');
+  const back = await app.inject({ method: 'GET', url: `/auth/google/callback?code=ghi&state=${flow4.state}`, headers: { host: H, cookie: flow4.cookie } });
+  assert.equal(back.statusCode, 302, back.body);
+  assert.equal(back.headers.location, '/dashboard');
+  assert.equal(getDb().prepare("SELECT COUNT(*) n FROM users WHERE email = 'gary@example.com'").get().n, 1, 'fresh account');
 });
 
 test('callback links an existing password account by verified email; unverified Google email is refused', async () => {

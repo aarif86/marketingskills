@@ -185,25 +185,31 @@ test('an unpaid checkout that HitPay reports as scheduled stays pending; a confi
   assert.equal(getDb().prepare("SELECT status FROM subscriptions WHERE id = 'rb_future'").get().status, 'scheduled');
 });
 
-test('admin can delete a disabled account for good, freeing the email', async () => {
+test('deleting your own account really deletes it (pack stored first) and frees the email; admin Delete permanently still works', async () => {
   reset('signup:127.0.0.1');
   let r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone', password: 'correct-horse-battery', subdomain: 'gonesite', agree: '1' }, '/signup');
   const cookie = cookiesFrom(r);
   const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gone@example.com').id;
+  // self-delete is a real delete: a pack is stored first, the row goes, the email and site name are free again
+  const { listStoredPacks } = await import('../src/services/evidence.js');
   r = await post('/account/delete', cookie, { password: 'correct-horse-battery', confirm: 'DELETE' }, '/account');
-  assert.equal(getDb().prepare('SELECT status FROM users WHERE id = ?').get(id).status, 'disabled');
-  reset('signup:127.0.0.1');
-  r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone', password: 'correct-horse-battery', subdomain: 'gonesite2', agree: '1' }, '/signup');
-  assert.ok(getDb().prepare('SELECT COUNT(*) n FROM users WHERE email = ?').get('gone@example.com').n === 1, 'email still taken after self-delete');
-  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' }, '/login');
-  const acookie = cookiesFrom(login);
-  r = await post(`/admin/users/${id}/action`, acookie, { action: 'delete_forever' }, `/admin/users/${id}`);
   assert.equal(r.statusCode, 302);
+  assert.match(flashOf(r), /sign up again any time/);
   assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE id = ?').get(id).n, 0, 'row gone');
+  assert.equal(listStoredPacks(id).length, 1, 'evidence pack stored before the delete');
+  assert.match(listStoredPacks(id)[0].reason, /deleted by its owner/);
   reset('signup:127.0.0.1');
   r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone again', password: 'correct-horse-battery', subdomain: 'gonesite', agree: '1' }, '/signup');
   assert.equal(r.statusCode, 302);
   assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE email = ?').get('gone@example.com').n, 1, 'fresh signup with the same email and site name');
+  // admin "Delete permanently" still exists for accounts admin disabled
+  const id2 = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gone@example.com').id;
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' }, '/login');
+  const acookie = cookiesFrom(login);
+  await post(`/admin/users/${id2}/action`, acookie, { action: 'disable' }, `/admin/users/${id2}`);
+  r = await post(`/admin/users/${id2}/action`, acookie, { action: 'delete_forever' }, `/admin/users/${id2}`);
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE id = ?').get(id2).n, 0, 'row gone');
 });
 
 test('a looked-at-but-unpaid checkout: note shows for 20 minutes, the clear button abandons it at once', async () => {

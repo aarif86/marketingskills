@@ -15,7 +15,9 @@ import {
 } from '../../services/sites.js';
 import { getPlan, entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
-import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser, setUserStatus } from '../../services/users.js';
+import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser } from '../../services/users.js';
+import { storePack } from '../../services/evidence.js';
+import { getDb } from '../../db/index.js';
 import {
   deployZip, deployFiles, deleteFileFromSite, rollbackTo, listReleases, listReleaseFiles, readReleaseFile, tempFile, StorageError,
 } from '../../storage/releases.js';
@@ -346,11 +348,15 @@ export async function registerDashboardRoutes(app) {
     const ok = req.user.password_set === 0 ? true : await verifyPasswordForUser(req.user.id, String(req.body?.password ?? ''));
     if (!ok || req.body?.confirm !== 'DELETE') { flash(reply, 'error', req.user.password_set === 0 ? 'Type DELETE to confirm.' : 'Password incorrect or confirmation missing.'); return reply.redirect('/account'); }
     if (req.user.role === 'admin') { flash(reply, 'error', 'Admin accounts cannot self-delete. Demote first.'); return reply.redirect('/account'); }
+    // A real delete: sites removed (evidence holds kept), a pack stored first, then the row goes so the email and
+    // site names are free again. Nothing lingers in a "disabled" state the person cannot get out of.
     for (const s of listSitesForUser(req.user.id)) deleteSite(s.id);
-    setUserStatus(req.user.id, 'disabled');
-    audit({ req, action: 'user.self_delete', targetType: 'user', targetId: req.user.id, severity: 'warn' });
+    const pack = storePack(req.user.id, { actor: req.user, reason: 'account deleted by its owner' });
+    audit({ req, action: 'user.self_delete', targetType: 'user', targetId: req.user.id, details: { email: req.user.email, pack: pack?.ts, sha256: pack?.sha256 }, severity: 'warn' });
+    destroyAllSessions(req.user.id);
+    getDb().prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
     clearSessionCookie(reply);
-    flash(reply, 'success', 'Your account and sites have been removed.');
+    flash(reply, 'success', 'Your account and sites have been removed. You can sign up again any time.');
     return reply.redirect('/');
   });
 
