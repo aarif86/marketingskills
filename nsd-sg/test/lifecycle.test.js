@@ -148,7 +148,9 @@ test('keeping the plan before it ends: card saved, first charge on the expiry da
     let sub = getDb().prepare("SELECT * FROM subscriptions WHERE id = 'rb_sched'").get();
     assert.equal(sub.starts_at, expiresAt);
     // HitPay confirms it as scheduled (return-check or webhook)
-    await hitpay.checkSubscription('rb_sched');
+    await hitpay.checkSubscription('rb_sched'); // page-load reconcile: not enough on its own
+    assert.equal(getDb().prepare("SELECT status FROM subscriptions WHERE id = 'rb_sched'").get().status, 'pending');
+    await hitpay.checkSubscription('rb_sched', { confirmed: true }); // customer came back from HitPay
     sub = getDb().prepare("SELECT * FROM subscriptions WHERE id = 'rb_sched'").get();
     assert.equal(sub.status, 'scheduled');
     const billing = (await get('/billing', cookie)).body;
@@ -163,4 +165,41 @@ test('keeping the plan before it ends: card saved, first charge on the expiry da
     const u = getDb().prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(id);
     assert.equal(u.plan_id, 'plus-gift'); assert.equal(u.plan_expires_at, null);
   } finally { globalThis.fetch = realFetch; config.hitpay.apiKey = ''; delete config.hitpay.plans['plus-gift']; }
+});
+
+test('an unpaid checkout that HitPay reports as scheduled stays pending; a confirmed future-start one is scheduled', async () => {
+  const hitpay = await import('../src/services/hitpay.js');
+  const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gift@example.com').id;
+  getDb().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_unpaid', ?, 'plus', 'pending', ?)").run(id, `${id}:plus:zz1`);
+  let r = hitpay.applyEvent({ subscriptionId: 'rb_unpaid', reference: `${id}:plus:zz1`, status: 'scheduled', confirmed: true });
+  assert.equal(r.noop, true);
+  assert.equal(getDb().prepare("SELECT status FROM subscriptions WHERE id = 'rb_unpaid'").get().status, 'pending', 'no start date -> not a subscription');
+  const future = new Date(Date.now() + 90 * DAY).toISOString();
+  getDb().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, starts_at) VALUES ('rb_future', ?, 'plus-gift', 'pending', ?, ?)").run(id, `${id}:plus-gift:zz2`, future);
+  r = hitpay.applyEvent({ subscriptionId: 'rb_future', reference: `${id}:plus-gift:zz2`, status: 'scheduled' });
+  assert.equal(r.noop, true, 'page-load reconcile alone does not confirm it');
+  r = hitpay.applyEvent({ subscriptionId: 'rb_future', reference: `${id}:plus-gift:zz2`, status: 'scheduled', confirmed: true });
+  assert.equal(r.scheduled, true);
+  assert.equal(getDb().prepare("SELECT status FROM subscriptions WHERE id = 'rb_future'").get().status, 'scheduled');
+});
+
+test('admin can delete a disabled account for good, freeing the email', async () => {
+  reset('signup:127.0.0.1');
+  let r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone', password: 'correct-horse-battery', subdomain: 'gonesite', agree: '1' }, '/signup');
+  const cookie = cookiesFrom(r);
+  const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gone@example.com').id;
+  r = await post('/account/delete', cookie, { password: 'correct-horse-battery', confirm: 'DELETE' }, '/account');
+  assert.equal(getDb().prepare('SELECT status FROM users WHERE id = ?').get(id).status, 'disabled');
+  reset('signup:127.0.0.1');
+  r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone', password: 'correct-horse-battery', subdomain: 'gonesite2', agree: '1' }, '/signup');
+  assert.ok(getDb().prepare('SELECT COUNT(*) n FROM users WHERE email = ?').get('gone@example.com').n === 1, 'email still taken after self-delete');
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' }, '/login');
+  const acookie = cookiesFrom(login);
+  r = await post(`/admin/users/${id}/action`, acookie, { action: 'delete_forever' }, `/admin/users/${id}`);
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE id = ?').get(id).n, 0, 'row gone');
+  reset('signup:127.0.0.1');
+  r = await post('/signup', '', { email: 'gone@example.com', name: 'Gone again', password: 'correct-horse-battery', subdomain: 'gonesite', agree: '1' }, '/signup');
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE email = ?').get('gone@example.com').n, 1, 'fresh signup with the same email and site name');
 });

@@ -108,7 +108,7 @@ export function paidUntil(lastPaidAt, status = 'canceled') {
 }
 
 /** Apply a HitPay event (webhook or return-check) to our records. Idempotent. */
-export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '', refundedAmount = 0 }, log = console) {
+export function applyEvent({ subscriptionId, reference, status, email, eventType = '', paymentId = '', refundedAmount = 0, confirmed = false }, log = console) {
   const db = getDb();
   let sub = subscriptionId ? db.prepare('SELECT * FROM subscriptions WHERE id = ?').get(subscriptionId) : null;
   if (!sub && reference) sub = db.prepare('SELECT * FROM subscriptions WHERE reference = ?').get(reference);
@@ -149,7 +149,11 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
     abandonOtherPending(sub.user_id, sub.id);
     return { ok: true, activated: sub.status !== 'active' };
   }
-  if (SCHEDULED.has(status) && sub.status !== 'active') {
+  // HitPay says 'scheduled' for every recurring billing that has not charged yet, including checkouts the customer
+  // never finished. Only a future start date plus a confirming event (customer returned, or a webhook) means
+  // "card saved, charge later"; an unpaid attempt stays pending and times out.
+  const futureStart = sub.starts_at && Date.parse(sub.starts_at) > Date.now();
+  if (SCHEDULED.has(status) && sub.status !== 'active' && futureStart && (confirmed || sub.status === 'scheduled')) {
     if (sub.status !== 'scheduled') {
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'subscription_scheduled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, startsAt: sub.starts_at ?? null }));
@@ -191,9 +195,9 @@ export function expireStalePending(userId = null) {
 }
 
 /** After the customer returns from HitPay: ask the API for the subscription state (webhook may be slower). */
-export async function checkSubscription(id) {
+export async function checkSubscription(id, { confirmed = false } = {}) {
   const r = await api('GET', `/v1/recurring-billing/${encodeURIComponent(id)}`);
-  return applyEvent({ ...identify({ ...r, object: 'recurring_billing' }), subscriptionId: String(r.id ?? id) });
+  return applyEvent({ ...identify({ ...r, object: 'recurring_billing' }), subscriptionId: String(r.id ?? id), confirmed });
 }
 
 /** A subscription that will keep this plan going: active now, or scheduled to charge when the free period ends. */

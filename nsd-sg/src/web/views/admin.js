@@ -60,6 +60,7 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
   ${user.status === 'active' ? act({ action: 'suspend' }, 'Suspend', 'btn-danger', 'Suspend this user and take all their sites offline?') : ''}
   ${user.status !== 'disabled' ? act({ action: 'disable' }, 'Disable', 'btn-danger', 'Disable this account? They will not be able to log in.') : ''}
   ${act({ action: 'logout_all' }, 'Log out everywhere')}
+  ${user.status !== 'active' && user.role !== 'admin' ? act({ action: 'delete_forever' }, 'Delete permanently', 'btn-danger', `Delete ${user.email} for good? Sites, subscriptions and history go with it; the email and site names become free again. Evidence copies of removed sites are kept.`) : ''}
   ${!user.email_verified_at ? act({ action: 'verify_email' }, 'Mark email verified') : ''}
   ${user.role === 'admin' ? (isLastAdmin ? '' : act({ action: 'role', role: 'user' }, 'Demote to user', 'btn-danger', 'Remove admin rights?')) : act({ action: 'role', role: 'admin' }, 'Make admin', 'btn-danger', 'Grant full admin rights to this user?')}
 </div></div>

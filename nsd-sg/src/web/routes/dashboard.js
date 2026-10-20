@@ -13,7 +13,7 @@ import { watchdog } from '../../lib/audit.js';
 import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite, checkSiteReady, knownReady,
 } from '../../services/sites.js';
-import { entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
+import { getPlan, entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser, setUserStatus } from '../../services/users.js';
 import {
@@ -435,10 +435,11 @@ export async function registerDashboardRoutes(app) {
     const reference = String(req.query?.reference ?? '');
     const sub = reference ? hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.reference === reference) : hitpay.listSubscriptionsForUser(req.user.id)[0];
     if (sub && hitpay.enabled()) {
-      try { await hitpay.checkSubscription(sub.id); } catch (e) { req.log.warn({ err: e }, 'hitpay check failed'); }
+      try { await hitpay.checkSubscription(sub.id, { confirmed: status !== 'canceled' && status !== 'failed' }); } catch (e) { req.log.warn({ err: e }, 'hitpay check failed'); }
     }
     const fresh = sub ? hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === sub.id) : null;
-    if (fresh?.status === 'active') flash(reply, 'success', `Payment received — you are now on the ${fresh.plan_id === 'beta' ? 'Beta' : 'Plus'} plan. Thank you!`);
+    if (fresh?.status === 'active') flash(reply, 'success', `Payment received — you are now on the ${getPlan(fresh.plan_id)?.name ?? 'Plus'} plan. Thank you!`);
+    else if (fresh?.status === 'scheduled') flash(reply, 'success', `Card saved. The first charge is on ${new Date(fresh.starts_at).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' })}, when your free period ends. Nothing has been charged today.`);
     else if (status === 'canceled' || status === 'failed') flash(reply, 'error', 'The payment was not completed. Nothing has been charged.');
     else flash(reply, 'success', 'Thanks! HitPay is confirming your payment; your plan updates automatically within a minute.');
     return reply.redirect('/billing');
@@ -454,7 +455,7 @@ export async function registerDashboardRoutes(app) {
       return reply.code(401).send({ ok: false });
     }
     const eventType = String(req.headers['hitpay-event-type'] ?? '');
-    const r = hitpay.applyEvent({ ...hitpay.identify(req.body), eventType }, req.log);
+    const r = hitpay.applyEvent({ ...hitpay.identify(req.body), eventType, confirmed: true }, req.log);
     audit({ req, action: 'hitpay.webhook', targetType: 'webhook', targetId: eventType, details: { ...r, ref: hitpay.identify(req.body).reference } });
     return reply.send({ ok: true });
   });

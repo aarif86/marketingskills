@@ -14,7 +14,7 @@ import {
   findUserById, findUserByEmail, setUserStatus, setUserOverrides, setUserNotes, setUserRole, destroyAllSessions, listSessions, countAdmins,
 } from '../../services/users.js';
 import {
-  getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
+  listSitesForUser, getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
   listBlockedWords, addBlockedWord, removeBlockedWord, checkSiteReady,
 } from '../../services/sites.js';
 import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents, listPromoCodes, createPromoCode, deletePromoCode } from '../../services/plans.js';
@@ -105,6 +105,19 @@ export async function registerAdminRoutes(app) {
     const back = `/admin/users/${user.id}`;
     const isSelf = user.id === req.user.id;
     switch (action) {
+      case 'delete_forever': {
+        // Only for an account that is already disabled or suspended, never an admin. Frees the email and the site names.
+        if (isSelf || user.role === 'admin' || user.status === 'active') { flash(reply, 'error', 'Disable or suspend the account first; admins cannot be deleted.'); break; }
+        try {
+          for (const s of listSitesForUser(user.id)) deleteSite(s.id);
+          destroyAllSessions(user.id);
+          getDb().prepare('DELETE FROM users WHERE id = ?').run(user.id);
+          audit({ req, action: 'admin.user.delete_forever', targetType: 'user', targetId: user.id, details: { email: user.email }, severity: 'warn' });
+          flash(reply, 'success', `${user.email} deleted permanently. The email and site names can be used again.`);
+          return reply.redirect('/admin/users');
+        } catch (e) { req.log.error({ err: e }, 'delete forever failed'); flash(reply, 'error', `Could not delete: ${String(e.message).slice(0, 200)}`); }
+        break;
+      }
       case 'suspend': case 'disable': case 'activate': {
         if (isSelf) { flash(reply, 'error', 'You cannot change your own status.'); break; }
         const status = action === 'activate' ? 'active' : action === 'suspend' ? 'suspended' : 'disabled';
