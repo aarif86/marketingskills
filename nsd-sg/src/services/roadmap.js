@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-15', '0.12.15', 'What’s new and Feedback stay inside the dashboard', `- Fixed: opening What’s new or Feedback from the dashboard menu no longer throws you onto the public site with a different menu. Both pages now open inside the dashboard, with the tab highlighted, so Sites and Plan are one click away.`, 'fix', '2026-10-20T18:00:00Z'],
   ['cl-0-12-14', '0.12.14', 'Roadmap sorted', `- Changed: visitor stats is marked in progress (the traffic chart is already on every site page), Planned is in a sensible order, and today's gift-plan work has its own Shipped card.`, 'improved', '2026-10-20T17:30:00Z'],
   ['cl-0-12-13', '0.12.13', 'A shorter roadmap page', `- Changed: the Shipped column shows the four newest items with a “Show more” button for the rest, and the In-progress column only appears when something is being built.`, 'improved', '2026-10-20T17:00:00Z'],
   ['cl-0-12-12', '0.12.12', 'One offer, not two', `- Changed: on a gift or promo plan, the Plan page no longer lists the dearer public plan next to your offer. It shows one “Keep …” offer with the usual price struck through.`, 'improved', '2026-10-20T16:30:00Z'],

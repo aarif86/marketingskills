@@ -462,3 +462,19 @@ test('roadmap: Shipped column folds after four items with a Show-more button; em
   assert.match(r.body, /<div class="rm-more" hidden>/);
   assert.ok(!r.body.includes('<h2>In progress') || r.body.includes('rm-card in_progress'), 'In progress column only when it has items');
 });
+
+test('What’s new and Feedback open inside the dashboard shell for a logged-in user, public layout when logged out', async () => {
+  const anon = await get('/changelog');
+  assert.equal(anon.statusCode, 200);
+  assert.doesNotMatch(anon.body, /<body class="app">/, 'logged out: public layout');
+  resetLimit('signup:127.0.0.1');
+  const r = await post('/signup', '', { email: 'nav@example.com', name: 'Nav', password: 'correct-horse-battery', subdomain: 'navsite', agree: '1' });
+  const c = cookiesFrom(r);
+  for (const [url, key] of [['/changelog', 'changelog'], ['/roadmap', 'feedback']]) {
+    const page = await get(url, c);
+    assert.equal(page.statusCode, 200);
+    assert.match(page.body, /<body class="app">/, `${url} uses the app shell`);
+    assert.match(page.body, /Plan &amp; payment/, `${url} keeps the dashboard menu`);
+    assert.match(page.body, /Log out/);
+  }
+});

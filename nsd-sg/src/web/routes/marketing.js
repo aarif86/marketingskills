@@ -6,7 +6,7 @@ import { limiter } from '../../lib/ratelimit.js';
 import { audit } from '../../lib/audit.js';
 import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
-import { marketingLayout, html } from '../views/layout.js';
+import { appLayout, marketingLayout, html } from '../views/layout.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
 import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage, tryLimitPage } from '../views/marketing.js';
 import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, listShowcasePreviews, readTryCookie, writeTryCookie, anonBlockReason, TRY_COOKIE, TRY_FREE_PER_PERSON, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
@@ -23,6 +23,11 @@ import { brandingMarkup } from '../../serve/branding.js';
 export async function registerMarketingRoutes(app) {
   const render = (req, reply, { title, description, body }) =>
     reply.type('text/html; charset=utf-8').send(marketingLayout({ title, description, body, user: req.user, flash: readFlash(req, reply) }));
+  // Roadmap and changelog are linked from the dashboard menu. A logged-in user stays inside the dashboard shell
+  // (same menu, tab highlighted) instead of being dropped onto the public site and having to find the way back.
+  const renderInApp = (req, reply, { title, description, body, active }) => req.user
+    ? reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active }))
+    : render(req, reply, { title, description, body });
 
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), latest: listChangelog(1)[0] ?? null }) }));
 
@@ -106,8 +111,8 @@ export async function registerMarketingRoutes(app) {
   });
   app.get('/pricing', async (req, reply) => render(req, reply, { title: 'Pricing', body: pricingPage({ plans: listPlans({ publicOnly: true }) }) }));
   app.get('/faq', async (req, reply) => render(req, reply, { title: 'FAQ', body: faqPage() }));
-  app.get('/roadmap', async (req, reply) => render(req, reply, { title: 'Roadmap', description: 'What NSD.SG is building next — vote and suggest.', body: roadmapPage({ items: listRoadmap({ userId: req.user?.id ?? null }), user: req.user, csrf: csrfTokenFor(req) }) }));
-  app.get('/changelog', async (req, reply) => render(req, reply, { title: 'Changelog', description: 'Every NSD.SG release in plain words.', body: changelogPage({ entries: listChangelog() }) }));
+  app.get('/roadmap', async (req, reply) => renderInApp(req, reply, { active: 'feedback', title: 'Roadmap', description: 'What NSD.SG is building next — vote and suggest.', body: roadmapPage({ items: listRoadmap({ userId: req.user?.id ?? null }), user: req.user, csrf: csrfTokenFor(req) }) }));
+  app.get('/changelog', async (req, reply) => renderInApp(req, reply, { active: 'changelog', title: 'Changelog', description: 'Every NSD.SG release in plain words.', body: changelogPage({ entries: listChangelog() }) }));
   app.post('/roadmap/vote/:id', { preHandler: requireUser }, async (req, reply) => {
     toggleVote({ itemId: String(req.params.id), userId: req.user.id });
     return reply.redirect('/roadmap');

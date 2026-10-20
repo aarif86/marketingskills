@@ -89,7 +89,7 @@ details{border-bottom:1px solid var(--line);padding:16px 0}summary{cursor:pointe
 .auth h1{margin-top:24px}
 
 /* ---- app --------------------------------------------------------------- */
-.app-main{padding:36px var(--px) 72px;min-height:70vh}
+.app-main{padding:36px var(--px) 72px;min-height:70vh}.app-main .section{padding:0}.app-main .section>.container{padding:0}
 .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:26px}.page-head h1{margin-bottom:.2em;overflow-wrap:anywhere}.actions{display:flex;gap:8px;flex-wrap:wrap}
 .crumb{color:var(--muted);font-size:.85rem;margin-bottom:.5em}
 .pill{display:inline-block;padding:3px 11px;border-radius:980px;font-size:.72rem;font-weight:700;background:var(--bg3);color:var(--muted);vertical-align:middle;text-transform:uppercase;letter-spacing:.06em}
