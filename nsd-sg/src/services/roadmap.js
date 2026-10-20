@@ -140,6 +140,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-0', '0.13.0', 'Evidence packs fit for a police report', `- New: every evidence pack opens with SUMMARY.txt in plain words (who, when, which IPs, which sites, what was removed), carries a SHA-256 manifest of every file and a chain-of-custody note, and lists every version ever uploaded with the IP and browser that sent it. All times are given in Singapore time as well as UTC.
+- New: legal hold. One switch on an account keeps its held files, packs and visitor logs until an admin lifts it, instead of the usual 90 days.
+- New: a pack is stored on the server automatically before an account is deleted permanently, and admin can store one on demand with a reason (e.g. a police report number). Stored packs are listed under System health.
+- New: a raw visitor log (IP, browser, path, time) for sites that are reported or suspended, or switched on by admin. Normal sites keep only daily counts.`, 'new', '2026-10-20T20:00:00Z'],
   ['cl-0-12-15', '0.12.15', 'What’s new and Feedback stay inside the dashboard', `- Fixed: opening What’s new or Feedback from the dashboard menu no longer throws you onto the public site with a different menu. Both pages now open inside the dashboard, with the tab highlighted, so Sites and Plan are one click away.`, 'fix', '2026-10-20T18:00:00Z'],
   ['cl-0-12-14', '0.12.14', 'Roadmap sorted', `- Changed: visitor stats is marked in progress (the traffic chart is already on every site page), Planned is in a sensible order, and today's gift-plan work has its own Shipped card.`, 'improved', '2026-10-20T17:30:00Z'],
   ['cl-0-12-13', '0.12.13', 'A shorter roadmap page', `- Changed: the Shipped column shows the four newest items with a “Show more” button for the rest, and the In-progress column only appears when something is being built.`, 'improved', '2026-10-20T17:00:00Z'],

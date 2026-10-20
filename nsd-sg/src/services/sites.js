@@ -45,7 +45,7 @@ export function getSiteForUser(id, userId) {
 let serveStmt;
 export function getSiteForServing(subdomain) {
   serveStmt ??= getDb().prepare(`
-    SELECT s.id, s.subdomain, s.status, s.current_release_id, s.branding_removed AS site_branding_removed, s.allow_framing,
+    SELECT s.id, s.subdomain, s.status, s.current_release_id, s.branding_removed AS site_branding_removed, s.allow_framing, s.log_visitors,
            u.status AS owner_status, u.plan_id, u.plan_expires_at, u.overrides_json, u.id AS user_id
     FROM sites s JOIN users u ON u.id = s.user_id
     WHERE s.subdomain = ? AND s.status != 'deleted'`);

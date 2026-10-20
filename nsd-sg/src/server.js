@@ -29,6 +29,7 @@ import { ensureStorageDirs, cleanTemp } from './storage/releases.js';
 import { hit, LIMITS } from './lib/ratelimit.js';
 import { expirePreviews } from './services/tryit.js';
 import { purgeEvidence } from './services/evidence.js';
+import { purgeVisits } from './services/visits.js';
 import { repairPending, isEnabled as hostingEnabled } from './publish/hostinger.js';
 import { contentTypeFor } from './lib/mime.js';
 import { registerMarketingRoutes } from './web/routes/marketing.js';
@@ -146,7 +147,7 @@ export async function buildApp({ logger = true } = {}) {
       const n = purgeExpiredSessions();
       const t = cleanTemp();
       const p = expirePreviews();
-      const ev = purgeEvidence();
+      const ev = purgeEvidence() + purgeVisits();
       if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
       refreshStatus().catch(() => {});
       lifecycleSweep().then((r) => { if (r.reminded || r.dormant || r.warned || r.deleted) app.log.info(r, 'plan lifecycle'); }).catch((e) => app.log.error(e));

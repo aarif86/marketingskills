@@ -50,16 +50,17 @@ ${users.map((u) => html`<tr><td><a href="/admin/users/${u.id}">${u.email}</a>${u
 </tbody></table>`.toString();
 }
 
-export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin, subscriptions = [], holds = [] }) {
+export function userDetail({ user, ent, sites, sessions, events, auditRows, plans, csrf, isLastAdmin, subscriptions = [], holds = [], packs = [] }) {
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/users/${user.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const o = ent.overrides;
   return html`<p class="crumb"><a href="/admin/users">Users</a> / ${user.email}</p>
-<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}${user.google_sub ? ' · Google-linked' : ''}</p></div>
+<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''} ${user.legal_hold ? pill('legal hold') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}${user.google_sub ? ' · Google-linked' : ''}</p></div>
 <div class="actions">
   ${user.status !== 'active' ? act({ action: 'activate' }, 'Activate', 'btn-primary') : ''}
   ${user.status === 'active' ? act({ action: 'suspend' }, 'Suspend', 'btn-danger', 'Suspend this user and take all their sites offline?') : ''}
   ${user.status !== 'disabled' ? act({ action: 'disable' }, 'Disable', 'btn-danger', 'Disable this account? They will not be able to log in.') : ''}
   ${act({ action: 'logout_all' }, 'Log out everywhere')}
+  ${user.legal_hold ? act({ action: 'legal_hold', value: 'off' }, 'Lift legal hold', '', 'Lift the legal hold? Normal 90-day purging resumes.') : act({ action: 'legal_hold', value: 'on' }, 'Legal hold', 'btn-danger', 'Put this account under legal hold? Nothing about it (held files, packs, visitor logs) is purged until you lift it.')}
   ${user.status !== 'active' && user.role !== 'admin' ? act({ action: 'delete_forever' }, 'Delete permanently', 'btn-danger', `Delete ${user.email} for good? Sites, subscriptions and history go with it; the email and site names become free again. Evidence copies of removed sites are kept.`) : ''}
   ${!user.email_verified_at ? act({ action: 'verify_email' }, 'Mark email verified') : ''}
   ${user.role === 'admin' ? (isLastAdmin ? '' : act({ action: 'role', role: 'user' }, 'Demote to user', 'btn-danger', 'Remove admin rights?')) : act({ action: 'role', role: 'admin' }, 'Make admin', 'btn-danger', 'Grant full admin rights to this user?')}
@@ -97,7 +98,10 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
 <div class="card"><h2>Sessions (${sessions.length})</h2><table class="table small"><tbody>${sessions.map((s) => html`<tr><td>${s.ip}</td><td class="muted" title="${s.user_agent}">${s.user_agent.slice(0, 50)}</td><td class="muted">${timeAgo(s.last_seen_at)}</td></tr>`)}</tbody></table>
   <h2 class="mt">Evidence</h2>
   <p class="muted small">Everything about this account in one ZIP: record, logins, every audit row, sites (incl. deleted), plan history, IPs, test pages from those IPs, and held files. Downloads are logged.</p>
-  <p><a class="btn btn-ghost btn-sm" href="/admin/users/${user.id}/evidence.zip">Download evidence pack</a></p>
+  <p class="row-gap"><a class="btn btn-ghost btn-sm" href="/admin/users/${user.id}/evidence.zip">Download evidence pack</a>
+  <form method="post" action="/admin/users/${user.id}/evidence/store" class="inline">${hidden(csrf, {})}<input name="reason" placeholder="why (e.g. police report no.)" maxlength="200"><button class="btn btn-ghost btn-sm" type="submit">Store a pack on the server</button></form></p>
+  <p class="muted small">Each pack carries SUMMARY.txt, a SHA-256 manifest and a chain-of-custody note. A stored pack survives a permanent delete and is kept 90 days, or until legal hold is lifted.</p>
+  ${packs.length ? html`<table class="table small"><thead><tr><th>Stored</th><th>Why</th><th>By</th><th>SHA-256</th><th>Until</th><th></th></tr></thead><tbody>${packs.map((p) => html`<tr><td>${formatDate(p.generated_at)}</td><td class="muted">${p.reason || ''}</td><td class="muted">${p.generated_by_email || 'system'}</td><td><code title="${p.sha256}">${(p.sha256 || '').slice(0, 12)}…</code></td><td class="muted">${p.legal_hold ? 'legal hold' : formatDate(p.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/packs/${p.user_id}/${p.ts}.zip">Download</a></td></tr>`)}</tbody></table>` : ''}
   ${holds.length ? html`<table class="table small"><thead><tr><th>Site</th><th>Why</th><th>Held</th><th>Until</th><th></th></tr></thead><tbody>${holds.map((h) => html`<tr><td>${h.subdomain} <span class="muted">v${h.version ?? '?'}</span></td><td class="muted">${h.reason}</td><td class="muted">${formatDate(h.held_at)}</td><td class="muted">${formatDate(h.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/${h.site_id}/${h.ts}.zip">Files</a></td></tr>`)}</tbody></table>` : html`<p class="muted small">No held files. A copy is kept for ${90} days whenever a site is suspended or deleted.</p>`}
   ${subscriptions.length ? html`<h2 class="mt">HitPay subscriptions</h2><table class="table small"><tbody>${subscriptions.map((s) => html`<tr><td><code>${s.id}</code></td><td>${s.plan_id}</td><td>${pill(s.status)}</td><td class="muted">${s.last_event} · ${formatDate(s.updated_at)}${s.last_payment_id ? html` · pay <code>${s.last_payment_id}</code>` : ''}</td>
     <td class="row-gap"><form method="post" action="/admin/users/${user.id}/subscription" class="inline">${hidden(csrf, { action: 'recheck', id: s.id })}<button class="btn btn-tiny btn-ghost">Re-check</button></form>
@@ -119,7 +123,7 @@ ${sites.map((s) => html`<tr><td><a href="/admin/sites/${s.id}">${s.subdomain}</a
 </tbody></table>`.toString();
 }
 
-export function siteDetail({ site, owner, ent, files, releases, traffic, reports, auditRows, csrf, url }) {
+export function siteDetail({ site, owner, ent, files, releases, traffic, reports, auditRows, csrf, url, visits = [], visitTotal = 0 }) {
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/sites/${site.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const reqs = traffic.reduce((a, t) => a + t.requests, 0);
   const bytes = traffic.reduce((a, t) => a + t.bytes, 0);
@@ -132,6 +136,7 @@ ${site.hosting_state !== undefined ? html`<p class="muted small">Hosting: <stron
   ${site.status === 'suspended' ? act({ action: 'unsuspend' }, 'Unsuspend', 'btn-primary') : ''}
   ${site.hosting_ready_at ? '' : html`${act({ action: 'repair' }, 'Repair now', 'btn-primary')} ${act({ action: 'probe' }, 'Check address now')} ${act({ action: 'ready' }, 'Mark ready by hand', '', 'Only if you have opened the site in a browser with the padlock yourself. Mark it ready?')}`}
   ${site.branding_removed ? act({ action: 'branding', value: 'shown' }, 'Restore badge') : act({ action: 'branding', value: 'removed' }, 'Remove badge')}
+  ${site.log_visitors ? act({ action: 'log_visitors', value: 'off' }, 'Stop logging visitors') : act({ action: 'log_visitors', value: 'on' }, 'Log visitors', '', 'Record every request to this site (IP, browser, path, time) for 90 days?')}
 </div></div>
 
 <div class="grid two">
@@ -144,13 +149,16 @@ ${site.hosting_state !== undefined ? html`<p class="muted small">Hosting: <stron
 </div>
 <div class="card"><h2>Traffic (30d)</h2><p><strong>${reqs.toLocaleString()}</strong> requests · <strong>${formatBytes(bytes)}</strong> · limit ${ent ? formatBytes(ent.limits.max_bandwidth_bytes_month) : '?'}/month</p>
   ${traffic.length ? html`<div class="spark">${traffic.map((t) => html`<i style="height:${Math.max(4, Math.min(100, (t.bytes / Math.max(1, Math.max(...traffic.map((x) => x.bytes)))) * 100))}%" title="${t.day}: ${t.requests} req, ${formatBytes(t.bytes)}"></i>`)}</div>` : html`<p class="muted small">No traffic.</p>`}
+  <h2 class="mt">Visitor log ${site.log_visitors || site.status === 'suspended' ? pill('recording') : ''} <span class="muted">${visitTotal}</span></h2>
+  <p class="muted small">${site.log_visitors ? 'Switched on by admin or by an abuse report.' : site.status === 'suspended' ? 'Suspended sites always record who still tries to open them.' : 'Off. Turned on automatically when the site is reported or suspended.'} ${visitTotal ? html`<a href="/admin/sites/${site.id}/visits.csv">Download all ${visitTotal} as CSV</a>` : ''}</p>
+  ${visits.length ? html`<table class="table small"><thead><tr><th>When (SGT)</th><th>IP</th><th>Path</th><th>Browser</th></tr></thead><tbody>${visits.map((v) => html`<tr><td class="muted">${formatDate(v.at)}</td><td>${v.ip}</td><td><code>${v.path.slice(0, 60)}</code>${v.state === 'suspended' ? ' <span class="muted">(got the suspended page)</span>' : ''}</td><td class="muted" title="${v.user_agent}">${v.user_agent.slice(0, 40)}</td></tr>`)}</tbody></table>` : ''}
   <h2 class="mt">Abuse reports (${reports.length})</h2>${reports.map((r) => html`<div class="small">${pill(r.status)} ${r.category} · ${timeAgo(r.created_at)} · ${r.details.slice(0, 200)}</div>`)}
 </div>
 </div>
 
 <div class="grid two">
 <div class="card"><h2>Files (current)</h2><div class="file-list">${files.map((f) => html`<div class="file-row"><span class="file-path">${f.path}</span><span class="muted small">${formatBytes(f.size)}</span></div>`)}</div></div>
-<div class="card"><h2>Releases</h2><table class="table small"><tbody>${releases.map((r) => html`<tr><td>v${r.version} ${r.id === site.current_release_id ? pill('live') : ''}</td><td>${r.source}</td><td class="muted">${r.note}</td><td class="muted">${r.file_count} · ${formatBytes(r.size_bytes)}</td><td class="muted">${formatDate(r.created_at)}</td></tr>`)}</tbody></table></div>
+<div class="card"><h2>Releases</h2><table class="table small"><tbody>${releases.map((r) => html`<tr><td title="uploaded from ${r.ip || '?'}">v${r.version} ${r.id === site.current_release_id ? pill('live') : ''}</td><td>${r.source}</td><td class="muted">${r.note}</td><td class="muted">${r.file_count} · ${formatBytes(r.size_bytes)}</td><td class="muted">${formatDate(r.created_at)}</td></tr>`)}</tbody></table></div>
 </div>
 <div class="card"><h2>Audit trail</h2><table class="table small"><tbody>${auditRows.map((a) => html`<tr><td>${pill(a.severity)}</td><td>${a.action}</td><td class="muted">${a.details !== '{}' ? a.details : ''}</td><td class="muted">${a.ip}</td><td class="muted">${formatDate(a.at)}</td></tr>`)}</tbody></table></div>`.toString();
 }
@@ -265,8 +273,12 @@ ${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root
 <form method="post" action="/admin/health/repair" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Repair all stuck addresses</button></form>
 <form method="post" action="/admin/health/api-check" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Test Hostinger API</button></form>
 ${h.hosting.unready?.length ? html`<table class="table small mt"><thead><tr><th>Address not confirmed</th><th>State</th><th>Retries</th><th>Last try</th><th>Made</th><th>Error</th></tr></thead><tbody>${h.hosting.unready.map((u) => html`<tr><td><a href="/admin/sites/${u.id}">${u.subdomain}</a></td><td>${u.hosting_state}</td><td>${u.hosting_attempts}</td><td class="muted">${u.hosting_last_attempt_at ? timeAgo(u.hosting_last_attempt_at) : '-'}</td><td class="muted">${timeAgo(u.created_at)}</td><td class="muted">${u.hosting_error}</td></tr>`)}</tbody></table><p class="muted small">These retry on their own: every minute while the owner has their site page open, every 2 minutes while the app is awake, and on the hourly cron. You get one email per site if it is still stuck after 30 minutes.</p>` : html`<p class="muted small mt">Every site's address is confirmed reachable.</p>`} <span class="muted small">provisions pending subdomains and rebuilds every tenant folder (the hourly cron does the same)</span></div>` : ''}
+<div class="card"><h2>Stored evidence packs <span class="muted">${(h.packs ?? []).length}</span></h2>
+<p class="muted small">Packs kept on the server, including for accounts that were deleted permanently. Each has a SHA-256 manifest and a chain-of-custody note. Kept 90 days, or until legal hold is lifted.</p>
+${(h.packs ?? []).length ? html`<table class="table small"><thead><tr><th>Account</th><th>Stored</th><th>Why</th><th>SHA-256</th><th>Until</th><th></th></tr></thead><tbody>${h.packs.map((p) => html`<tr><td>${p.email || p.user_id}</td><td class="muted">${formatDate(p.generated_at)}</td><td class="muted">${p.reason || ''}</td><td><code title="${p.sha256}">${(p.sha256 || '').slice(0, 12)}…</code></td><td class="muted">${p.legal_hold ? 'legal hold' : formatDate(p.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/packs/${p.user_id}/${p.ts}.zip">Download</a></td></tr>`)}</tbody></table>` : html`<p class="muted">None stored.</p>`}
+</div>
 <div class="card"><h2>Test pages (try.${h.baseDomain})</h2>
-<p>${h.tryHost.live} live test page${h.tryHost.live === 1 ? '' : 's'} (${h.tryHost.ready} confirmed reachable). Evidence held: ${h.evidence.sites} site cop${h.evidence.sites === 1 ? 'y' : 'ies'} (90 days), ${h.evidence.previews} expired test page${h.evidence.previews === 1 ? '' : 's'} (7 days). ${h.tryHost.enabled
+<p>${h.tryHost.live} live test page${h.tryHost.live === 1 ? '' : 's'} (${h.tryHost.ready} confirmed reachable). Evidence held: ${h.evidence.sites} site cop${h.evidence.sites === 1 ? 'y' : 'ies'}, ${h.evidence.packs ?? 0} stored pack${h.evidence.packs === 1 ? '' : 's'} (90 days), ${h.evidence.previews} expired test page${h.evidence.previews === 1 ? '' : 's'} (7 days). ${h.tryHost.enabled
   ? html`Folder <code>tenants/try/</code>: <strong>${h.tryHost.dir ? 'present' : 'missing'}</strong> · <a href="${h.tryHost.url}" target="_blank" rel="noopener">${h.tryHost.url}</a> answers over HTTPS: <strong class="${h.tryHost.answers ? 'ok' : 'warn'}">${h.tryHost.answers ? 'yes' : `no${h.tryHost.detail ? ` (${h.tryHost.detail})` : ''}`}</strong>. A new subdomain needs 5–15 min for its certificate; until then visitors see a browser SSL error and the result page keeps waiting.`
   : 'Served by this app (no Hostinger publisher).'}</p>
 ${h.tryHost.lastError ? html`<p class="muted small">Last error (${formatDate(h.tryHost.lastError.created_at)}): <code>${h.tryHost.lastError.error}</code></p>` : ''}

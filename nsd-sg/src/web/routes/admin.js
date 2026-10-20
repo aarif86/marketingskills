@@ -4,7 +4,8 @@ import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
 import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
-import { listHoldsForUser, holdSite, holdZip, evidencePack, evidenceStats } from '../../services/evidence.js';
+import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePack, listStoredPacks, storedPackZip, setLegalHold, evidenceStats } from '../../services/evidence.js';
+import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../services/visits.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
 import { getDb } from '../../db/index.js';
@@ -79,7 +80,7 @@ export async function registerAdminRoutes(app) {
     const sites = all("SELECT * FROM sites WHERE user_id = ? AND status != 'deleted' ORDER BY created_at DESC", user.id);
     const auditRows = all('SELECT * FROM audit_log WHERE actor_id = ? OR (target_type = ? AND target_id = ?) ORDER BY at DESC LIMIT 50', user.id, 'user', user.id);
     const subscriptions = all('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC', user.id);
-    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), holds: listHoldsForUser(user.id), isLastAdmin: user.role === 'admin' && countAdmins() <= 1, subscriptions }) });
+    return render(req, reply, { title: user.email, active: 'users', body: V.userDetail({ user, ent: entitlementsFor(user), sites, sessions: listSessions(user.id), events: listPlanEvents(user.id, 30), auditRows, plans: listPlans(), csrf: csrfTokenFor(req), packs: listStoredPacks(user.id), holds: listHoldsForUser(user.id), isLastAdmin: user.role === 'admin' && countAdmins() <= 1, subscriptions }) });
   });
 
   app.post('/admin/users/:id/subscription', opts, async (req, reply) => {
@@ -105,15 +106,24 @@ export async function registerAdminRoutes(app) {
     const back = `/admin/users/${user.id}`;
     const isSelf = user.id === req.user.id;
     switch (action) {
+      case 'legal_hold': {
+        const on = b.value === 'on';
+        setLegalHold(user.id, on);
+        audit({ req, action: on ? 'admin.user.legal_hold_on' : 'admin.user.legal_hold_off', targetType: 'user', targetId: user.id, severity: 'warn' });
+        flash(reply, 'success', on ? 'Legal hold on: nothing about this account is purged until you lift it.' : 'Legal hold lifted: normal 90-day retention applies again.');
+        break;
+      }
       case 'delete_forever': {
         // Only for an account that is already disabled or suspended, never an admin. Frees the email and the site names.
         if (isSelf || user.role === 'admin' || user.status === 'active') { flash(reply, 'error', 'Disable or suspend the account first; admins cannot be deleted.'); break; }
         try {
           for (const s of listSitesForUser(user.id)) deleteSite(s.id);
+          const pack = storePack(user.id, { actor: req.user, reason: 'account deleted permanently' }); // evidence outlives the account row
           destroyAllSessions(user.id);
           getDb().prepare('DELETE FROM users WHERE id = ?').run(user.id);
+          audit({ req, action: 'admin.evidence.pack_stored', targetType: 'user', targetId: user.id, details: { email: user.email, ts: pack?.ts, sha256: pack?.sha256, bytes: pack?.bytes }, severity: 'warn' });
           audit({ req, action: 'admin.user.delete_forever', targetType: 'user', targetId: user.id, details: { email: user.email }, severity: 'warn' });
-          flash(reply, 'success', `${user.email} deleted permanently. The email and site names can be used again.`);
+          flash(reply, 'success', `${user.email} deleted permanently. The email and site names can be used again. An evidence pack was stored first (System health → Stored evidence packs).`);
           return reply.redirect('/admin/users');
         } catch (e) { req.log.error({ err: e }, 'delete forever failed'); flash(reply, 'error', `Could not delete: ${String(e.message).slice(0, 200)}`); }
         break;
@@ -219,7 +229,7 @@ export async function registerAdminRoutes(app) {
     const files = site.current_release_id ? listReleaseFiles(site.id, site.current_release_id) : [];
     const reports = all('SELECT * FROM abuse_reports WHERE site_id = ? ORDER BY created_at DESC', site.id);
     const auditRows = all("SELECT * FROM audit_log WHERE target_type = 'site' AND target_id = ? ORDER BY at DESC LIMIT 40", site.id);
-    return render(req, reply, { title: site.subdomain, active: 'sites', body: V.siteDetail({ site, owner, ent: owner ? entitlementsFor(owner) : null, files, releases: listReleases(site.id), traffic: trafficForSite(site.id, 30), reports, auditRows, csrf: csrfTokenFor(req), url: publicUrlForSubdomain(site.subdomain) }) });
+    return render(req, reply, { title: site.subdomain, active: 'sites', body: V.siteDetail({ site, owner, ent: owner ? entitlementsFor(owner) : null, files, releases: listReleases(site.id), traffic: trafficForSite(site.id, 30), reports, visits: visitsForSite(site.id, 50), visitTotal: visitCount(site.id), auditRows, csrf: csrfTokenFor(req), url: publicUrlForSubdomain(site.subdomain) }) });
   });
 
   app.post('/admin/sites/:id/action', opts, async (req, reply) => {
@@ -261,6 +271,11 @@ export async function registerAdminRoutes(app) {
         setSiteStatus(site.id, site.current_release_id ? 'live' : 'empty', '');
         audit({ req, action: 'admin.site.unsuspend', targetType: 'site', targetId: site.id });
         flash(reply, 'success', 'Site restored.');
+        break;
+      case 'log_visitors':
+        setLogVisitors(site.id, b.value === 'on');
+        audit({ req, action: 'admin.site.log_visitors', targetType: 'site', targetId: site.id, details: { on: b.value === 'on' } });
+        flash(reply, 'success', b.value === 'on' ? 'Visitor logging on: every request to this site is recorded (IP, browser, path) for 90 days.' : 'Visitor logging off. Existing rows are kept until they age out.');
         break;
       case 'branding':
         setSiteBranding(site.id, b.value === 'removed');
@@ -327,11 +342,35 @@ export async function registerAdminRoutes(app) {
   });
 
   // ---- evidence downloads (admin only) ----
+  app.post('/admin/users/:id/evidence/store', opts, async (req, reply) => {
+    const user = findUserById(String(req.params.id));
+    if (!user) return reply.code(404).send('No such user');
+    const pack = storePack(user.id, { actor: req.user, reason: String(req.body?.reason ?? 'stored by admin').slice(0, 200) });
+    audit({ req, action: 'admin.evidence.pack_stored', targetType: 'user', targetId: user.id, details: { ts: pack.ts, sha256: pack.sha256, bytes: pack.bytes }, severity: 'warn' });
+    flash(reply, 'success', `Evidence pack stored (${pack.files} files, SHA-256 ${pack.sha256.slice(0, 16)}…). Kept ${PACK_KEEP_DAYS} days, longer under legal hold.`);
+    return reply.redirect(`/admin/users/${user.id}`);
+  });
+  app.get('/admin/evidence/packs/:userId/:ts.zip', opts, async (req, reply) => {
+    const userId = String(req.params.userId); const ts = String(req.params.ts);
+    if (!/^[0-9A-Z]{26}$/.test(userId)) return reply.code(404).send('No such pack');
+    const zip = storedPackZip(userId, ts);
+    if (!zip) return reply.code(404).send('No such pack');
+    audit({ req, action: 'admin.evidence.pack_download', targetType: 'user', targetId: userId, details: { ts, bytes: zip.length }, severity: 'warn' });
+    return reply.header('Content-Disposition', `attachment; filename="evidence-${userId}-${ts}.zip"`).type('application/zip').send(zip);
+  });
+  app.get('/admin/sites/:id/visits.csv', opts, async (req, reply) => {
+    const site = getSiteById(String(req.params.id));
+    if (!site) return reply.code(404).send('No such site');
+    const rows = visitsForSite(site.id, 100000).reverse();
+    audit({ req, action: 'admin.evidence.visits', targetType: 'site', targetId: site.id, details: { rows: rows.length } });
+    return reply.header('Content-Disposition', `attachment; filename="visits-${site.subdomain}-${new Date().toISOString().slice(0, 10)}.csv"`).type('text/csv; charset=utf-8').send(visitsCsv(rows));
+  });
   app.get('/admin/users/:id/evidence.zip', opts, async (req, reply) => {
     const user = findUserById(String(req.params.id));
     if (!user) return reply.code(404).send('No such user');
-    const zip = evidencePack(user.id);
-    audit({ req, action: 'admin.evidence.pack', targetType: 'user', targetId: user.id, details: { bytes: zip.length }, severity: 'warn' });
+    const built = buildPack(user.id, { actor: req.user });
+    const zip = built.zip;
+    audit({ req, action: 'admin.evidence.pack', targetType: 'user', targetId: user.id, details: { bytes: zip.length, sha256: built.sha256, manifest_sha256: built.manifestSha256, files: built.files }, severity: 'warn' });
     return reply.header('Content-Disposition', `attachment; filename="evidence-${user.email.replace(/[^\w.@-]/g, '_')}-${new Date().toISOString().slice(0, 10)}.zip"`).header('Cache-Control', 'private, no-store').type('application/zip').send(zip);
   });
   app.get('/admin/evidence/:siteId/:ts.zip', opts, async (req, reply) => {
@@ -463,7 +502,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env,
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50),
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),

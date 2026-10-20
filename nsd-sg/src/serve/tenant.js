@@ -11,6 +11,7 @@ import { config } from '../config.js';
 import { contentTypeFor, cacheControlFor, extensionOf, HTML_EXTENSIONS } from '../lib/mime.js';
 import { hit, LIMITS } from '../lib/ratelimit.js';
 import { getSiteForServing, recordTraffic } from '../services/sites.js';
+import { shouldLog, logVisit } from '../services/visits.js';
 import { entitlementsFor } from '../services/plans.js';
 import { releaseDir, resolveWithin } from '../storage/releases.js';
 import { injectBranding } from './branding.js';
@@ -94,6 +95,7 @@ export async function serveTenant(req, reply, label) {
   const site = getSiteForServing(label);
   securityHeaders(reply, { allowFraming: !!site?.allow_framing });
   if (!site) return sendPage(reply, 404, PAGES.notFoundSite(label));
+  if (shouldLog(site)) { try { logVisit(site, req, site.status === 'suspended' || site.owner_status !== 'active' ? 'suspended' : 'live'); } catch { /* never block serving */ } }
   if (site.status === 'suspended' || site.owner_status !== 'active') return sendPage(reply, 451, PAGES.suspended());
   if (!site.current_release_id) return sendPage(reply, 200, PAGES.empty(label));
   if (isDormant({ plan_expires_at: site.plan_expires_at })) return sendPage(reply, 200, PAGES.dormant(label));

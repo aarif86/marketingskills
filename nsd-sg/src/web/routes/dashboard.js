@@ -32,6 +32,7 @@ const liveWord = (site) => (knownReady(site) ? 'is online' : 'is saved and will 
 const TEXT_PREVIEW = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'txt', 'md', 'xml', 'svg', 'webmanifest', 'csv', 'vtt', 'map']);
 
 export async function registerDashboardRoutes(app) {
+  const clientOf = (req) => ({ ip: req.ip, ua: req.headers['user-agent'] }); // who uploaded this version, for the evidence pack
   const render = (req, reply, { title, body, active }) =>
     reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active }));
 
@@ -133,7 +134,7 @@ export async function registerDashboardRoutes(app) {
       const zipFile = files.find((f) => /\.zip$/i.test(f.filename ?? '') && files.length === 1);
       let result;
       if (zipFile) {
-        result = await deployZip({ site, zipPath: zipFile.tmpPath, user: req.user, limits: ent.limits, note: `ZIP: ${zipFile.filename}`.slice(0, 120) });
+        result = await deployZip({ site, zipPath: zipFile.tmpPath, user: req.user, limits: ent.limits, client: clientOf(req), note: `ZIP: ${zipFile.filename}`.slice(0, 120) });
         audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'zip', version: result.version, files: result.count, bytes: result.bytes, rejected: result.rejected.length } });
         const msgParts = [`Version ${result.version} ${liveWord(site)}: ${result.count} files.`];
         if (result.rejected.length) msgParts.push(`${result.rejected.length} file${result.rejected.length === 1 ? ' was' : 's were'} skipped (not a supported type): ${result.rejected.slice(0, 5).map((r) => r.path).join(', ')}${result.rejected.length > 5 ? '…' : ''}.`);
@@ -150,7 +151,7 @@ export async function registerDashboardRoutes(app) {
         list.push({ relPath: r.path, tmpPath: f.tmpPath, size: f.size });
       }
       if (!list.length) return fail(400, `Nothing to publish. ${problems[0] ?? ''}`);
-      result = await deployFiles({ site, files: list, user: req.user, limits: ent.limits, replaceAll: mode === 'replace', note: `${mode === 'replace' ? 'Replace' : 'Upload'} ${list.length} file${list.length === 1 ? '' : 's'}` });
+      result = await deployFiles({ site, files: list, user: req.user, limits: ent.limits, client: clientOf(req), replaceAll: mode === 'replace', note: `${mode === 'replace' ? 'Replace' : 'Upload'} ${list.length} file${list.length === 1 ? '' : 's'}` });
       audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: mode, version: result.version, files: result.count, bytes: result.bytes } });
       if (wantsJson) return reply.send({ ok: true, version: result.version, files: result.count, problems });
       flash(reply, problems.length ? 'warn' : 'success', `Version ${result.version} ${liveWord(site)}.${problems.length ? ` Skipped: ${problems.slice(0, 3).join('; ')}` : ''}`);
@@ -180,7 +181,7 @@ export async function registerDashboardRoutes(app) {
     const tmp = tempFile('paste');
     try {
       fs.writeFileSync(tmp, htmlText, { mode: 0o600 });
-      const result = await deployFiles({ site, files: [{ relPath, tmpPath: tmp, size: bytes }], user: req.user, limits: ent.limits, replaceAll: false, note: `Pasted ${relPath}` });
+      const result = await deployFiles({ site, files: [{ relPath, tmpPath: tmp, size: bytes }], user: req.user, limits: ent.limits, client: clientOf(req), replaceAll: false, note: `Pasted ${relPath}` });
       audit({ req, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'paste', path: relPath, version: result.version, bytes } });
       flash(reply, 'success', `Version ${result.version} ${liveWord(site)}: ${relPath === 'index.html' ? publicUrlForSubdomain(site.subdomain) : `${publicUrlForSubdomain(site.subdomain)}/${page}`}`);
     } catch (e) {
@@ -196,7 +197,7 @@ export async function registerDashboardRoutes(app) {
     const site = loadSite(req, reply); if (!site) return;
     const ent = entitlementsFor(req.user);
     try {
-      const r = deleteFileFromSite({ site, relPath: String(req.body?.path ?? ''), user: req.user, limits: ent.limits });
+      const r = deleteFileFromSite({ site, relPath: String(req.body?.path ?? ''), user: req.user, limits: ent.limits, client: clientOf(req) });
       audit({ req, action: 'site.file_delete', targetType: 'site', targetId: site.id, details: { path: req.body?.path, version: r.version } });
       flash(reply, 'success', `Deleted. Version ${r.version} ${liveWord(site)}.`);
     } catch (e) {
@@ -225,7 +226,7 @@ export async function registerDashboardRoutes(app) {
     const site = loadSite(req, reply); if (!site) return;
     const ent = entitlementsFor(req.user);
     try {
-      const r = rollbackTo({ site, releaseId: String(req.body?.release_id ?? ''), user: req.user, limits: ent.limits });
+      const r = rollbackTo({ site, releaseId: String(req.body?.release_id ?? ''), user: req.user, limits: ent.limits, client: clientOf(req) });
       audit({ req, action: 'site.rollback', targetType: 'site', targetId: site.id, details: { to: req.body?.release_id, version: r.version } });
       flash(reply, 'success', `Rolled back. Version ${r.version} ${liveWord(site)}.`);
     } catch (e) {

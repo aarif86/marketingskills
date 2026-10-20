@@ -74,14 +74,14 @@ function collectFiles(args, { needPage = true } = {}) {
   return list;
 }
 
-async function writeAndDeploy({ site, user, list, replaceAll, note }) {
+async function writeAndDeploy({ site, user, list, replaceAll, note, client }) {
   const ent = entitlementsFor(user);
   if (ent.expired) throw new ToolError(`Your free period ended on ${ent.expiresAt.slice(0, 10)}. Your site stays online, but publishing is paused. Ask for more time (free) or upgrade at ${upgradeUrl()}`);
   if (site.status === 'suspended') throw new ToolError('This site has been switched off by NSD.SG. Log in to the dashboard to see why.');
   const temps = [];
   try {
     const files = list.map((f) => { const tmp = tempFile('mcp'); temps.push(tmp); fs.writeFileSync(tmp, f.content, { mode: 0o600 }); return { relPath: f.relPath, tmpPath: tmp, size: f.size }; });
-    return await deployFiles({ site, files, user, limits: ent.limits, replaceAll, note });
+    return await deployFiles({ site, files, user, limits: ent.limits, replaceAll, note, client });
   } catch (e) {
     if (e instanceof StorageError) {
       if (/quota|exceed/i.test(e.message)) throw new ToolError(`${e.message} Your ${ent.plan.name} plan allows ${formatBytes(ent.limits.max_storage_bytes)} per site and ${formatBytes(ent.limits.max_file_bytes)} per file. More room on Plus: ${pricingUrl()}`);
@@ -123,7 +123,7 @@ async function runTool(name, args, ctx) {
         site = r.site; created = true;
         audit({ req, actor: user, action: 'site.create', targetType: 'site', targetId: site.id, details: { subdomain: sub, via: 'mcp' } });
       }
-      const result = await writeAndDeploy({ site, user, list, replaceAll: false, note: `Published from Claude (${list.length} file${list.length === 1 ? '' : 's'})` });
+      const result = await writeAndDeploy({ site, user, list, replaceAll: false, client: ctx.client, note: `Published from Claude (${list.length} file${list.length === 1 ? '' : 's'})` });
       audit({ req, actor: user, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'mcp', version: result.version, files: result.count, bytes: result.bytes } });
       const fresh = getSiteForUser(site.id, user.id);
       return { ok: true, created, url: publicUrlForSubdomain(sub), site_id: site.id, version: result.version, files: result.count, ...(knownReady(fresh) ? {} : { note: 'New address: the padlock (HTTPS) takes 5-15 minutes the first time. The link works after that.' }), badge: !(site.branding_removed || ent.brandingRemoved) ? `A small "Powered by NasarDigital" badge shows on free sites. Remove it with Plus: ${pricingUrl()}` : 'none', days_left: daysLeft(ent), dashboard: platformUrl(`/sites/${site.id}`) };
@@ -132,7 +132,7 @@ async function runTool(name, args, ctx) {
       const site = getSiteForUser(String(args.site_id ?? ''), user.id);
       if (!site) throw new ToolError('No site with that id on your account. Call nsd_list_sites to see your sites.');
       const list = collectFiles(args);
-      const result = await writeAndDeploy({ site, user, list, replaceAll: true, note: `Replaced from Claude (${list.length} file${list.length === 1 ? '' : 's'})` });
+      const result = await writeAndDeploy({ site, user, list, replaceAll: true, client: ctx.client, note: `Replaced from Claude (${list.length} file${list.length === 1 ? '' : 's'})` });
       audit({ req, actor: user, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'mcp-replace', version: result.version, files: result.count, bytes: result.bytes } });
       return { ok: true, url: publicUrlForSubdomain(site.subdomain), site_id: site.id, version: result.version, files: result.count, previous_versions_kept: ent.limits.max_releases };
     }
@@ -197,7 +197,7 @@ export async function registerMcpRoutes(app) {
     if (!auth) { audit({ req, action: 'mcp.unauthorized', targetType: 'token', targetId: '', severity: 'warn' }); return unauthorized(reply); }
     const rl = hit(`mcp:${auth.tokenId}`, LIMITS.mcp.limit, LIMITS.mcp.windowMs);
     if (!rl.ok) return reply.code(429).header('Retry-After', String(rl.retryAfterSec)).send(rpcError(null, -32000, `Rate limit: ${LIMITS.mcp.limit} calls per hour per token.`));
-    const ctx = { user: auth.user, tokenId: auth.tokenId, req };
+    const ctx = { user: auth.user, tokenId: auth.tokenId, req, client: { ip: req.ip, ua: `mcp ${String(req.headers['user-agent'] ?? '')}`.trim() } };
     const body = req.body;
     if (Array.isArray(body)) {
       const out = (await Promise.all(body.map((m) => handleMessage(m, ctx)))).filter(Boolean);

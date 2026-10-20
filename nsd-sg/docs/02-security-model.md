@@ -93,6 +93,34 @@ pack for an account (`/admin/users/<id>/evidence.zip`: user record without hash,
 deleted, releases, plan events, IPs, test pages from those IPs, held files; capped at 200 MB). Both downloads are
 audited. Every audit row records the User-Agent (migration 012). Retention is stated on /privacy and /terms.
 
+## Evidence grade (0.13.0)
+
+What an investigator gets from Admin → Users → *account* → "Download evidence pack", or from a pack stored on the server:
+
+- `SUMMARY.txt` in plain words: account, Google id, every IP with first-seen time and login count, every site with every
+  version (time, source, file count, uploader IP), holds, abuse reports, test pages from the same IPs.
+- `MANIFEST.sha256` (one line per file) and `CHAIN_OF_CUSTODY.txt` (who generated it, when, app version, hash of the
+  manifest). The pack's own SHA-256 is written to the audit log at generation time, so a pack handed over later can be
+  matched to the server's record. Verify with `sha256sum -c MANIFEST.sha256`.
+- `versions/<site>/v<n>/…` every version still on disk, not only the last; `versions.json` carries `ip` and `user_agent`
+  per version (`releases.ip`, migration 027). `holds/` as before. `visits/<site>.csv` raw visitor log.
+- Every JSON row carries both UTC and `*_sgt` Singapore-time fields.
+
+**Legal hold** (`users.legal_hold`): Admin → Users → *account* → "Legal hold". Written into every hold and pack
+`meta.json` (`legal_hold: true`) so it survives the account row; `purgeEvidence()` and `purgeVisits()` skip them until
+the hold is lifted.
+
+**Stored packs** (`DATA_DIR/evidence/packs/<userId>/<ts>/pack.zip` + `meta.json` with sha256): created automatically
+before "Delete permanently", or on demand with a reason. Listed under Admin → System health and on the user page.
+Kept 90 days (or legal hold). Download path `/admin/evidence/packs/<userId>/<ts>.zip`, every download audited.
+
+**Visitor log** (`site_visits`, no FK so rows outlive the site): recorded only for sites that are suspended, were
+reported through `/report`, or were switched on by admin ("Log visitors" on the site page). IP, browser, method,
+path, referer, time, and whether the visitor got the suspended page. 90 days, CSV download, included in packs.
+Normal sites keep only `site_traffic_daily` counts (PDPA: no raw visitor data without a reason).
+
+Behind Cloudflare, all of the above holds real visitor IPs only with `TRUST_CLOUDFLARE=1`.
+
 ## Test-page shell and share previews (0.9.2)
 
 `try.<domain>/<id>/` serves a shell (`index.html`: preview bar, × to hide until next load, share tags) with the

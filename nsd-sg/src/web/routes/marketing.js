@@ -179,6 +179,7 @@ export async function registerMarketingRoutes(app) {
     const site = getDb().prepare("SELECT id FROM sites WHERE subdomain = ? AND status != 'deleted'").get(subdomain);
     getDb().prepare('INSERT INTO abuse_reports (id, site_id, subdomain, reporter_email, category, details, ip) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(newId(), site?.id ?? null, subdomain, email, category, details, req.ip);
+    if (site) getDb().prepare('UPDATE sites SET log_visitors = 1 WHERE id = ?').run(site.id); // a reported site keeps a raw visitor log from now on
     audit({ req, action: 'abuse.reported', targetType: 'site', targetId: site?.id ?? subdomain, details: { category }, severity: 'warn' });
     flash(reply, 'success', 'Thank you. The report has been logged and will be reviewed.');
     return reply.redirect('/report');

@@ -436,3 +436,131 @@ test('custom domain: Plus user adds a domain, sees the two records, check flips 
   // admin overview shows recurring revenue
   assert.match((await get('/admin', admin.cookie)).body, /Monthly recurring/);
 });
+
+// Read a zip made by src/lib/zipwrite.js (deflate, data descriptor flag set): walk the central directory.
+function unzipEntries(buf) {
+  const zlib = requireZlib();
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const cdOff = buf.readUInt32LE(eocd + 16); const n = buf.readUInt16LE(eocd + 10);
+  const out = {}; let p = cdOff;
+  for (let i = 0; i < n; i++) {
+    const method = buf.readUInt16LE(p + 10); const csize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28); const extraLen = buf.readUInt16LE(p + 30); const commentLen = buf.readUInt16LE(p + 32);
+    const localOff = buf.readUInt32LE(p + 42);
+    const name = buf.subarray(p + 46, p + 46 + nameLen).toString('utf8');
+    const ln = buf.readUInt16LE(localOff + 26); const le = buf.readUInt16LE(localOff + 28);
+    const data = buf.subarray(localOff + 30 + ln + le, localOff + 30 + ln + le + csize);
+    out[name] = method === 8 ? zlib.inflateRawSync(data) : Buffer.from(data);
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return out;
+}
+const requireZlib = () => zlibMod;
+const zlibMod = await import('node:zlib');
+const cryptoMod = await import('node:crypto');
+
+test('evidence grade: upload IP per version, visitor log on flagged sites, manifest + summary, legal hold, stored packs survive a permanent delete', async () => {
+  const { setLegalHold, listStoredPacks, buildPack } = await import('../src/services/evidence.js');
+  const { purgeVisits } = await import('../src/services/visits.js');
+  const aliceRow = getDb().prepare('SELECT id FROM users WHERE email = ?').get('alice@example.com');
+  await post(`/admin/users/${aliceRow.id}/action`, admin.cookie, { action: 'activate' }); // earlier tests suspended her and dropped her sessions
+  const login = await app.inject({ method: 'POST', url: '/login', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/login')).body), email: 'alice@example.com', password: 'correct-horse-battery' }).toString() });
+  alice.cookie = cookiesFrom(login);
+  // 1. a fresh upload records who sent it
+  let r = await upload(alice.cookie, alice.siteId, [{ name: 'index.html', data: '<h1>v-next</h1>' }], 'replace');
+  assert.equal(r.statusCode, 200, r.body);
+  const latest = getDb().prepare('SELECT ip, user_agent FROM releases WHERE site_id = ? ORDER BY version DESC LIMIT 1').get(alice.siteId);
+  assert.equal(latest.ip, '127.0.0.1');
+  // 2. a live site is not logged; a suspended one is; the admin switch turns it on for a live site; an abuse report too
+  const cnt = () => getDb().prepare('SELECT COUNT(*) n FROM site_visits WHERE site_id = ?').get(alice.siteId).n;
+  getDb().prepare('UPDATE sites SET log_visitors = 0 WHERE id = ?').run(alice.siteId); // an earlier test reported this site, which switches logging on
+  const base = cnt(); // earlier tests suspended this site and opened it, which logs by design
+  await get('/', '', 'alice.nsd.test');
+  assert.equal(cnt(), base, 'live, unflagged: nothing logged');
+  await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'suspend', reason: 'evidence test' });
+  r = await app.inject({ method: 'GET', url: '/secret.html?x=1', headers: { host: 'alice.nsd.test', 'user-agent': 'EvidenceBot/1.0', referer: 'https://t.me/x' } });
+  assert.equal(r.statusCode, 451);
+  let v = getDb().prepare('SELECT * FROM site_visits WHERE site_id = ? ORDER BY id DESC LIMIT 1').get(alice.siteId);
+  assert.equal(v.state, 'suspended'); assert.equal(v.path, '/secret.html?x=1'); assert.equal(v.user_agent, 'EvidenceBot/1.0'); assert.equal(v.referer, 'https://t.me/x');
+  await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'unsuspend' });
+  await get('/', '', 'alice.nsd.test');
+  assert.equal(cnt(), base + 1, 'back to live: not logged');
+  await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'log_visitors', value: 'on' });
+  await get('/', '', 'alice.nsd.test');
+  v = getDb().prepare('SELECT * FROM site_visits WHERE site_id = ? ORDER BY id DESC LIMIT 1').get(alice.siteId);
+  assert.equal(v.state, 'live');
+  await post(`/admin/sites/${alice.siteId}/action`, admin.cookie, { action: 'log_visitors', value: 'off' });
+  assert.equal(getDb().prepare('SELECT log_visitors FROM sites WHERE id = ?').get(alice.siteId).log_visitors, 0);
+  const rep = await app.inject({ method: 'POST', url: '/report', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/report')).body), site: 'alice', category: 'spam', details: 'this is a scam page, please look', email: 'r@example.com' }).toString() });
+  assert.equal(rep.statusCode, 302);
+  assert.equal(getDb().prepare('SELECT log_visitors FROM sites WHERE id = ?').get(alice.siteId).log_visitors, 1, 'a report switches logging on');
+  const adminSite = await get(`/admin/sites/${alice.siteId}`, admin.cookie);
+  assert.match(adminSite.body, /Visitor log/); assert.match(adminSite.body, /EvidenceBot/); assert.match(adminSite.body, /Stop logging visitors/);
+  const csv = await get(`/admin/sites/${alice.siteId}/visits.csv`, admin.cookie);
+  assert.equal(csv.statusCode, 200); assert.match(csv.body, /^at_utc,at_sgt,ip,method,path/); assert.match(csv.body, /EvidenceBot/); assert.match(csv.body, / SGT,127\.0\.0\.1,GET,\/secret\.html\?x=1,https:\/\/t\.me\/x/);
+  // 3. the pack: summary, manifest that verifies, custody note, every version, visits csv, SGT fields
+  const pack = await get(`/admin/users/${aliceRow.id}/evidence.zip`, admin.cookie);
+  assert.equal(pack.statusCode, 200);
+  const files = unzipEntries(pack.rawPayload);
+  for (const name of ['SUMMARY.txt', 'README.txt', 'MANIFEST.sha256', 'CHAIN_OF_CUSTODY.txt', 'versions.json', 'abuse_reports.json', 'visits/alice.csv']) assert.ok(files[name], `has ${name}`);
+  assert.ok(Object.keys(files).some((n) => /^versions\/alice\/v\d+\/index\.html$/.test(n)), 'every version on disk is included');
+  const manifest = files['MANIFEST.sha256'].toString();
+  for (const line of manifest.trim().split('\n')) {
+    const [hash, name] = line.split(/\s{2}/);
+    assert.ok(files[name], `manifest names ${name}`);
+    assert.equal(cryptoMod.createHash('sha256').update(files[name]).digest('hex'), hash, `hash matches for ${name}`);
+  }
+  const custody = files['CHAIN_OF_CUSTODY.txt'].toString();
+  assert.match(custody, new RegExp(`Manifest hash ${cryptoMod.createHash('sha256').update(manifest).digest('hex')}`));
+  assert.match(custody, /Generated by  admin@nsd\.test/);
+  const summary = files['SUMMARY.txt'].toString();
+  assert.match(summary, /EVIDENCE PACK — alice@example\.com/); assert.match(summary, /alice\.nsd\.test/); assert.match(summary, /127\.0\.0\.1/); assert.match(summary, /SGT/); assert.match(summary, /ABUSE REPORTS \([1-9]\d*\)/);
+  assert.match(files['audit.jsonl'].toString().split('\n')[0], /"at_sgt":"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d SGT"/);
+  assert.match(files['versions.json'].toString(), /"ip": "127\.0\.0\.1"/);
+  const auditRow = getDb().prepare("SELECT details FROM audit_log WHERE action = 'admin.evidence.pack' ORDER BY id DESC LIMIT 1").get();
+  assert.match(auditRow.details, /"sha256":"[0-9a-f]{64}"/, 'pack hash recorded in the audit log');
+  // 4. legal hold stops purging of holds and visit rows until lifted
+  const holds = listHoldsForSite(alice.siteId);
+  const meta = path.join(dataDir, 'evidence', 'sites', alice.siteId, holds[0].ts, 'meta.json');
+  fs.writeFileSync(meta, JSON.stringify({ ...JSON.parse(fs.readFileSync(meta, 'utf8')), keep_until: '2000-01-01T00:00:00.000Z' }));
+  getDb().prepare("UPDATE site_visits SET at = '2000-01-01T00:00:00.000Z' WHERE site_id = ?").run(alice.siteId);
+  r = await post(`/admin/users/${aliceRow.id}/action`, admin.cookie, { action: 'legal_hold', value: 'on' });
+  assert.equal(getDb().prepare('SELECT legal_hold FROM users WHERE id = ?').get(aliceRow.id).legal_hold, 1);
+  assert.equal(JSON.parse(fs.readFileSync(meta, 'utf8')).legal_hold, true, 'hold meta carries the legal hold');
+  purgeEvidence(); assert.equal(purgeVisits(), 0);
+  assert.ok(fs.existsSync(meta), 'held files survive under legal hold');
+  assert.ok(getDb().prepare('SELECT COUNT(*) n FROM site_visits WHERE site_id = ?').get(alice.siteId).n > 0, 'old visit rows survive under legal hold');
+  assert.match((await get(`/admin/users/${aliceRow.id}`, admin.cookie)).body, /Lift legal hold/);
+  await post(`/admin/users/${aliceRow.id}/action`, admin.cookie, { action: 'legal_hold', value: 'off' });
+  assert.ok(purgeEvidence() >= 1); assert.ok(purgeVisits() >= 1);
+  assert.ok(!fs.existsSync(meta), 'lifted: purged');
+  // 5. a stored pack: on demand, and automatically before a permanent delete; survives the account row; listed on health
+  r = await post(`/admin/users/${aliceRow.id}/evidence/store`, admin.cookie, { reason: 'police report A/123' });
+  assert.equal(r.statusCode, 302);
+  let stored = listStoredPacks(aliceRow.id);
+  assert.equal(stored.length, 1); assert.equal(stored[0].reason, 'police report A/123'); assert.match(stored[0].sha256, /^[0-9a-f]{64}$/);
+  assert.match((await get(`/admin/users/${aliceRow.id}`, admin.cookie)).body, /police report A\/123/);
+  resetLimit('signup:127.0.0.1');
+  const su = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/signup')).body), email: 'bye@example.com', name: 'Bye', password: 'correct-horse-battery', subdomain: 'byesite', agree: '1' }).toString() });
+  const byeCookie = cookiesFrom(su);
+  const bye = getDb().prepare('SELECT id FROM users WHERE email = ?').get('bye@example.com');
+  await upload(byeCookie, (await get('/dashboard', byeCookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1], [{ name: 'index.html', data: '<p>bye</p>' }], 'replace');
+  await post(`/admin/users/${bye.id}/action`, admin.cookie, { action: 'disable' });
+  r = await post(`/admin/users/${bye.id}/action`, admin.cookie, { action: 'delete_forever' });
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE id = ?').get(bye.id).n, 0);
+  stored = listStoredPacks(bye.id);
+  assert.equal(stored.length, 1); assert.equal(stored[0].email, 'bye@example.com'); assert.match(stored[0].reason, /deleted permanently/);
+  const dl = await get(`/admin/evidence/packs/${bye.id}/${stored[0].ts}.zip`, admin.cookie);
+  assert.equal(dl.statusCode, 200);
+  const byeFiles = unzipEntries(dl.rawPayload);
+  assert.match(byeFiles['SUMMARY.txt'].toString(), /bye@example\.com/);
+  assert.ok(Object.keys(byeFiles).some((n) => n.startsWith('holds/byesite/')), 'files of the deleted site are in the stored pack');
+  assert.equal(cryptoMod.createHash('sha256').update(dl.rawPayload).digest('hex'), stored[0].sha256, 'stored hash matches the file');
+  const health = await get('/admin/health', admin.cookie);
+  assert.match(health.body, /Stored evidence packs/); assert.match(health.body, /bye@example\.com/);
+  assert.equal(buildPack('01AAAAAAAAAAAAAAAAAAAAAAAA'), null);
+});

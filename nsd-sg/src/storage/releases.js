@@ -146,7 +146,7 @@ function uniqueBytes(siteId) {
 }
 
 /** Commit a staged release: record it, point the site at it, prune old ones. */
-function commitRelease({ siteId, releaseId, source, note, userId, maxReleases }) {
+function commitRelease({ siteId, releaseId, source, note, userId, maxReleases, client = {} }) {
   const db = getDb();
   const dir = releaseDir(siteId, releaseId);
   const { bytes, count } = measure(dir);
@@ -156,8 +156,8 @@ function commitRelease({ siteId, releaseId, source, note, userId, maxReleases })
   }
   const version = nextVersion(siteId);
   db.transaction(() => {
-    db.prepare('INSERT INTO releases (id, site_id, version, source, file_count, size_bytes, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(releaseId, siteId, version, source, count, bytes, note ?? '', userId ?? null);
+    db.prepare('INSERT INTO releases (id, site_id, version, source, file_count, size_bytes, note, created_by, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(releaseId, siteId, version, source, count, bytes, note ?? '', userId ?? null, String(client.ip ?? '').slice(0, 64), String(client.ua ?? '').slice(0, 300));
     db.prepare("UPDATE sites SET current_release_id = ?, status = CASE WHEN status = 'empty' THEN 'live' ELSE status END, storage_bytes = ?, last_deployed_at = ?, updated_at = ? WHERE id = ?")
       .run(releaseId, bytes, nowIso(), nowIso(), siteId);
   })();
@@ -182,12 +182,12 @@ export function pruneReleases(siteId, keep) {
 /**
  * Deploy a ZIP as a brand-new release (full replace).
  */
-export async function deployZip({ site, zipPath, user, limits, note = 'ZIP upload' }) {
+export async function deployZip({ site, zipPath, user, limits, note = 'ZIP upload', client = {} }) {
   ensureStorageDirs();
   const { id, dir } = stageRelease(site.id, null);
   try {
     const result = await extractZip(zipPath, dir, { maxFileBytes: limits.max_file_bytes, maxTotalBytes: limits.max_storage_bytes });
-    const rel = commitRelease({ siteId: site.id, releaseId: id, source: 'zip', note, userId: user.id, maxReleases: limits.max_releases });
+    const rel = commitRelease({ siteId: site.id, releaseId: id, source: 'zip', note, userId: user.id, maxReleases: limits.max_releases, client });
     return { ...rel, skipped: result.skipped, rejected: result.rejected, strippedPrefix: result.strippedPrefix };
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -200,7 +200,7 @@ export async function deployZip({ site, zipPath, user, limits, note = 'ZIP uploa
  * Add/replace individual files on top of the current release.
  * @param {Array<{relPath:string, tmpPath:string, size:number}>} files
  */
-export async function deployFiles({ site, files, user, limits, replaceAll = false, note = 'File upload' }) {
+export async function deployFiles({ site, files, user, limits, replaceAll = false, note = 'File upload', client = {} }) {
   ensureStorageDirs();
   const { id, dir } = stageRelease(site.id, replaceAll ? null : site.current_release_id);
   try {
@@ -217,14 +217,14 @@ export async function deployFiles({ site, files, user, limits, replaceAll = fals
     }
     const { bytes } = measure(dir);
     if (bytes > limits.max_storage_bytes) throw new StorageError('This upload would exceed your storage quota.');
-    return commitRelease({ siteId: site.id, releaseId: id, source: replaceAll ? 'files' : 'edit', note, userId: user.id, maxReleases: limits.max_releases });
+    return commitRelease({ siteId: site.id, releaseId: id, source: replaceAll ? 'files' : 'edit', note, userId: user.id, maxReleases: limits.max_releases, client });
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });
     throw e;
   }
 }
 
-export function deleteFileFromSite({ site, relPath, user, limits }) {
+export function deleteFileFromSite({ site, relPath, user, limits, client = {} }) {
   const r = sanitizeRelativePath(relPath);
   if (!r.ok) throw new StorageError(r.reason);
   if (!site.current_release_id) throw new StorageError('Nothing published yet.');
@@ -239,20 +239,20 @@ export function deleteFileFromSite({ site, relPath, user, limits }) {
       fs.rmdirSync(parent);
       parent = path.dirname(parent);
     }
-    return commitRelease({ siteId: site.id, releaseId: id, source: 'delete', note: `Deleted ${r.path}`, userId: user.id, maxReleases: limits.max_releases });
+    return commitRelease({ siteId: site.id, releaseId: id, source: 'delete', note: `Deleted ${r.path}`, userId: user.id, maxReleases: limits.max_releases, client });
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });
     throw e;
   }
 }
 
-export function rollbackTo({ site, releaseId, user, limits }) {
+export function rollbackTo({ site, releaseId, user, limits, client = {} }) {
   const db = getDb();
   const rel = db.prepare('SELECT * FROM releases WHERE id = ? AND site_id = ?').get(releaseId, site.id);
   if (!rel) throw new StorageError('Release not found.');
   const { id, dir } = stageRelease(site.id, releaseId);
   try {
-    return commitRelease({ siteId: site.id, releaseId: id, source: 'rollback', note: `Rollback to v${rel.version}`, userId: user.id, maxReleases: limits.max_releases });
+    return commitRelease({ siteId: site.id, releaseId: id, source: 'rollback', note: `Rollback to v${rel.version}`, userId: user.id, maxReleases: limits.max_releases, client });
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });
     throw e;
