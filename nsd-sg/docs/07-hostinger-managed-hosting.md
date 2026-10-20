@@ -90,6 +90,7 @@ HITPAY_API_KEY=…             # HitPay → Developers → API keys. Enables API
 HITPAY_WEBHOOK_SALT=…        # the salt shown for the webhook endpoint https://nsd.sg/billing/hitpay/webhook
 HITPAY_PLAN_PLUS=<uuid>      # subscription plan ids from HitPay → Recurring → Plans (open the plan; id is in the URL)
 HITPAY_PLAN_BETA=<uuid>
+HITPAY_PLAN_PLUS_TURN40=<uuid>   # any admin-made plan: upper-case the id, hyphens become underscores
 PAY_LINK_PLUS=… PAY_LINK_BETA=…   # fallback: plain recurring links used only when the API key is absent
 ```
 

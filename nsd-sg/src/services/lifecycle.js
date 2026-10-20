@@ -28,13 +28,15 @@ export const domainsOff = (user) => daysExpired(user) >= DOMAIN_GRACE_DAYS;
 export const isDormant = (user) => daysExpired(user) >= DORMANT_AFTER_DAYS;
 
 /** First extension is granted on the spot; from the second one on it goes to admin. */
+export const AUTO_EXTEND_MAX_DAYS = 30;
+
 export function autoExtendOrQueue({ user }) {
   const db = getDb();
   const ent = entitlementsFor(user);
   if (!ent.plan.trial_days) return { ok: false, reason: 'Your plan does not expire, so there is nothing to extend.' };
   const already = db.prepare("SELECT 1 FROM plan_events WHERE user_id = ? AND type = 'auto_extended'").get(user.id);
   if (already) return { auto: false };
-  const days = ent.plan.trial_days;
+  const days = Math.min(ent.plan.trial_days, AUTO_EXTEND_MAX_DAYS); // a long gift period does not double itself
   extendPlan({ userId: user.id, days, actorId: user.id, type: 'auto_extended', reason: 'first extension, granted automatically' });
   const until = db.prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(user.id).plan_expires_at;
   return { auto: true, days, until };

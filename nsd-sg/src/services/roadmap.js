@@ -139,6 +139,9 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-6', '0.12.6', 'Gift plans: fair extension, card payment, clearer Plan page', `- Changed: the instant first extension is 30 days on every plan. A 4-month gift no longer doubles itself with one click.
+- Fixed: a plan made in admin with a hyphen in its id (like plus-turn40) can now be paid by card: set HITPAY_PLAN_PLUS_TURN40 in the environment.
+- Changed: on the Plan page, keeping your current plan is listed above the other paid plans.`, 'improved', '2026-10-20T10:00:00Z'],
   ['cl-0-12-5', '0.12.5', 'Gift plans can stay on the showcase', `- Admin: a plan now has its own “Can hide from showcase” switch. Leave it off for a free gift plan (no badge, own domain, but listed on the showcase like a free site). Paid plans keep the opt-out.`, 'improved', '2026-10-20T08:00:00Z'],
   ['cl-0-12-4', '0.12.4', 'Ready for Cloudflare in front', `- New: settings so NSD.SG can sit behind Cloudflare (real visitor addresses kept, customer domains pointed at an un-proxied door), and a maintenance page Cloudflare can show instead of the provider’s error page. Setup guide in the docs.`, 'improved', '2026-09-21T13:00:00Z'],
   ['cl-0-12-2', '0.12.2', 'A banner that knows when the hosting is under maintenance', `- New: NSD.SG reads its hosting provider’s status page every 10 minutes. If maintenance or a problem touches the Singapore servers, every page shows a short bar saying so, with the expected end time in Singapore time. It goes away on its own.

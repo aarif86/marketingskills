@@ -136,10 +136,10 @@ export const config = Object.freeze({
     webhookSalt: env('HITPAY_WEBHOOK_SALT', ''),
     apiSalt: env('HITPAY_API_SALT', ''), // salt shown next to the API key: used by the older form-encoded webhooks (hmac field)
     apiBase: env('HITPAY_API_BASE', env('HITPAY_SANDBOX', '') === '1' ? 'https://api.sandbox.hit-pay.com' : 'https://api.hit-pay.com'),
-    // HITPAY_PLAN_PLUS / HITPAY_PLAN_BETA = subscription plan UUIDs from the HitPay dashboard
-    plans: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('HITPAY_PLAN_') && v).map(([k, v]) => [k.slice(12).toLowerCase(), v])),
+    // HITPAY_PLAN_PLUS / HITPAY_PLAN_BETA = subscription plan UUIDs from the HitPay dashboard. A plan id with a hyphen uses an underscore: plus-turn40 -> HITPAY_PLAN_PLUS_TURN40
+    plans: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('HITPAY_PLAN_') && v).map(([k, v]) => [k.slice(12).toLowerCase().replace(/_/g, '-'), v])),
   },
-  payLinks: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('PAY_LINK_') && v).map(([k, v]) => [k.slice(9).toLowerCase(), v])),
+  payLinks: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('PAY_LINK_') && v).map(([k, v]) => [k.slice(9).toLowerCase().replace(/_/g, '-'), v])),
   hostinger: {
     tenantRoot: tenantRoot ? path.resolve(tenantRoot) : '',
     publicHtml: path.resolve(env('PUBLIC_HTML', tenantRoot ? path.dirname(path.resolve(tenantRoot)) : path.join(__dirname, '..', 'data', 'public_html'))),

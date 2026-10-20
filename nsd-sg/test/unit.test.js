@@ -150,3 +150,11 @@ test('share tags: added from the page title/description when missing, left alone
   assert.match(plain, /og:description" content="A page on a\.nsd\.sg\."/);
   assert.match(plain, /twitter:card" content="summary"/);
 });
+
+test('HITPAY_PLAN_* env keys map to hyphenated plan ids', async () => {
+  process.env.HITPAY_PLAN_PLUS_TURN40 = 'uuid-1'; process.env.PAY_LINK_PLUS_TURN40 = 'https://pay.example/x';
+  const mod = await import('../src/config.js?' + Date.now());
+  assert.equal(mod.config.hitpay.plans['plus-turn40'], 'uuid-1');
+  assert.equal(mod.config.payLinks['plus-turn40'], 'https://pay.example/x');
+  delete process.env.HITPAY_PLAN_PLUS_TURN40; delete process.env.PAY_LINK_PLUS_TURN40;
+});

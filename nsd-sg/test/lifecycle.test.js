@@ -44,6 +44,27 @@ test('first extension is instant; the second waits for a person', async () => {
   assert.match((await get('/billing', u.cookie)).body, /Free extension submitted/);
 });
 
+test('a 120-day gift plan still gets only 30 instant days; Keep-my-plan is listed first', async () => {
+  const { upsertPlan, assignPlan } = await import('../src/services/plans.js');
+  const { autoExtendOrQueue } = await import('../src/services/lifecycle.js');
+  upsertPlan({ id: 'plus-gift', name: 'Plus (gift)', description: 'gift', price_cents_month: 600, trial_days: 120, is_public: 0, is_default: 0, sort_order: 50,
+    limits: { max_sites: 5, max_storage_bytes: 1024 ** 3, max_file_bytes: 50 * 1024 ** 2, max_releases: 10, max_bandwidth_bytes_month: 50 * 1024 ** 3 },
+    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: false, priority_support: false, hide_from_showcase: false } });
+  reset('signup:127.0.0.1');
+  const r = await post('/signup', '', { email: 'gift@example.com', name: 'Gift', password: 'correct-horse-battery', subdomain: 'giftsite', agree: '1' }, '/signup');
+  const cookie = cookiesFrom(r);
+  const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gift@example.com').id;
+  assignPlan({ userId: id, planId: 'plus-gift', reason: 'test' });
+  const page = (await get('/billing', cookie)).body;
+  assert.match(page, /Your first extension is instant: 30 more days/);
+  assert.ok(page.indexOf('Keep Plus (gift)') < page.indexOf('>Plus</strong>'), 'own plan listed before public Plus');
+  const before = Date.parse(getDb().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(id).plan_expires_at);
+  const x = autoExtendOrQueue({ user: getDb().prepare('SELECT * FROM users WHERE id = ?').get(id) });
+  assert.equal(x.days, 30);
+  const after = Date.parse(getDb().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(id).plan_expires_at);
+  assert.ok(after - before < 31 * DAY && after - before > 29 * DAY, 'capped at 30 days');
+});
+
 test('reminders go out once per expiry date; site stays online at day 0', async () => {
   setExpiry(6);
   await lifecycleSweep();
