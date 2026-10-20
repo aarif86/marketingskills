@@ -57,7 +57,9 @@ test('a 120-day gift plan still gets only 30 instant days; Keep-my-plan is liste
   assignPlan({ userId: id, planId: 'plus-gift', reason: 'test' });
   const page = (await get('/billing', cookie)).body;
   assert.match(page, /Your first extension is instant: 30 more days/);
-  assert.ok(page.indexOf('Keep Plus (gift)') < page.indexOf('>Plus</strong>'), 'own plan listed before public Plus');
+  assert.match(page, /Keep Plus \(gift\) after your free period/);
+  assert.match(page, /usual price <s>S\$9<\/s>/, 'public Plus used as the price anchor');
+  assert.doesNotMatch(page, /Choose Plus — pay by card/, 'the dearer public Plus is not offered alongside the gift');
   const before = Date.parse(getDb().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(id).plan_expires_at);
   const x = autoExtendOrQueue({ user: getDb().prepare('SELECT * FROM users WHERE id = ?').get(id) });
   assert.equal(x.days, 30);

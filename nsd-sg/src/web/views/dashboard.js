@@ -228,6 +228,13 @@ export function billingPage({ user, ent, plans, events, storageUsed, siteCount, 
   // Only a fresh checkout deserves the "not confirmed yet" notice; older ones are timed out by reconcileUser.
   const pendingSub = subscriptions.find((s) => s.status === 'pending' && Date.now() - Date.parse(s.created_at) < 20 * 60_000); // a card page takes minutes, not hours
   const pct = Math.min(100, Math.round((storageUsed / ent.limits.max_storage_bytes) * 100));
+  // Paid offers: keep the current plan (if it expires), plus public plans. A public plan that costs the same or more
+  // than a gift/promo plan with no more sites is strictly worse, so it is hidden and used as the "usual price" anchor.
+  const keeping = ent.plan.price_cents_month > 0 && ent.expiresAt ? ent.plan : null;
+  const dominated = (p) => keeping && !keeping.is_public && p.price_cents_month >= keeping.price_cents_month && (p.limits?.max_sites ?? 0) <= (keeping.limits?.max_sites ?? 0);
+  const offers = plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public && !dominated(p)) && !(activeSub && activeSub.plan_id === p.id))
+    .sort((a, b) => (a.id === ent.plan.id ? 0 : 1) - (b.id === ent.plan.id ? 0 : 1));
+  const anchor = keeping && !keeping.is_public ? plans.filter((p) => p.is_public && dominated(p)).sort((a, b) => a.price_cents_month - b.price_cents_month)[0] : null;
   return html`<h1>Plan &amp; billing</h1>
 ${planBanner(ent)}
 <div class="grid two">
@@ -259,8 +266,8 @@ ${planBanner(ent)}
     <p class="muted small">Cancelling stops future charges. Your plan stays active until the end of the month you have already paid for.</p></div><hr>` : ''}
   ${pendingSub && !activeSub ? html`<div class="flash flash-warn"><strong>Payment page opened ${timeAgo(pendingSub.created_at)}.</strong> If you finished it, this page updates by itself within a minute. If you only had a look or pressed back, nothing was charged — this note clears on its own in 20 minutes, or
     <form method="post" action="/billing/hitpay/dismiss" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="id" value="${pendingSub.id}"><button class="btn btn-ghost btn-sm" type="submit">I didn't pay, clear this</button></form></div>` : ''}
-  ${plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : p.is_public) && !(activeSub && activeSub.plan_id === p.id)).sort((a, b) => (a.id === ent.plan.id ? 0 : 1) - (b.id === ent.plan.id ? 0 : 1)).map((p) => html`
-    <div class="plan-line"><div><strong>${p.id === ent.plan.id ? `Keep ${p.name} after your free period` : p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month<div class="muted small">${p.id === ent.plan.id ? `Same plan, no expiry. Your card is saved now and first charged on ${ent.expiresAt ? formatDate(ent.expiresAt) : 'the day your free period ends'}, when the free period ends — nothing today. Cancel any time before that.` : p.description}</div></div>
+  ${offers.map((p) => html`
+    <div class="plan-line"><div><strong>${p.id === ent.plan.id ? `Keep ${p.name} after your free period` : p.name}</strong> · S$${(p.price_cents_month / 100).toFixed(0)}/month${p.id === ent.plan.id && anchor ? html` <span class="muted">(usual price <s>S$${(anchor.price_cents_month / 100).toFixed(0)}</s>, yours is a gift rate)</span>` : ''}<div class="muted small">${p.id === ent.plan.id ? `Same plan, no expiry. Your card is saved now and first charged on ${ent.expiresAt ? formatDate(ent.expiresAt) : 'the day your free period ends'}, when the free period ends — nothing today. Cancel any time before that.` : p.description}</div></div>
     <form method="post" action="/billing/upgrade" class="inline"><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="plan" value="${p.id}"><button class="btn btn-primary" type="submit">${config.hitpay.plans[p.id] || config.payLinks[p.id] ? `${p.id === ent.plan.id ? 'Keep' : 'Choose'} ${p.name} — pay by card` : `Choose ${p.name}`}</button></form></div>`)}
   <p class="muted small">Card payments are handled by HitPay (Nasar Pte Ltd). Your own domain name is included on Plus and Beta: buy it anywhere, connect it from your site’s Settings.</p>
   <hr><h3>Want a real domain and a professional website?</h3><p class="muted"><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds and grows websites for Singapore businesses. Ask us about moving from ${config.baseDomain} to your own domain.</p>
