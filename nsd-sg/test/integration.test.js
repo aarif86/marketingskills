@@ -365,6 +365,20 @@ test('showcase: free sites listed, paid sites hidden until the owner opts in', a
   // opt out again
   r = await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy' });
   assert.ok(!names().includes('listy'), 'opted out');
+  // admin makes a free gift plan: badge removed but "can hide from showcase" left off -> always listed, no opt-out
+  r = await post('/admin/plans', admin.cookie, { id: 'plus-gift', name: 'Plus (gift)', description: 'gift', price_sgd: '9', trial_days: '120', max_sites: '5', max_storage_mb: '1024', max_file_mb: '50', max_releases: '10', max_bandwidth_gb: '50', branding_removable: '1', custom_domains: '1' });
+  assert.equal(r.statusCode, 302);
+  const plansPage = await get('/admin/plans?edit=plus-gift', admin.cookie);
+  assert.match(plansPage.body, /name="hide_from_showcase" value="1" >/);
+  await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy', listed: '1' }); // a fresh gift user is listed by default; undo the opt-out above
+  await post(`/admin/users/${listyRow.id}/action`, admin.cookie, { action: 'plan', plan_id: 'plus-gift' });
+  assert.ok(names().includes('listy'), 'gift plan listed even though the badge is removed');
+  settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.doesNotMatch(settings.body, /Show this site on the public/, 'no opt-out on a gift plan');
+  // and the real Plus plan keeps the opt-out
+  await post(`/admin/users/${listyRow.id}/action`, admin.cookie, { action: 'plan', plan_id: 'plus' });
+  settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /Show this site on the public/, 'opt-out back on Plus');
 });
 
 test('custom domain: Plus user adds a domain, sees the two records, check flips it to connected, the site answers on it', async () => {

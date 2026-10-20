@@ -185,6 +185,7 @@ ${plans.map((p) => html`<tr><td><code>${p.id}</code></td><td>${p.name}</td><td>$
     <label class="check"><input type="checkbox" name="custom_domains" value="1" ${e.features.custom_domains ? 'checked' : ''}> Custom domains</label>
     <label class="check"><input type="checkbox" name="analytics" value="1" ${e.features.analytics ? 'checked' : ''}> Analytics</label>
     <label class="check"><input type="checkbox" name="priority_support" value="1" ${e.features.priority_support ? 'checked' : ''}> Priority support</label>
+    <label class="check"><input type="checkbox" name="hide_from_showcase" value="1" ${(e.features.hide_from_showcase ?? e.features.branding_removable) ? 'checked' : ''}> Can hide from showcase <small class="muted">(unchecked = always listed, e.g. a free gift plan)</small></label>
   </div>
   <button class="btn btn-primary">Save plan</button> ${editing ? html`<a class="btn btn-ghost" href="/admin/plans">Cancel</a>` : ''}
 </form>`.toString();

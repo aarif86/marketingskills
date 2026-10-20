@@ -306,7 +306,7 @@ export async function registerAdminRoutes(app) {
         max_sites: Math.round(num(b.max_sites, 1)), max_storage_bytes: Math.round(num(b.max_storage_mb, 100) * 1024 ** 2), max_file_bytes: Math.round(num(b.max_file_mb, 20) * 1024 ** 2),
         max_releases: Math.round(num(b.max_releases, 3)), max_bandwidth_bytes_month: Math.round(num(b.max_bandwidth_gb, 5) * 1024 ** 3),
       },
-      features: { branding_removable: b.branding_removable === '1', custom_domains: b.custom_domains === '1', version_history: true, analytics: b.analytics === '1', priority_support: b.priority_support === '1' },
+      features: { branding_removable: b.branding_removable === '1', custom_domains: b.custom_domains === '1', version_history: true, analytics: b.analytics === '1', priority_support: b.priority_support === '1', hide_from_showcase: b.hide_from_showcase === '1' },
     });
     audit({ req, action: 'admin.plan.upsert', targetType: 'plan', targetId: id, severity: 'warn' });
     flash(reply, 'success', `Plan "${id}" saved.`);
