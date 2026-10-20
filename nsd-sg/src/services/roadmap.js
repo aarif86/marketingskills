@@ -139,6 +139,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-13', '0.12.13', 'A shorter roadmap page', `- Changed: the Shipped column shows the four newest items with a “Show more” button for the rest, and the In-progress column only appears when something is being built.`, 'improved', '2026-10-20T17:00:00Z'],
   ['cl-0-12-12', '0.12.12', 'One offer, not two', `- Changed: on a gift or promo plan, the Plan page no longer lists the dearer public plan next to your offer. It shows one “Keep …” offer with the usual price struck through.`, 'improved', '2026-10-20T16:30:00Z'],
   ['cl-0-12-11', '0.12.11', 'Had a look at the payment page and came back? One click clears it', `- Changed: the “payment started” note on the Plan page says plainly that nothing was charged if you only looked, clears itself after 20 minutes instead of 2 hours, and has an “I didn’t pay, clear this” button.`, 'improved', '2026-10-20T16:00:00Z'],
   ['cl-0-12-10', '0.12.10', 'Google sign-ups can delete their account and set a password', `- Fixed: if you signed up with Google, the Delete account box asked for a password you never had. It now asks only for DELETE.

@@ -452,3 +452,13 @@ test('self-healing: the owner polling triggers a throttled re-provision; admin c
   assert.equal((await get(`/sites/${row.id}/status`, cookie)).json().ready, true);
   assert.equal((await repairSite(row.id, { force: true })).reason, 'already reachable');
 });
+
+test('roadmap: Shipped column folds after four items with a Show-more button; empty In-progress column is hidden', async () => {
+  const r = await get('/roadmap');
+  assert.equal(r.statusCode, 200);
+  const shipped = (r.body.match(/class="rm-card shipped"/g) ?? []).length;
+  assert.ok(shipped > 4, 'seed has more than four shipped items');
+  assert.match(r.body, new RegExp(`data-rm-more aria-expanded="false">Show ${shipped - 4} more<`));
+  assert.match(r.body, /<div class="rm-more" hidden>/);
+  assert.ok(!r.body.includes('<h2>In progress') || r.body.includes('rm-card in_progress'), 'In progress column only when it has items');
+});

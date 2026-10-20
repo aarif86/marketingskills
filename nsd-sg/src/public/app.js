@@ -260,3 +260,16 @@
   });
   dz.addEventListener('submit', function (e) { e.preventDefault(); });
 })();
+
+// Roadmap: the Shipped column shows the newest few; "Show N more" unfolds the rest in place.
+document.querySelectorAll('[data-rm-more]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var more = btn.previousElementSibling;
+    var open = more.hasAttribute('hidden');
+    if (open) more.removeAttribute('hidden'); else more.setAttribute('hidden', '');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.textContent = open ? 'Show fewer' : btn.getAttribute('data-label');
+    if (!open) btn.scrollIntoView({ block: 'nearest' });
+  });
+  btn.setAttribute('data-label', btn.textContent);
+});

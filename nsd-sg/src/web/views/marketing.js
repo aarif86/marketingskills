@@ -253,14 +253,21 @@ function roadmapCard(i, { user, csrf }) {
 }
 
 export function roadmapPage({ items, user, csrf, flash }) {
+  const SHIPPED_SHOWN = 4;
   const cols = [['in_progress', 'In progress', 'Being built right now'], ['planned', 'Planned', 'Next up — vote to move it up'], ['shipped', 'Shipped', 'Live on nsd.sg today']];
   const shippedCount = items.filter((i) => i.status === 'shipped').length;
   return html`<section class="section rm-hero"><div class="container">
   <p class="eyebrow">Roadmap</p>
   <h1>What we're building, in the open.</h1>
   <p class="section-lead">NSD.SG is a small Singapore product that ships often. ${shippedCount} things shipped so far; vote on what should come next or send an idea. Full history in the <a href="/changelog">changelog</a>.</p>
-  <div class="rm-board">${cols.map(([key, label, sub]) => html`<div class="rm-col"><h2>${label} <span class="muted">${items.filter((i) => i.status === key).length}</span></h2><p class="muted small">${sub}</p>
-    ${items.filter((i) => i.status === key).map((i) => roadmapCard(i, { user, csrf }))}</div>`)}</div>
+  <div class="rm-board ${items.some((i) => i.status === 'in_progress') ? '' : 'two'}">${cols.filter(([key]) => key !== 'in_progress' || items.some((i) => i.status === key)).map(([key, label, sub]) => {
+    const list = items.filter((i) => i.status === key);
+    const fold = key === 'shipped' && list.length > SHIPPED_SHOWN ? list.length - SHIPPED_SHOWN : 0; // newest few shipped; the rest unfold in place
+    return html`<div class="rm-col"><h2>${label} <span class="muted">${list.length}</span></h2><p class="muted small">${sub}</p>
+    ${list.slice(0, fold ? SHIPPED_SHOWN : list.length).map((i) => roadmapCard(i, { user, csrf }))}
+    ${fold ? html`<div class="rm-more" hidden>${list.slice(SHIPPED_SHOWN).map((i) => roadmapCard(i, { user, csrf }))}</div>
+    <button class="btn btn-ghost rm-more-btn" type="button" data-rm-more aria-expanded="false">Show ${fold} more</button>` : ''}</div>`;
+  })}</div>
   ${items.some((i) => i.status === 'under_review') ? html`<h2 class="mt">Under review <span class="muted">${items.filter((i) => i.status === 'under_review').length}</span></h2><p class="muted small">Ideas from users we are looking at.</p><div class="rm-grid">${items.filter((i) => i.status === 'under_review').map((i) => roadmapCard(i, { user, csrf }))}</div>` : ''}
   <div class="card mt rm-suggest" id="suggest"><h2>Have an idea?</h2>
   ${user ? html`<p class="muted">Feature ideas, bugs, anything that got in your way — attach a screenshot if it helps.</p>
