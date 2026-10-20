@@ -139,6 +139,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-11', '0.12.11', 'Had a look at the payment page and came back? One click clears it', `- Changed: the “payment started” note on the Plan page says plainly that nothing was charged if you only looked, clears itself after 20 minutes instead of 2 hours, and has an “I didn’t pay, clear this” button.`, 'improved', '2026-10-20T16:00:00Z'],
   ['cl-0-12-10', '0.12.10', 'Google sign-ups can delete their account and set a password', `- Fixed: if you signed up with Google, the Delete account box asked for a password you never had. It now asks only for DELETE.
 - New: the same accounts see “Set a password” on the Account page, with no current password to type, in case you also want email login.`, 'fix', '2026-10-20T15:00:00Z'],
   ['cl-0-12-9', '0.12.9', 'Unfinished checkouts no longer look like subscriptions; admin can delete an account for good', `- Changed: the payment buttons say “pay by card” instead of “pay with HitPay”. HitPay still handles the card, as the small print says.

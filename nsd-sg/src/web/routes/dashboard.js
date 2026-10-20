@@ -364,6 +364,13 @@ export async function registerDashboardRoutes(app) {
     return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), promo: activePromoFor(user.id), freePlan: getDefaultPlan(), pendingExtension: pendingExtensionFor(user.id), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
   });
 
+  app.post('/billing/hitpay/dismiss', { preHandler: requireUser }, async (req, reply) => {
+    const sub = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === String(req.body?.id ?? '') && s.status === 'pending');
+    if (sub) { hitpay.abandonSubscription(sub.id, 'dismissed'); audit({ req, action: 'hitpay.dismissed', targetType: 'subscription', targetId: sub.id }); }
+    flash(reply, 'success', 'Cleared. Nothing was charged.');
+    return reply.redirect('/billing');
+  });
+
   app.post('/billing/hitpay/cancel', { preHandler: requireUser }, async (req, reply) => {
     const sub = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === String(req.body?.id ?? '') && (s.status === 'active' || s.status === 'scheduled'));
     if (!sub) { flash(reply, 'error', 'No active subscription found.'); return reply.redirect('/billing'); }

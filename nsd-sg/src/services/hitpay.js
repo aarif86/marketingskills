@@ -180,6 +180,11 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
   return { ok: true, noop: true };
 }
 
+/** The customer says they did not pay (closed the HitPay page): the attempt is noise from now on. */
+export function abandonSubscription(id, why = 'dismissed') {
+  getDb().prepare("UPDATE subscriptions SET status = 'abandoned', last_event = ?, updated_at = ? WHERE id = ? AND status = 'pending'").run(why, nowIso(), id);
+}
+
 /** A user has one live checkout at a time: once any subscription is decided, older unpaid attempts are noise. */
 function abandonOtherPending(userId, keepId) {
   getDb().prepare("UPDATE subscriptions SET status = 'abandoned', last_event = 'superseded', updated_at = ? WHERE user_id = ? AND id != ? AND status = 'pending'").run(nowIso(), userId, keepId);

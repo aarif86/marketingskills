@@ -203,3 +203,23 @@ test('admin can delete a disabled account for good, freeing the email', async ()
   assert.equal(r.statusCode, 302);
   assert.equal(getDb().prepare('SELECT COUNT(*) n FROM users WHERE email = ?').get('gone@example.com').n, 1, 'fresh signup with the same email and site name');
 });
+
+test('a looked-at-but-unpaid checkout: note shows for 20 minutes, the clear button abandons it at once', async () => {
+  const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gift@example.com').id;
+  const login = await post('/login', '', { email: 'gift@example.com', password: 'correct-horse-battery' }, '/login');
+  const cookie = cookiesFrom(login);
+  getDb().prepare("UPDATE subscriptions SET status = 'abandoned' WHERE user_id = ?").run(id);
+  getDb().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference) VALUES ('rb_look', ?, 'plus-gift', 'pending', ?)").run(id, `${id}:plus-gift:look`);
+  let page = (await get('/billing', cookie)).body;
+  assert.match(page, /nothing was charged/);
+  assert.match(page, /pay, clear this/);
+  const r = await post('/billing/hitpay/dismiss', cookie, { id: 'rb_look' }, '/billing');
+  assert.equal(r.statusCode, 302);
+  assert.equal(getDb().prepare("SELECT status FROM subscriptions WHERE id = 'rb_look'").get().status, 'abandoned');
+  page = (await get('/billing', cookie)).body;
+  assert.doesNotMatch(page, /Payment page opened/);
+  // an old attempt is not shown at all
+  getDb().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, created_at) VALUES ('rb_old', ?, 'plus-gift', 'pending', ?, ?)").run(id, `${id}:plus-gift:old`, new Date(Date.now() - 30 * 60_000).toISOString());
+  page = (await get('/billing', cookie)).body;
+  assert.doesNotMatch(page, /Payment page opened/);
+});
