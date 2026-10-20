@@ -478,3 +478,43 @@ test('What’s new and Feedback open inside the dashboard shell for a logged-in 
     assert.match(page.body, /Log out/);
   }
 });
+
+test('promo: edit page shows redemptions and lets admin raise the cap, push the expiry, and reactivate a retired code; same name cannot be recreated', async () => {
+  const { getDb: db } = await import('../src/db/index.js');
+  const { createPromoCode, updatePromoCode } = await import('../src/services/plans.js');
+  const adminLogin = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const admin = cookiesFrom(adminLogin);
+  // USED1 was redeemed by ivy and retired in the previous test
+  let page = await app.inject({ method: 'GET', url: '/admin/promo/USED1', headers: { host: H, cookie: admin } });
+  assert.equal(page.statusCode, 200);
+  assert.match(page.body, /ivy@example\.com/, 'redemption listed with the user');
+  assert.match(page.body, /Reactivate/);
+  assert.match(page.body, /name="plan_id" disabled/, 'plan locked once redeemed');
+  // creating the same name again is refused with a pointer to reactivate
+  const dup = createPromoCode({ code: 'USED1', planId: 'beta', maxUses: 5 });
+  assert.equal(dup.ok, false); assert.match(dup.reason, /Reactivate/);
+  // reactivate with a new end date and cap
+  let r = await post('/admin/promo', admin, { action: 'reactivate', code: 'USED1', expires_days: '30', max_uses: '40' }, '/admin/promo/USED1');
+  assert.equal(r.statusCode, 302); assert.equal(r.headers.location, '/admin/promo/USED1');
+  let row = db().prepare("SELECT * FROM promo_codes WHERE code = 'USED1'").get();
+  assert.equal(row.max_uses, 40); assert.ok(new Date(row.expires_at) > new Date(Date.now() + 29 * 86400000));
+  page = await app.inject({ method: 'GET', url: '/admin/promo/USED1', headers: { host: H, cookie: admin } });
+  assert.match(page.body, /39 left/);
+  assert.match(page.body, /Retire<\/button>/, 'live again');
+  // edit: raise the cap, never below uses, change note; expiry 0 = never
+  r = await post('/admin/promo', admin, { action: 'update', code: 'USED1', max_uses: '0', expires_days: '0', note: 'raised for demand' }, '/admin/promo/USED1');
+  row = db().prepare("SELECT * FROM promo_codes WHERE code = 'USED1'").get();
+  assert.equal(row.max_uses, 1, 'cannot drop below what is used'); assert.equal(row.expires_at, null); assert.equal(row.note, 'raised for demand');
+  r = await post('/admin/promo', admin, { action: 'update', code: 'USED1', max_uses: '100', expires_days: '45', note: 'raised for demand' }, '/admin/promo/USED1');
+  row = db().prepare("SELECT * FROM promo_codes WHERE code = 'USED1'").get();
+  assert.equal(row.max_uses, 100); assert.ok(row.expires_at);
+  // plan change refused once redeemed, allowed on a fresh code
+  assert.match(updatePromoCode({ code: 'USED1', planId: 'plus' }).reason, /cannot change/);
+  assert.equal(createPromoCode({ code: 'EDITME', planId: 'beta', maxUses: 5 }).ok, true);
+  assert.equal(updatePromoCode({ code: 'EDITME', planId: 'plus' }).ok, true);
+  assert.equal(db().prepare("SELECT plan_id FROM promo_codes WHERE code = 'EDITME'").get().plan_id, 'plus');
+  // list page links to the edit page and shows what is left
+  const list = await app.inject({ method: 'GET', url: '/admin/promo', headers: { host: H, cookie: admin } });
+  assert.match(list.body, /href="\/admin\/promo\/USED1"/); assert.match(list.body, /99 left/);
+  assert.equal((await app.inject({ method: 'GET', url: '/admin/promo/NOPE', headers: { host: H, cookie: admin } })).statusCode, 404);
+});

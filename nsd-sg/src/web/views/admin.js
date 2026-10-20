@@ -304,6 +304,45 @@ ${h.domains.active.length ? html`<p class="muted small">Connected: ${h.domains.a
 </ul></div>`.toString();
 }
 
+export function promoDetailPage({ code: c, plans, csrf }) {
+  const expired = !!c.expires_at && new Date(c.expires_at).getTime() <= Date.now();
+  const exhausted = c.uses >= c.max_uses;
+  const status = expired ? (c.redeemed > 0 ? 'retired' : 'expired') : exhausted ? 'used up' : 'live';
+  const left = Math.max(0, c.max_uses - c.uses);
+  const daysLeft = c.expires_at ? Math.ceil((new Date(c.expires_at).getTime() - Date.now()) / 86400000) : null;
+  const plan = plans.find((p) => p.id === c.plan_id);
+  return html`<p class="crumb"><a href="/admin/promo">Promo codes</a> / ${c.code}</p>
+<div class="page-head"><div><h1><code>${c.code}</code> ${pill(status)}</h1>
+<p class="muted">${plan ? `${plan.name} (${plan.id})` : c.plan_id} · ${plan?.trial_days ? `${plan.trial_days} free days` : 'no trial'}${plan?.price_cents_month ? `, then S$${(plan.price_cents_month / 100).toFixed(0)}/month` : ''} · made ${formatDate(c.created_at)}</p></div></div>
+<div class="stats">
+  <div class="card stat"><span class="muted small">Redeemed</span><strong>${c.uses} / ${c.max_uses}</strong><span class="muted small">${left} left</span></div>
+  <div class="card stat"><span class="muted small">Expires</span><strong>${c.expires_at ? formatDate(c.expires_at) : 'never'}</strong><span class="muted small">${daysLeft === null ? 'no end date' : daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'ended'}</span></div>
+  <div class="card stat"><span class="muted small">Still on the plan</span><strong>${c.redemptions.filter((r) => r.plan_id === c.plan_id && !r.removed_at).length}</strong><span class="muted small">of ${c.redemptions.length} who redeemed</span></div>
+</div>
+<div class="grid two">
+<form method="post" action="/admin/promo" class="card form">${hidden(csrf, { action: 'update', code: c.code })}
+  <h2>Edit</h2>
+  <p class="muted small">Raise the cap when demand is high, push the end date out, or fix the note. Lowering the cap never goes below what is already used. The plan can only change while nobody has redeemed the code.</p>
+  <div class="grid two tight">
+    <label>Max uses <input name="max_uses" type="number" min="${c.uses}" value="${c.max_uses}"></label>
+    <label>Expires in days from now <input name="expires_days" type="number" min="0" value="${daysLeft === null ? 0 : Math.max(0, daysLeft)}"><small class="muted">0 = never</small></label>
+  </div>
+  <label>Plan <select name="plan_id" ${c.uses > 0 ? 'disabled' : ''}>${plans.map((p) => html`<option value="${p.id}" ${p.id === c.plan_id ? 'selected' : ''}>${p.name} (${p.id})</option>`)}</select></label>
+  <label>Note <input name="note" value="${c.note}" maxlength="200"></label>
+  <button class="btn btn-primary btn-tiny" type="submit">Save changes</button>
+</form>
+<div class="card"><h2>${status === 'live' ? 'Retire' : 'Reactivate'}</h2>
+  ${status === 'live'
+    ? html`<p class="muted small">Retiring keeps the code and its records but stops new redemptions. You can reactivate it later; the same name cannot be created twice.</p>
+      <form method="post" action="/admin/promo" class="inline" data-confirm="Retire ${c.code}? Nobody can redeem it until you reactivate it.">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-danger btn-tiny" type="submit">${c.redeemed > 0 ? 'Retire' : 'Delete'}</button></form>`
+    : html`<p class="muted small">${expired ? 'This code has ended.' : 'This code is used up.'} Reactivate it with a new end date and, if needed, a higher cap.</p>
+      <form method="post" action="/admin/promo" class="form-inline">${hidden(csrf, { action: 'reactivate', code: c.code })}<input name="expires_days" type="number" min="1" value="60" title="days from now"><input name="max_uses" type="number" min="${c.uses}" value="${Math.max(c.max_uses, c.uses + 10)}" title="max uses"><button class="btn btn-primary btn-tiny" type="submit">Reactivate</button></form>`}
+</div></div>
+<div class="card"><h2>Redemptions (${c.redemptions.length})</h2>
+${c.redemptions.length ? html`<table class="table small"><thead><tr><th>When</th><th>Who</th><th>Was on</th><th>Now on</th><th>Until</th><th>Status</th></tr></thead><tbody>${c.redemptions.map((r) => html`<tr><td class="muted">${formatDate(r.created_at)}</td><td>${r.user_id ? html`<a href="/admin/users/${r.user_id}">${r.email}</a>` : html`<span class="muted">account deleted</span>`}</td><td class="muted">${r.prev_plan_id ?? ''}</td><td>${r.plan_id ?? ''}</td><td class="muted">${r.plan_expires_at ? formatDate(r.plan_expires_at) : ''}</td><td>${r.removed_at ? pill('removed') : r.user_id ? pill(r.plan_id === c.plan_id ? 'on plan' : 'moved') : ''}</td></tr>`)}</tbody></table>` : html`<p class="muted">Nobody yet.</p>`}
+</div>`.toString();
+}
+
 export function promoPage({ codes, plans, csrf }) {
   return html`<h1>Promo codes <span class="muted">(${codes.length})</span></h1>
 <p class="muted">A code moves the user onto the chosen plan with a fresh trial (the plan's <code>trial_days</code>). Beta = 3 sites, no badge, 30 days free, then S$6/mo via HitPay.</p>
@@ -324,7 +363,8 @@ ${codes.map((c) => {
     const exhausted = c.uses >= c.max_uses;
     const status = expired ? (c.redeemed > 0 ? 'retired' : 'expired') : exhausted ? 'used up' : 'active';
     const closed = expired || exhausted; // nothing left to redeem: only an unused code still has anything to delete
-    return html`<tr><td><code>${c.code}</code></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses}</td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td>${pill(status === 'active' ? 'live' : status)}</td><td class="muted small">${c.note}</td>
+    return html`<tr><td><a href="/admin/promo/${c.code}"><code>${c.code}</code></a></td><td>${c.plan_id}</td><td>${c.uses} / ${c.max_uses} <span class="muted small">(${Math.max(0, c.max_uses - c.uses)} left)</span></td><td>${c.expires_at ? formatDate(c.expires_at) : 'never'}</td><td>${pill(status === 'active' ? 'live' : status)}</td><td class="muted small">${c.note}</td>
+  <td><a class="btn btn-tiny btn-ghost" href="/admin/promo/${c.code}">Edit</a></td>
   <td>${closed && c.redeemed > 0 ? '' : html`<form method="post" action="/admin/promo" class="inline" data-confirm="${c.redeemed > 0 ? `Retire ${c.code}? It was redeemed ${c.redeemed} time(s), so it is kept for the records but nobody can use it again.` : `Delete ${c.code}?`}">${hidden(csrf, { action: 'delete', code: c.code })}<button class="btn btn-tiny btn-danger">${c.redeemed > 0 ? 'Retire' : 'Delete'}</button></form>`}</td></tr>`;
   })}
 ${codes.length ? '' : html`<tr><td colspan="6" class="muted">No codes yet.</td></tr>`}

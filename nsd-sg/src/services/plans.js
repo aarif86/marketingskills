@@ -128,10 +128,41 @@ export function createPromoCode({ code, planId, maxUses = 10, expiresAt = null, 
     getDb().prepare('INSERT INTO promo_codes (code, plan_id, max_uses, expires_at, note, created_by) VALUES (?, ?, ?, ?, ?, ?)')
       .run(c, planId, Math.max(1, Number(maxUses) || 1), expiresAt, String(note ?? '').slice(0, 200), actorId);
   } catch (e) {
-    if (String(e.message).includes('UNIQUE')) return { ok: false, reason: 'That code already exists.' };
+    if (String(e.message).includes('UNIQUE')) return { ok: false, reason: `${c} already exists (retired codes keep their name for the records). Open it and press Reactivate, or raise its max uses, instead of making a new one.`, exists: c };
     throw e;
   }
   return { ok: true, code: c };
+}
+
+/** One code with its redemptions (who, when, what plan they are on now). */
+export function promoDetail(code) {
+  const db = getDb();
+  const c = String(code ?? '').trim().toUpperCase();
+  const row = db.prepare('SELECT p.*, (SELECT COUNT(*) FROM promo_redemptions r WHERE r.code = p.code) AS redeemed FROM promo_codes p WHERE p.code = ?').get(c);
+  if (!row) return null;
+  const redemptions = db.prepare(`SELECT r.created_at, r.removed_at, r.prev_plan_id, u.id AS user_id, u.email, u.name, u.plan_id, u.plan_expires_at, u.status
+    FROM promo_redemptions r LEFT JOIN users u ON u.id = r.user_id WHERE r.code = ? ORDER BY r.created_at DESC`).all(c);
+  return { ...row, redemptions };
+}
+
+/** Edit a code while it is running: cap, expiry, note; the plan only while nobody has redeemed it. Reactivate = clear the expiry. */
+export function updatePromoCode({ code, maxUses, expiresAt, note, planId, actorId = null }) {
+  const db = getDb();
+  const c = String(code ?? '').trim().toUpperCase();
+  const row = db.prepare('SELECT * FROM promo_codes WHERE code = ?').get(c);
+  if (!row) return { ok: false, reason: 'No such code.' };
+  const sets = []; const vals = [];
+  if (maxUses !== undefined) { const n = Math.max(row.uses, Number(maxUses) || 0); sets.push('max_uses = ?'); vals.push(n); }
+  if (expiresAt !== undefined) { sets.push('expires_at = ?'); vals.push(expiresAt); }
+  if (note !== undefined) { sets.push('note = ?'); vals.push(String(note ?? '').slice(0, 200)); }
+  if (planId !== undefined && planId !== row.plan_id) {
+    if (!getPlan(planId)) return { ok: false, reason: 'Unknown plan.' };
+    if (row.uses > 0) return { ok: false, reason: 'The plan cannot change once the code has been redeemed; make a new code instead.' };
+    sets.push('plan_id = ?'); vals.push(planId);
+  }
+  if (!sets.length) return { ok: true, code: c, changed: false };
+  db.prepare(`UPDATE promo_codes SET ${sets.join(', ')} WHERE code = ?`).run(...vals, c);
+  return { ok: true, code: c, changed: true, maxUses: maxUses !== undefined ? Math.max(row.uses, Number(maxUses) || 0) : row.max_uses };
 }
 
 /**
