@@ -139,7 +139,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
-  ['cl-0-12-9', '0.12.9', 'Unfinished checkouts no longer look like subscriptions; admin can delete an account for good', `- Fixed: a checkout you closed without paying showed up as “card saved”. Only a finished checkout with a future start date counts now.
+  ['cl-0-12-9', '0.12.9', 'Unfinished checkouts no longer look like subscriptions; admin can delete an account for good', `- Changed: the payment buttons say “pay by card” instead of “pay with HitPay”. HitPay still handles the card, as the small print says.
+- Fixed: a checkout you closed without paying showed up as “card saved”. Only a finished checkout with a future start date counts now.
 - Admin: a disabled or suspended account has a “Delete permanently” button that frees the email and site names.`, 'fix', '2026-10-20T14:00:00Z'],
   ['cl-0-12-8', '0.12.8', 'Keep your plan: pay when the free period ends, not today', `- Changed: pressing “Keep … pay with HitPay” during a free period saves your card and takes the first payment on the day the free period ends. Nothing is charged today, and the reminder emails stay quiet because there is nothing to remind you about.
 - New: the Plan page shows “card saved, first charge on …” with a cancel button, the same as a running subscription.`, 'improved', '2026-10-20T12:30:00Z'],
