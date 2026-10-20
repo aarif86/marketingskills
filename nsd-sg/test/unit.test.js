@@ -158,3 +158,9 @@ test('HITPAY_PLAN_* env keys map to hyphenated plan ids', async () => {
   assert.equal(mod.config.payLinks['plus-turn40'], 'https://pay.example/x');
   delete process.env.HITPAY_PLAN_PLUS_TURN40; delete process.env.PAY_LINK_PLUS_TURN40;
 });
+
+test('CSP form-action allows the HitPay checkout redirect', async () => {
+  const { platformSecurityHeaders } = await import('../src/web/middleware.js');
+  const headers = {}; platformSecurityHeaders({ header: (k, v) => { headers[k] = v; } });
+  assert.match(headers['Content-Security-Policy'], /form-action 'self' https:\/\/\*\.hit-pay\.com/);
+});

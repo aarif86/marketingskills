@@ -65,6 +65,10 @@ function safeOrigin(referer) {
   try { return new URL(referer).origin; } catch { return null; }
 }
 
+// Browsers apply form-action to the redirect that follows a form POST, so the hop to HitPay's hosted checkout
+// (and any PAY_LINK_* fallback) must be allowed here or the Upgrade button does nothing in Chrome and Safari.
+const PAY_ORIGINS = [...new Set(['https://*.hit-pay.com', ...Object.values(config.payLinks).map((u) => { try { return new URL(u).origin; } catch { return null; } }).filter(Boolean)])].join(' ');
+
 export function platformSecurityHeaders(reply) {
   reply.header('Cache-Control', 'private, no-store'); // the platform is per-user; never let a proxy cache it
   reply.header('X-Content-Type-Options', 'nosniff');
@@ -74,7 +78,7 @@ export function platformSecurityHeaders(reply) {
   reply.header('Cross-Origin-Opener-Policy', 'same-origin');
   reply.header(
     'Content-Security-Policy',
-    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src ${config.publicScheme}://try.${config.baseDomain}; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'`,
+    `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src ${config.publicScheme}://try.${config.baseDomain}; frame-ancestors 'none'; form-action 'self' ${PAY_ORIGINS}; base-uri 'self'; object-src 'none'`,
   );
   if (config.isProd) reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 }

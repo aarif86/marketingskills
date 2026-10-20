@@ -139,6 +139,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-7', '0.12.7', 'The pay-with-HitPay button opens the checkout', `- Fixed: pressing “pay with HitPay” did nothing in Chrome and Safari. A security rule on the site blocked the hand-off to HitPay’s checkout page. It now opens as it should.`, 'fix', '2026-10-20T11:30:00Z'],
   ['cl-0-12-6', '0.12.6', 'Gift plans: fair extension, card payment, clearer Plan page', `- Changed: the instant first extension is 30 days on every plan. A 4-month gift no longer doubles itself with one click.
 - Fixed: a plan made in admin with a hyphen in its id (like plus-turn40) can now be paid by card: set HITPAY_PLAN_PLUS_TURN40 in the environment.
 - Changed: on the Plan page, keeping your current plan is listed above the other paid plans.`, 'improved', '2026-10-20T10:00:00Z'],
