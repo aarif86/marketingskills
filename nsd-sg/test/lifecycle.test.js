@@ -121,3 +121,46 @@ test('pricing page matches the plans', async () => {
   assert.match(p.body, /Off the showcase unless you opt in/);
   assert.doesNotMatch(p.body, /1024 MB/);
 });
+
+test('keeping the plan before it ends: card saved, first charge on the expiry date, no reminders, charge activates', async () => {
+  const hitpay = await import('../src/services/hitpay.js');
+  const { config } = await import('../src/config.js');
+  config.hitpay.apiKey = 'test-key'; config.hitpay.plans['plus-gift'] = 'uuid-gift';
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    const body = opts?.body ? JSON.parse(opts.body) : null; calls.push({ url: String(url), method: opts?.method, body });
+    if (opts?.method === 'POST') return new Response(JSON.stringify({ id: 'rb_sched', url: 'https://securecheckout.hit-pay.com/x', status: 'scheduled' }), { status: 200 });
+    return new Response(JSON.stringify({ id: 'rb_sched', status: 'scheduled', reference: body?.reference }), { status: 200 });
+  };
+  try {
+    const id = getDb().prepare('SELECT id FROM users WHERE email = ?').get('gift@example.com').id;
+    const login = await post('/login', '', { email: 'gift@example.com', password: 'correct-horse-battery' }, '/login');
+    const cookie = cookiesFrom(login);
+    const expiresAt = getDb().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(id).plan_expires_at;
+    const page = (await get('/billing', cookie)).body;
+    assert.match(page, /card is saved now and first charged on/);
+    const r = await post('/billing/upgrade', cookie, { plan: 'plus-gift' }, '/billing');
+    assert.equal(r.statusCode, 302);
+    assert.equal(r.headers.location, 'https://securecheckout.hit-pay.com/x');
+    const sgtDay = new Date(Date.parse(expiresAt) + 8 * 3600_000).toISOString().slice(0, 10);
+    assert.equal(calls[0].body.start_date, sgtDay, 'HitPay start date = expiry day in SGT');
+    let sub = getDb().prepare("SELECT * FROM subscriptions WHERE id = 'rb_sched'").get();
+    assert.equal(sub.starts_at, expiresAt);
+    // HitPay confirms it as scheduled (return-check or webhook)
+    await hitpay.checkSubscription('rb_sched');
+    sub = getDb().prepare("SELECT * FROM subscriptions WHERE id = 'rb_sched'").get();
+    assert.equal(sub.status, 'scheduled');
+    const billing = (await get('/billing', cookie)).body;
+    assert.match(billing, /card saved, first charge on/);
+    assert.doesNotMatch(billing, /Keep Plus \(gift\) after your free period/);
+    // 3 days before expiry the sweep stays quiet for this user
+    getDb().prepare('UPDATE users SET plan_expires_at = ? WHERE id = ?').run(new Date(Date.now() + 3 * DAY).toISOString(), id);
+    await lifecycleSweep();
+    assert.equal(getDb().prepare('SELECT COUNT(*) n FROM plan_notices WHERE user_id = ?').get(id).n, 0, 'no reminder while a charge is scheduled');
+    // the charge lands on the day: plan becomes paid, no expiry
+    hitpay.applyEvent({ subscriptionId: 'rb_sched', reference: sub.reference, status: 'active', eventType: 'charge.created', paymentId: 'pay_1' });
+    const u = getDb().prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(id);
+    assert.equal(u.plan_id, 'plus-gift'); assert.equal(u.plan_expires_at, null);
+  } finally { globalThis.fetch = realFetch; config.hitpay.apiKey = ''; delete config.hitpay.plans['plus-gift']; }
+});

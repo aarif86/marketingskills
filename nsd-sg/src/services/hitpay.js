@@ -27,9 +27,12 @@ async function api(method, path, body) {
 }
 
 /** Start a subscription for a user. Returns the HitPay URL to send the customer to. */
-export async function startSubscription({ user, planId, returnUrl }) {
+export async function startSubscription({ user, planId, returnUrl, startsAt = null }) {
   const planUuid = config.hitpay.plans[planId];
   if (!planUuid) throw new Error('This plan has no HitPay plan id configured.');
+  // Keeping the current plan before its free period ends: save the card now, first charge on the expiry date (SGT).
+  const future = startsAt && Date.parse(startsAt) > Date.now() ? new Date(startsAt) : null;
+  const startDate = new Date((future ? future.getTime() : Date.now()) + 8 * 3600_000).toISOString().slice(0, 10);
   const reference = `${user.id}:${planId}:${newId().slice(-6)}`;
   const r = await api('POST', '/v1/recurring-billing', {
     plan_id: planUuid,
@@ -38,16 +41,16 @@ export async function startSubscription({ user, planId, returnUrl }) {
     reference,
     redirect_url: returnUrl,
     payment_methods: ['card'],
-    start_date: new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10), // today in SGT; plan-based billing needs a start date (save_card is not allowed with plan_id)
+    start_date: startDate, // plan-based billing needs a start date (save_card is not allowed with plan_id)
     send_email: 'true',
   });
   const id = String(r.id ?? r.recurring_billing_id ?? '');
   if (!id) throw new Error('HitPay did not return a subscription id.');
-  getDb().prepare('INSERT OR REPLACE INTO subscriptions (id, user_id, plan_id, status, reference, last_event) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, user.id, planId, 'pending', reference, 'created');
+  getDb().prepare('INSERT OR REPLACE INTO subscriptions (id, user_id, plan_id, status, reference, last_event, starts_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, user.id, planId, 'pending', reference, 'created', future ? future.toISOString() : null);
   const url = r.url ?? r.checkout_url ?? r.payment_url;
   if (!url) throw new Error('HitPay did not return a checkout URL.');
-  return { id, url, reference };
+  return { id, url, reference, startsAt: future ? future.toISOString() : null };
 }
 
 function safeEq(a, b) {
@@ -77,6 +80,7 @@ export function verifySignature(rawBody, signature, body = null) {
 
 const ACTIVE = new Set(['succeeded', 'completed', 'active', 'paid']);
 const DEAD = new Set(['canceled', 'cancelled', 'failed', 'expired']);
+const SCHEDULED = new Set(['scheduled']); // card saved, first charge on starts_at
 
 /** Pull the identifiers we care about out of any HitPay payload shape (top-level or nested). */
 export function identify(payload) {
@@ -120,8 +124,8 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
   if (!sub && email) {
     const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
     if (u) {
-      sub = db.prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status IN ('active', 'pending')
-        ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`).get(u.id);
+      sub = db.prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status IN ('active', 'scheduled', 'pending')
+        ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'scheduled' THEN 1 ELSE 2 END, updated_at DESC LIMIT 1`).get(u.id);
     }
   }
   if (!sub) { log.warn?.({ subscriptionId, reference, email }, 'hitpay: event for unknown subscription'); return { ok: false, reason: 'unknown subscription' }; }
@@ -144,6 +148,15 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       .run(eventType || status, now, paymentId, paymentId, now, sub.id);
     abandonOtherPending(sub.user_id, sub.id);
     return { ok: true, activated: sub.status !== 'active' };
+  }
+  if (SCHEDULED.has(status) && sub.status !== 'active') {
+    if (sub.status !== 'scheduled') {
+      db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
+        .run(newId(), sub.user_id, 'subscription_scheduled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, startsAt: sub.starts_at ?? null }));
+    }
+    db.prepare("UPDATE subscriptions SET status = 'scheduled', last_event = ?, updated_at = ? WHERE id = ?").run(eventType || status, now, sub.id);
+    abandonOtherPending(sub.user_id, sub.id);
+    return { ok: true, scheduled: true };
   }
   if (DEAD.has(status)) {
     if (sub.status === 'active') {
@@ -181,6 +194,12 @@ export function expireStalePending(userId = null) {
 export async function checkSubscription(id) {
   const r = await api('GET', `/v1/recurring-billing/${encodeURIComponent(id)}`);
   return applyEvent({ ...identify({ ...r, object: 'recurring_billing' }), subscriptionId: String(r.id ?? id) });
+}
+
+/** A subscription that will keep this plan going: active now, or scheduled to charge when the free period ends. */
+export function liveSubscriptionFor(userId, planId = null) {
+  return getDb().prepare(`SELECT * FROM subscriptions WHERE user_id = ? AND status IN ('active', 'scheduled')` + (planId ? ' AND plan_id = ?' : '') + ' ORDER BY updated_at DESC LIMIT 1')
+    .get(...(planId ? [userId, planId] : [userId]));
 }
 
 export function listSubscriptionsForUser(userId) {

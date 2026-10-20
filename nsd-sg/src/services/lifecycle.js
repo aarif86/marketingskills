@@ -10,6 +10,7 @@ import { nowIso } from '../lib/ids.js';
 import { sendMail } from '../lib/mailer.js';
 import { entitlementsFor, extendPlan } from './plans.js';
 import { listSitesForUser, deleteSite } from './sites.js';
+import { liveSubscriptionFor } from './hitpay.js';
 
 export const DOMAIN_GRACE_DAYS = 30;
 export const DORMANT_AFTER_DAYS = 60;
@@ -64,6 +65,7 @@ export async function lifecycleSweep({ now = Date.now() } = {}) {
   const out = { reminded: 0, dormant: 0, warned: 0, deleted: 0 };
   const users = db.prepare("SELECT * FROM users WHERE status = 'active' AND plan_expires_at IS NOT NULL").all();
   for (const u of users) {
+    if (liveSubscriptionFor(u.id, u.plan_id)) continue; // card saved, HitPay charges on the expiry date: nothing to remind
     const ref = u.plan_expires_at;
     const when = ref.slice(0, 10);
     const left = (Date.parse(ref) - now) / DAY;

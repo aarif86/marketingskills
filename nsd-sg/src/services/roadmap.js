@@ -139,6 +139,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-12-8', '0.12.8', 'Keep your plan: pay when the free period ends, not today', `- Changed: pressing “Keep … pay with HitPay” during a free period saves your card and takes the first payment on the day the free period ends. Nothing is charged today, and the reminder emails stay quiet because there is nothing to remind you about.
+- New: the Plan page shows “card saved, first charge on …” with a cancel button, the same as a running subscription.`, 'improved', '2026-10-20T12:30:00Z'],
   ['cl-0-12-7', '0.12.7', 'The pay-with-HitPay button opens the checkout', `- Fixed: pressing “pay with HitPay” did nothing in Chrome and Safari. A security rule on the site blocked the hand-off to HitPay’s checkout page. It now opens as it should.`, 'fix', '2026-10-20T11:30:00Z'],
   ['cl-0-12-6', '0.12.6', 'Gift plans: fair extension, card payment, clearer Plan page', `- Changed: the instant first extension is 30 days on every plan. A 4-month gift no longer doubles itself with one click.
 - Fixed: a plan made in admin with a hyphen in its id (like plus-turn40) can now be paid by card: set HITPAY_PLAN_PLUS_TURN40 in the environment.

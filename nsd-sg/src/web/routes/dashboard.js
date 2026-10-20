@@ -365,7 +365,7 @@ export async function registerDashboardRoutes(app) {
   });
 
   app.post('/billing/hitpay/cancel', { preHandler: requireUser }, async (req, reply) => {
-    const sub = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === String(req.body?.id ?? '') && s.status === 'active');
+    const sub = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.id === String(req.body?.id ?? '') && (s.status === 'active' || s.status === 'scheduled'));
     if (!sub) { flash(reply, 'error', 'No active subscription found.'); return reply.redirect('/billing'); }
     try {
       await hitpay.cancelSubscription(sub.id);
@@ -413,7 +413,8 @@ export async function registerDashboardRoutes(app) {
       .run(newId(), req.user.id, 'upgrade_requested', req.user.plan_id, planId, '{}', req.user.id);
     if (hitpay.enabled() && hitpay.planConfigured(planId)) {
       try {
-        const { url } = await hitpay.startSubscription({ user: req.user, planId, returnUrl: `${config.publicScheme}://${config.platformHosts[0]}/billing/hitpay/return` });
+        const keeping = planId === req.user.plan_id && req.user.plan_expires_at && Date.parse(req.user.plan_expires_at) > Date.now();
+        const { url } = await hitpay.startSubscription({ user: req.user, planId, returnUrl: `${config.publicScheme}://${config.platformHosts[0]}/billing/hitpay/return`, startsAt: keeping ? req.user.plan_expires_at : null });
         return reply.redirect(url); // HitPay hosted checkout; the webhook / return handler activates the plan
       } catch (e) {
         req.log.error({ err: e }, 'hitpay start failed');
