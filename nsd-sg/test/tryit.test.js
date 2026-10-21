@@ -242,3 +242,24 @@ test('expired previews are removed from the table and disk; unknown folders are 
   assert.ok(!fs.existsSync(path.join(tenantDir('try'), id3)));
   assert.equal((await get(`/${id3}/`, '', 'try.nsd.test')).statusCode, 404);
 });
+
+test('sample pages: served as html, offered in the try box, and a sample pasted through /try goes online', async () => {
+  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html']) {
+    const r = await get(`/assets/${f}`);
+    assert.equal(r.statusCode, 200, f);
+    assert.match(r.headers['content-type'], /text\/html/);
+    assert.match(r.body, /<!doctype html>/i);
+    assert.match(r.body, /made up/, 'every sample says it is fictional');
+    assert.doesNotMatch(r.body, /src="http|href="http[^"]*\.(css|js)"/, 'self-contained: no external scripts or styles');
+  }
+  const home = await get('/');
+  assert.match(home.body, /data-try-sample="\/assets\/sample-quiz\.html"/);
+  assert.match(home.body, /download>Download the file/);
+  forgetIp();
+  const quiz = (await get('/assets/sample-quiz.html')).body;
+  const csrf = csrfFrom((await get('/')).body);
+  const mp = multipart({ _csrf: csrf, html: quiz }, []);
+  const r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.statusCode, 302, r.body);
+  assert.match(r.headers.location, /^\/try\//);
+});

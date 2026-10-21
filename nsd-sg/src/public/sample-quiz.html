@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P5 Science · The Water Cycle quiz</title>
+<meta name="description" content="A five-question class quiz on the water cycle from Mrs Tan, Primary 5 Integrity. Works on any phone.">
+<style>
+  :root{--ink:#17202a;--muted:#5d6b7a;--line:#e3e8ee;--accent:#2b5fd9;--ok:#1b8a4c;--bad:#c4382c;--bg:#f4f7fb}
+  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 18px 64px}
+  .eyebrow{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 6px}
+  h1{font-size:clamp(1.6rem,4.5vw,2.2rem);margin:0 0 6px;line-height:1.15}
+  .meta{color:var(--muted);margin:0 0 22px}
+  .q{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin:0 0 14px}
+  .q h2{font-size:1.05rem;margin:0 0 12px}
+  .q label{display:block;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;margin:8px 0;cursor:pointer}
+  .q label:has(input:checked){border-color:var(--accent);background:#eef3ff}
+  .q input{margin-right:8px}
+  .q.right{border-color:var(--ok)}.q.wrong{border-color:var(--bad)}
+  .why{display:none;margin-top:10px;font-size:.95rem;color:var(--muted)}
+  .q.right .why,.q.wrong .why{display:block}
+  .btn{display:inline-block;border:0;background:var(--accent);color:#fff;padding:13px 22px;border-radius:999px;font-size:1rem;font-weight:600;cursor:pointer}
+  .result{display:none;margin-top:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:16px;font-size:1.1rem}
+  .result.show{display:block}
+  footer{margin-top:36px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Primary 5 Integrity · Science · Week 8</p>
+  <h1>The Water Cycle: quick quiz</h1>
+  <p class="meta">5 questions, about 3 minutes. Do it on your own first, then we go through the answers in class on Thursday. From Mrs Tan.</p>
+
+  <form id="quiz">
+    <div class="q" data-answer="b">
+      <h2>1. Water turning from liquid into water vapour is called…</h2>
+      <label><input type="radio" name="q1" value="a"> Condensation</label>
+      <label><input type="radio" name="q1" value="b"> Evaporation</label>
+      <label><input type="radio" name="q1" value="c"> Melting</label>
+      <p class="why">Evaporation: liquid water gains heat and becomes water vapour. Condensation is the opposite.</p>
+    </div>
+    <div class="q" data-answer="a">
+      <h2>2. Why do the outside of a cold Milo cup get wet in the canteen?</h2>
+      <label><input type="radio" name="q2" value="a"> Water vapour in the air condenses on the cold cup</label>
+      <label><input type="radio" name="q2" value="b"> The cup is leaking</label>
+      <label><input type="radio" name="q2" value="c"> The Milo evaporates through the cup</label>
+      <p class="why">The cup cools the air next to it, so water vapour in the air loses heat and condenses into droplets.</p>
+    </div>
+    <div class="q" data-answer="c">
+      <h2>3. Which of these makes evaporation faster?</h2>
+      <label><input type="radio" name="q3" value="a"> Lower temperature</label>
+      <label><input type="radio" name="q3" value="b"> A smaller exposed surface</label>
+      <label><input type="radio" name="q3" value="c"> Moving air (wind)</label>
+      <p class="why">Wind, higher temperature and a larger exposed surface all speed up evaporation.</p>
+    </div>
+    <div class="q" data-answer="b">
+      <h2>4. Clouds are made of…</h2>
+      <label><input type="radio" name="q4" value="a"> Water vapour only</label>
+      <label><input type="radio" name="q4" value="b"> Tiny water droplets and ice crystals</label>
+      <label><input type="radio" name="q4" value="c"> Smoke</label>
+      <p class="why">Water vapour is invisible. Clouds are the droplets and ice crystals formed when vapour condenses high up.</p>
+    </div>
+    <div class="q" data-answer="a">
+      <h2>5. Singapore has rain almost every week. Where does most of that water come from?</h2>
+      <label><input type="radio" name="q5" value="a"> Evaporation from the sea around us</label>
+      <label><input type="radio" name="q5" value="b"> Our reservoirs</label>
+      <label><input type="radio" name="q5" value="c"> Pipes under the ground</label>
+      <p class="why">We are surrounded by warm sea. Water evaporates from it, condenses into clouds, and falls as rain.</p>
+    </div>
+    <button class="btn" type="submit">Check my answers</button>
+  </form>
+  <div class="result" id="result"></div>
+
+  <footer>Mrs Tan · P5 Integrity · Sample page made for trying out NSD.SG. The class and teacher are made up.</footer>
+</div>
+<script>
+  document.getElementById('quiz').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var qs = document.querySelectorAll('.q'), score = 0, answered = 0;
+    qs.forEach(function (q) {
+      var picked = q.querySelector('input:checked');
+      q.classList.remove('right', 'wrong');
+      if (!picked) return;
+      answered++;
+      var ok = picked.value === q.getAttribute('data-answer');
+      q.classList.add(ok ? 'right' : 'wrong');
+      if (ok) score++;
+    });
+    var r = document.getElementById('result');
+    if (answered < qs.length) { r.textContent = 'You have ' + (qs.length - answered) + ' question' + (qs.length - answered === 1 ? '' : 's') + ' left. Answer all of them, then check again.'; }
+    else { r.textContent = 'You got ' + score + ' out of ' + qs.length + '. ' + (score === qs.length ? 'Excellent! See you Thursday.' : score >= 3 ? 'Good. Read the notes under the ones you missed.' : 'Read the notes under each question, then try again.'); }
+    r.classList.add('show');
+    r.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+</script>
+</body>
+</html>

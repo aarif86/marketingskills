@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haji Ali Nasi Padang · Bedok</title>
+<meta name="description" content="Home-style nasi padang in Bedok since 1998. Opening hours, what's good today, and how to order on WhatsApp.">
+<style>
+  :root{--ink:#241c15;--muted:#6b5f55;--line:#eadfd3;--accent:#b4452e;--bg:#fff8f1}
+  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  .hero{background:linear-gradient(160deg,#b4452e,#7a2a1a);color:#fff;padding:44px 20px 36px;text-align:center}
+  .hero h1{font-size:clamp(1.9rem,6vw,2.8rem);margin:0 0 6px;letter-spacing:-.02em}
+  .hero p{margin:0;opacity:.92;font-size:1.05rem}
+  .open{display:inline-block;margin-top:14px;background:rgba(255,255,255,.16);padding:6px 14px;border-radius:999px;font-size:.9rem}
+  .wrap{max-width:640px;margin:0 auto;padding:24px 18px 70px}
+  .grid{display:grid;gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+  .card h2{font-size:1.1rem;margin:0 0 10px}
+  .hours{width:100%;border-collapse:collapse}.hours td{padding:6px 0;border-bottom:1px dashed var(--line)}.hours td:last-child{text-align:right;color:var(--muted)}
+  .menu li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .menu ul{list-style:none;margin:0;padding:0}.menu small{display:block;color:var(--muted)}
+  .btns{display:grid;gap:10px;margin-top:4px}
+  .btn{display:block;text-align:center;text-decoration:none;padding:14px 18px;border-radius:999px;font-weight:600;background:var(--accent);color:#fff}
+  .btn.ghost{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
+  .sticky{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,248,241,.95);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
+  .sticky .btn{max-width:640px;margin:0 auto}
+  footer{margin-top:28px;color:var(--muted);font-size:.85rem;text-align:center}
+  @media(min-width:600px){.grid{grid-template-columns:1fr 1fr}.grid .card.wide{grid-column:1/-1}.sticky{display:none}}
+</style>
+</head>
+<body>
+  <section class="hero">
+    <h1>Haji Ali Nasi Padang</h1>
+    <p>Home-style Minang food in Bedok, since 1998. Halal.</p>
+    <span class="open">Open today 10.30am – 8pm · closed Mondays</span>
+  </section>
+
+  <div class="wrap"><div class="grid">
+    <div class="card wide menu">
+      <h2>What's good today</h2>
+      <ul>
+        <li><span>Rendang daging<small>Slow-cooked beef, the one people queue for</small></span><span>S$5.50</span></li>
+        <li><span>Ayam bakar<small>Grilled chicken, sambal on the side</small></span><span>S$4.50</span></li>
+        <li><span>Sayur lodeh<small>Vegetables in coconut gravy</small></span><span>S$2.00</span></li>
+        <li><span>Sambal goreng<small>Tempeh, long beans, tau kwa</small></span><span>S$2.00</span></li>
+        <li><span>Nasi padang set<small>Rice, one meat, two vegetables</small></span><span>from S$6.50</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Opening hours</h2>
+      <table class="hours">
+        <tr><td>Tuesday – Friday</td><td>10.30am – 8pm</td></tr>
+        <tr><td>Saturday – Sunday</td><td>9am – 8pm</td></tr>
+        <tr><td>Monday</td><td>Closed</td></tr>
+        <tr><td>Public holidays</td><td>9am – 3pm</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Find us</h2>
+      <p>Blk 216 Bedok North Street 1, #01-xx, Singapore 460216<br>Two minutes from Bedok MRT, exit B. Coffee shop on the corner.</p>
+      <div class="btns">
+        <a class="btn ghost" href="https://maps.google.com/?q=Blk+216+Bedok+North+Street+1+Singapore">Open in Google Maps</a>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <h2>Catering and bulk orders</h2>
+      <p>Office lunches, kenduri, class parties. Order one day ahead for 10 packets or more. Delivery in the east from S$8.</p>
+      <div class="btns">
+        <a class="btn" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order">WhatsApp us to order</a>
+        <a class="btn ghost" href="tel:+6598765432">Call 9876 5432</a>
+      </div>
+    </div>
+  </div>
+  <footer>Haji Ali Nasi Padang · Sample page made for trying out NSD.SG. The stall, prices and numbers are made up.</footer>
+  </div>
+
+  <div class="sticky"><a class="btn" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order">WhatsApp us to order</a></div>
+</body>
+</html>
