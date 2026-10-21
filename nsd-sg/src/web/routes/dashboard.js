@@ -36,7 +36,7 @@ const TEXT_PREVIEW = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'txt', 
 export async function registerDashboardRoutes(app) {
   const clientOf = (req) => ({ ip: req.ip, ua: req.headers['user-agent'] }); // who uploaded this version, for the evidence pack
   const render = (req, reply, { title, body, active }) =>
-    reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active }));
+    reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active, path: String(req.raw.url ?? '').split('?')[0] }));
 
   const loadSite = (req, reply) => {
     const site = getSiteForUser(String(req.params.id), req.user.id);

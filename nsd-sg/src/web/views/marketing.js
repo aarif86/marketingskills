@@ -178,7 +178,7 @@ export function faqPage() {
   ];
   return html`<section class="section"><div class="container narrow"><h1>Questions people ask</h1>
   ${qa.map(([q, a]) => html`<details><summary>${q}</summary><p>${a}</p></details>`)}
-  <p class="mt">Something else? ${config.branding.whatsapp ? html`<a href="${whatsappLink('from the FAQ page')}" target="_blank" rel="noopener">WhatsApp a real human</a> or email` : 'Email'} <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();
+  <p class="mt">Something else? ${whatsappLink('from the FAQ page') ? html`<a href="${whatsappLink('from the FAQ page')}" target="_blank" rel="noopener">WhatsApp a real human</a> or email` : 'Email'} <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();
 }
 
 export function termsPage() {
@@ -235,7 +235,7 @@ export function badgePage({ badgeHtml, baseDomain }) {
   return html`<section class="section"><div class="container narrow">
   <p class="eyebrow">The badge</p>
   <h1>What the “Powered by NasarDigital” badge looks like</h1>
-  <p class="section-lead">Free sites show this small pill in the bottom-right corner of every page, and an NSD.SG card when the link is shared on WhatsApp or Telegram. It is what pays for the free plan. It never covers your content, never tracks your visitors, and both disappear the moment you move to Plus.</p>
+  <p class="section-lead">Free sites show this small pill in the bottom-left corner of every page (it folds to a tiny chip after a few seconds), and an NSD.SG card when the link is shared on WhatsApp or Telegram. It is what pays for the free plan. It never covers your content, never tracks your visitors, and both disappear the moment you move to Plus.</p>
   <div class="badge-demo"><div class="bd-bar"><span></span><span></span><span></span><em>yourname.${baseDomain}</em></div>
     <div class="bd-page"><div class="bd-line w60"></div><div class="bd-line w90"></div><div class="bd-line w80"></div><div class="bd-block"></div><div class="bd-line w70"></div><div class="bd-line w50"></div>
     <div class="bd-badge">${raw(badgeHtml)}</div></div></div>

@@ -6,6 +6,8 @@ import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKe
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePack, listStoredPacks, storedPackZip, setLegalHold, evidenceStats } from '../../services/evidence.js';
 import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../services/visits.js';
+import { setSetting } from '../../services/settings.js';
+import { supportConfig } from '../help.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
 import { getDb } from '../../db/index.js';
@@ -517,7 +519,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50),
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(),
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
@@ -553,6 +555,16 @@ export async function registerAdminRoutes(app) {
     return reply.redirect('/admin/health');
   });
 
+  app.post('/admin/health/support', opts, async (req, reply) => {
+    const b = req.body ?? {};
+    setSetting('support.whatsapp.enabled', b.enabled === '1' ? '1' : '0');
+    setSetting('support.whatsapp.number', String(b.number ?? '').replace(/\D/g, ''));
+    setSetting('support.hours.start', String(Math.min(23, Math.max(0, Number(b.start) || 0))));
+    setSetting('support.hours.end', String(Math.min(24, Math.max(1, Number(b.end) || 24))));
+    audit({ req, action: 'admin.support.update', targetType: 'system', targetId: 'support', details: { enabled: b.enabled === '1', start: b.start, end: b.end } });
+    flash(reply, 'success', b.enabled === '1' ? 'WhatsApp help is on.' : 'WhatsApp help is off on every page.');
+    return reply.redirect('/admin/health');
+  });
   app.post('/admin/health/api-check', opts, async (req, reply) => {
     const r = await checkApi();
     audit({ req, action: 'hosting.api_check', targetType: 'system', targetId: '-', details: r });

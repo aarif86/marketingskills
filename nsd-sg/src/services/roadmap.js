@@ -140,6 +140,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-5', '0.13.5', 'Help that shows up when you need it; the badge moves out of the way', `- Changed: the badge on free sites now sits bottom-left and folds to a small chip after a few seconds, so it never covers a site's own buttons.
+- Changed: “WhatsApp a real human” is now a small help panel in the site's own style. It offers three quick answers for the page you are on, then the WhatsApp link. On most pages it appears only when you seem stuck (an error, 40 seconds without a click, a test page still waiting); on Plan & billing and the 404 page it is always there.
+- New: outside support hours the panel says when to expect a reply. Admin sets the hours or switches the button off under System health, no deploy needed.
+- Changed: the 404 page is now a proper NSD.SG page.`, 'improved', '2026-10-21T06:00:00Z'],
   ['cl-0-13-4', '0.13.4', 'WhatsApp a real human; sample pages polished', `- New: a green WhatsApp button on every nsd.sg page, bottom left. It opens a chat with a real person, with the message already saying which page you were on. On phones it shows its label for a moment, then tucks away until you tap it. Also in the footer and on the FAQ page.
 - Changed: the three sample pages in the try box got a proper design pass.`, 'new', '2026-10-21T03:00:00Z'],
   ['cl-0-13-3', '0.13.3', 'Three sample pages to try', `- New: no page of your own yet? The try box on the home page now offers three of ours: a one-page proposal, a class quiz that marks itself, and a one-page shop. Press “Try this one” and it goes online like any upload, or download the file to see what an AI-made page looks like.`, 'new', '2026-10-21T02:00:00Z'],

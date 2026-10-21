@@ -47,9 +47,6 @@
   .fact i{width:26px;height:26px;border-radius:50%;background:var(--brand-soft);display:grid;place-items:center;color:var(--brand)}
   .fact svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* sticky progress pill */
-  .prog{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:30;display:flex;pointer-events:none;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s var(--spring)}.prog.show{opacity:1;transform:none}
-  .prog span{pointer-events:auto;background:var(--ink);color:#fff;border-radius:999px;padding:8px 16px;font-weight:700;font-size:.85rem;box-shadow:var(--shadow);display:inline-flex;gap:10px;align-items:center}
-  .prog b{display:inline-flex;gap:4px}.prog b i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:background .3s,transform .3s var(--spring)}.prog b i.on{background:#7fb0ff;transform:scale(1.25)}
   /* questions */
   .q{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r);padding:20px;margin:0 0 14px;box-shadow:var(--shadow);transition:border-color .3s,transform .3s var(--spring)}
   .q h2{font-size:1.08rem;margin:0 0 12px;line-height:1.35}
@@ -71,9 +68,10 @@
   .ring circle{fill:none;stroke-width:9;stroke-linecap:round}.ring .bg{stroke:var(--line)}.ring .fg{stroke:var(--brand);stroke-dasharray:264;stroke-dashoffset:264;transition:stroke-dashoffset 1.1s var(--ease)}
   .ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.5rem;font-weight:900}
   .score p{margin:0;color:var(--ink-2)}.score strong{display:block;color:var(--ink);font-size:1.15rem;margin-bottom:4px}
-  footer{padding:30px 0 90px;color:var(--muted);font-size:.85rem}
+  footer{padding:30px 0 70px;color:var(--muted);font-size:.85rem}
   /* back to top pill */
-  .top{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:30;border:0;background:var(--ink);color:#fff;border-radius:999px;padding:10px 14px;font:inherit;font-weight:700;font-size:.85rem;box-shadow:var(--shadow);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .3s,transform .3s var(--spring);cursor:pointer}
+  .top{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:30;border:0;background:var(--ink);color:#fff;border-radius:999px;padding:10px 14px;font:inherit;font-weight:700;font-size:.85rem;box-shadow:var(--shadow);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .3s,transform .3s var(--spring);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .top b{display:inline-flex;gap:4px}.top b i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:background .3s,transform .3s var(--spring)}.top b i.on{background:#7fb0ff;transform:scale(1.25)}.top .sep{opacity:.5}
   .top.show{opacity:1;transform:none;pointer-events:auto}
   .reveal:not(.in){opacity:0;transform:translateY(24px)}.reveal{transition:opacity .6s var(--ease),transform .6s var(--spring)}
   @media(max-width:640px){.reveal:not(.in){transform:translateY(14px)}.reveal{transition-duration:.5s}.score{flex-direction:column;text-align:center}}
@@ -97,7 +95,6 @@
 </div></header>
 
 <section class="wrap" style="padding-top:8px">
-  <div class="prog" aria-live="polite"><span><span data-done>0 of 5 answered</span><b data-dots><i></i><i></i><i></i><i></i><i></i></b></span></div>
   <form id="quiz">
     <div class="q reveal" id="q1" data-answer="b"><h2><span class="n">1</span>Water turning from liquid into water vapour is called…</h2>
       <label><input type="radio" name="q1" value="a">Condensation</label><label><input type="radio" name="q1" value="b">Evaporation</label><label><input type="radio" name="q1" value="c">Melting</label>
@@ -123,7 +120,7 @@
 </section>
 </main>
 <footer><div class="wrap">Mrs Tan · P5 Integrity · This is a sample page made for trying out NSD.SG. The class, the teacher and the quiz are made up.</div></footer>
-<button class="top" type="button" data-top aria-label="Back to top">↑ <span data-pct>0%</span> read</button>
+<button class="top" type="button" data-top aria-label="Back to top"><span data-done>0 of 5 answered</span><b data-dots><i></i><i></i><i></i><i></i><i></i></b><span class="sep">·</span><span data-pct>0%</span> ↑</button>
 
 <script>
 (function(){
@@ -146,7 +143,6 @@
   // back-to-top pill with % read
   var top=document.querySelector('[data-top]'),pct=top.querySelector('[data-pct]');
   var upd=function(){var h=document.documentElement;var p=h.scrollHeight-h.clientHeight;var v=p>0?Math.min(100,Math.round(h.scrollTop/p*100)):0;pct.textContent=v+'%';top.classList.toggle('show',h.scrollTop>420);};
-  var prog=document.querySelector('.prog');var updProg=function(){prog.classList.toggle('show',document.documentElement.scrollTop>260&&!score.classList.contains('show'));};addEventListener('scroll',updProg,{passive:true});form.addEventListener('submit',function(){setTimeout(updProg,0);});document.querySelector('[data-reset]').addEventListener('click',function(){setTimeout(updProg,10);});
   addEventListener('scroll',upd,{passive:true});upd();top.addEventListener('click',function(){scrollTo({top:0,behavior:rm?'auto':'smooth'});});
   // ambient circle glow + touch trail
   if(rm)return;var cv=document.querySelector('canvas.fx'),ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),W,H;var size=function(){W=cv.width=innerWidth*dpr;H=cv.height=innerHeight*dpr;};size();addEventListener('resize',size);

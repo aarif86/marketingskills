@@ -287,15 +287,46 @@ document.querySelectorAll('[data-rm-more]').forEach(function (btn) {
   btn.setAttribute('data-label', btn.textContent);
 });
 
-// WhatsApp button: on phones, show the label for a few seconds on arrival, then shrink to the icon. A tap on the icon
-// when collapsed expands it first; a second tap opens WhatsApp.
+// WhatsApp help: the button opens a small panel (three answers for this page, then the WhatsApp link).
+// In "smart" mode it stays hidden until something suggests the person is stuck: an error message, 40 s with no
+// clicks or typing, a test page still waiting after 30 s, or the home page scrolled past the try box.
 (function () {
-  var fab = document.querySelector('[data-wa-fab]');
-  if (!fab) return;
-  if (!window.matchMedia('(max-width: 600px)').matches) return;
-  fab.classList.add('peek');
-  setTimeout(function () { fab.classList.remove('peek'); }, 4500);
-  fab.addEventListener('click', function (e) {
-    if (!fab.classList.contains('open') && !fab.classList.contains('peek')) { e.preventDefault(); fab.classList.add('open'); setTimeout(function () { fab.classList.remove('open'); }, 6000); }
+  var wa = document.querySelector('[data-wa]');
+  if (!wa) return;
+  var fab = wa.querySelector('[data-wa-fab]'), panel = wa.querySelector('[data-wa-panel]'), go = wa.querySelector('[data-wa-go]');
+  var small = window.matchMedia('(max-width: 600px)').matches, shown = !wa.hidden, peekT = null;
+  var show = function (why) {
+    if (shown) return; shown = true; wa.hidden = false; wa.classList.add('in'); wa.setAttribute('data-wa-shown', why || '');
+    if (small) { wa.classList.add('peek'); peekT = setTimeout(function () { wa.classList.remove('peek'); }, 4500); }
+  };
+  if (shown && small) { wa.classList.add('peek'); peekT = setTimeout(function () { wa.classList.remove('peek'); }, 4500); }
+  var openPanel = function (open) {
+    panel.hidden = !open; fab.setAttribute('aria-expanded', open ? 'true' : 'false'); wa.classList.toggle('open', open);
+    if (open) { var first = panel.querySelector('summary'); if (first) first.focus({ preventScroll: true }); }
+  };
+  fab.addEventListener('click', function () { openPanel(panel.hidden); });
+  wa.querySelector('[data-wa-close]').addEventListener('click', function () { openPanel(false); fab.focus(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) openPanel(false); });
+  document.addEventListener('click', function (e) { if (!panel.hidden && !wa.contains(e.target)) openPanel(false); });
+  // the question they opened last travels with the WhatsApp message
+  wa.querySelectorAll('[data-wa-tip]').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open) return;
+      var q = d.querySelector('summary').textContent.trim();
+      go.href = go.getAttribute('data-wa-base') + encodeURIComponent(' I looked at: "' + q + '"');
+    });
   });
+  if (wa.getAttribute('data-wa-mode') !== 'smart') return;
+  if (document.querySelector('.flash-error')) { show('error'); return; }
+  var idle = setTimeout(function () { show('idle'); }, 40000);
+  var bump = function () { clearTimeout(idle); idle = setTimeout(function () { show('idle'); }, 40000); };
+  ['pointerdown', 'keydown', 'input'].forEach(function (ev) { document.addEventListener(ev, bump, { passive: true }); });
+  if (document.querySelector('[data-try-status]')) setTimeout(function () { if (document.querySelector('[data-try-status]')) show('waiting'); }, 30000);
+  var tryBox = document.getElementById('try');
+  if (tryBox && 'IntersectionObserver' in window) {
+    var passed = new IntersectionObserver(function (es) {
+      es.forEach(function (en) { if (!en.isIntersecting && en.boundingClientRect.bottom < 0) { show('scrolled'); passed.disconnect(); } });
+    }, { threshold: 0 });
+    passed.observe(tryBox);
+  }
 })();

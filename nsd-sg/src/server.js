@@ -33,6 +33,7 @@ import { purgeVisits } from './services/visits.js';
 import { repairPending, isEnabled as hostingEnabled } from './publish/hostinger.js';
 import { contentTypeFor } from './lib/mime.js';
 import { registerMarketingRoutes } from './web/routes/marketing.js';
+import { marketingLayout } from './web/views/layout.js';
 import { registerAuthRoutes } from './web/routes/auth.js';
 import { registerDashboardRoutes } from './web/routes/dashboard.js';
 import { registerAdminRoutes } from './web/routes/admin.js';
@@ -121,7 +122,8 @@ export async function buildApp({ logger = true } = {}) {
 
   app.setNotFoundHandler((req, reply) => {
     if (req.isTenant) return reply; // already handled
-    reply.code(404).type('text/html; charset=utf-8').send('<!doctype html><title>Not found</title><p style="font-family:system-ui;padding:2rem">Page not found. <a href="/">Back to NSD.SG</a></p>');
+    const body = `<section class="section"><div class="container narrow"><p class="eyebrow">404</p><h1>That page isn't here.</h1><p class="section-lead">Sites live at <strong>name.${config.baseDomain}</strong>, not ${config.baseDomain}/name. Check the name before the dot, or start again from the <a href="/">home page</a>.</p></div></section>`;
+    reply.code(404).type('text/html; charset=utf-8').send(marketingLayout({ title: 'Page not found', body, user: req.user ?? null, flash: null, path: '/404', waMode: 'always' }));
   });
 
   app.setErrorHandler((err, req, reply) => {

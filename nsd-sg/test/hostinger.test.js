@@ -519,19 +519,49 @@ test('promo: edit page shows redemptions and lets admin raise the cap, push the 
   assert.equal((await app.inject({ method: 'GET', url: '/admin/promo/NOPE', headers: { host: H, cookie: admin } })).statusCode, 404);
 });
 
-test('WhatsApp a real human: on public pages and the dashboard with context, in the footer and FAQ, not in admin, hidden when unset', async () => {
-  const { config } = await import('../src/config.js');
+test('WhatsApp help: panel with page tips, smart on most pages, always on billing and 404, not in admin; admin can switch it off and set hours', async () => {
+  const { resetSettingsCache } = await import('../src/services/settings.js');
+  const { getDb: db } = await import('../src/db/index.js');
   const home = await get('/');
-  assert.match(home.body, /data-wa-fab/);
-  assert.match(home.body, new RegExp(`https://wa\\.me/${config.branding.whatsapp}\\?text=Hi%20NSD\\.SG`));
+  assert.match(home.body, /data-wa data-wa-mode="smart" data-wa-key="home" hidden/);
+  assert.match(home.body, /Where do I get the file\?/);
+  assert.match(home.body, /https:\/\/wa\.me\/6584235041\?text=Hi%20NSD\.SG/);
   assert.match(home.body, /on%20the%20home%20page/);
+  assert.match(home.body, /Singapore time/);
+  assert.match((await get('/login')).body, /data-wa-key="auth"/);
   assert.match((await get('/faq')).body, /WhatsApp a real human<\/a> or email/);
+  const nf = await get('/no-such-page-xyz');
+  assert.equal(nf.statusCode, 404);
+  assert.match(nf.body, /That page isn't here/); assert.match(nf.body, /data-wa-mode="always" data-wa-key="notfound"/); assert.match(nf.body, /<body class="marketing">/);
   const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
   const c = cookiesFrom(login);
   const dash = await get('/dashboard', c);
-  assert.match(dash.body, /data-wa-fab/);
+  assert.match(dash.body, /data-wa-mode="smart" data-wa-key="dashboard"/);
   assert.match(dash.body, /admin%40nsd\.test%2C%20on%20/, 'dashboard message carries the account and page');
+  assert.match((await get('/billing', c)).body, /data-wa-mode="always" data-wa-key="billing"/);
   assert.doesNotMatch((await get('/admin', c)).body, /data-wa-fab/, 'not in admin');
-  const saved = config.branding.whatsapp; config.branding.whatsapp = '';
-  try { assert.doesNotMatch((await get('/')).body, /data-wa-fab/); } finally { config.branding.whatsapp = saved; }
+  // admin switches it off, sets hours and a different number
+  const health = await get('/admin/health', c);
+  assert.match(health.body, /WhatsApp help/); assert.match(health.body, /name="number" value="6584235041"/);
+  let r = await post('/admin/health/support', c, { number: '6512345678', start: '8', end: '21' }, '/admin/health'); // no enabled=1 -> off
+  assert.equal(r.statusCode, 302);
+  assert.doesNotMatch((await get('/')).body, /data-wa-fab/, 'off everywhere');
+  assert.doesNotMatch((await get('/faq')).body, /WhatsApp a real human<\/a> or email/);
+  r = await post('/admin/health/support', c, { enabled: '1', number: '6512345678', start: '8', end: '21' }, '/admin/health');
+  const again = await get('/');
+  assert.match(again.body, /wa\.me\/6512345678/); assert.match(again.body, /8am to 9pm, Singapore time/);
+  assert.equal(db().prepare("SELECT value FROM settings WHERE key = 'support.hours.end'").get().value, '21');
+  // back to defaults for the other tests
+  await post('/admin/health/support', c, { enabled: '1', number: '6584235041', start: '9', end: '22' }, '/admin/health');
+  resetSettingsCache();
+});
+
+test('badge sits bottom-left, folds to a chip, and the demo page says so', async () => {
+  const { brandingMarkup } = await import('../src/serve/branding.js');
+  const m = brandingMarkup();
+  assert.match(m, /left:12px !important/); assert.doesNotMatch(m, /right:12px/);
+  assert.match(m, /safe-area-inset-bottom/);
+  assert.match(m, /data-nsd-words/); assert.match(m, /nsd\.test<\/span><\/a>/, 'chip keeps the domain');
+  assert.match(m, /setTimeout\(close,4000\)/); assert.match(m, /mouseenter/);
+  assert.match((await get('/badge')).body, /bottom-left corner/);
 });

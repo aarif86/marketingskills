@@ -22,11 +22,11 @@ import { brandingMarkup } from '../../serve/branding.js';
 
 export async function registerMarketingRoutes(app) {
   const render = (req, reply, { title, description, body }) =>
-    reply.type('text/html; charset=utf-8').send(marketingLayout({ title, description, body, user: req.user, flash: readFlash(req, reply) }));
+    reply.type('text/html; charset=utf-8').send(marketingLayout({ title, description, body, user: req.user, flash: readFlash(req, reply), path: String(req.raw.url ?? '').split('?')[0] }));
   // Roadmap and changelog are linked from the dashboard menu. A logged-in user stays inside the dashboard shell
   // (same menu, tab highlighted) instead of being dropped onto the public site and having to find the way back.
   const renderInApp = (req, reply, { title, description, body, active }) => req.user
-    ? reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active }))
+    ? reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active, path: String(req.raw.url ?? '').split('?')[0] }))
     : render(req, reply, { title, description, body });
 
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), latest: listChangelog(1)[0] ?? null }) }));
@@ -80,7 +80,7 @@ export async function registerMarketingRoutes(app) {
   app.get('/try/:id', async (req, reply) => {
     const id = String(req.params.id);
     const row = getPreview(id);
-    if (!row) return reply.code(404).type('text/html; charset=utf-8').send(marketingLayout({ title: 'Test page', body: tryGonePage(), user: req.user, flash: readFlash(req, reply) }));
+    if (!row) return reply.code(404).type('text/html; charset=utf-8').send(marketingLayout({ title: 'Test page', body: tryGonePage(), user: req.user, flash: readFlash(req, reply) , path: '/try'}));
     const status = await checkReady(id);
     const sites = req.user ? listSitesForUser(req.user.id).filter((s) => s.status !== 'suspended') : [];
     return render(req, reply, { title: status.ready ? 'Your test page is online' : 'Putting your page online', description: 'A test page on NSD.SG, live for 3 hours.', body: tryResultPage({ id, url: previewUrl(id), expiresAt: row.expires_at, status, user: req.user, sites, csrf: csrfTokenFor(req) }) });

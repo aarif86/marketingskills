@@ -39,7 +39,7 @@ function safeNext(next) {
 
 export async function registerAuthRoutes(app) {
   const render = (req, reply, title, body) =>
-    reply.type('text/html; charset=utf-8').send(marketingLayout({ title, body, user: req.user, flash: readFlash(req, reply) }));
+    reply.type('text/html; charset=utf-8').send(marketingLayout({ title, body, user: req.user, flash: readFlash(req, reply), path: String(req.raw.url ?? '').split('?')[0] }));
 
   app.get('/signup', async (req, reply) => {
     if (req.user) return reply.redirect('/dashboard');

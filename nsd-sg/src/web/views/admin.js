@@ -273,6 +273,18 @@ ${h.hosting.orphans.length ? html`<p class="muted">Orphan folders in tenant root
 <form method="post" action="/admin/health/repair" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Repair all stuck addresses</button></form>
 <form method="post" action="/admin/health/api-check" class="inline">${hidden(h.hosting.csrf)}<button class="btn btn-ghost btn-sm" type="submit">Test Hostinger API</button></form>
 ${h.hosting.unready?.length ? html`<table class="table small mt"><thead><tr><th>Address not confirmed</th><th>State</th><th>Retries</th><th>Last try</th><th>Made</th><th>Error</th></tr></thead><tbody>${h.hosting.unready.map((u) => html`<tr><td><a href="/admin/sites/${u.id}">${u.subdomain}</a></td><td>${u.hosting_state}</td><td>${u.hosting_attempts}</td><td class="muted">${u.hosting_last_attempt_at ? timeAgo(u.hosting_last_attempt_at) : '-'}</td><td class="muted">${timeAgo(u.created_at)}</td><td class="muted">${u.hosting_error}</td></tr>`)}</tbody></table><p class="muted small">These retry on their own: every minute while the owner has their site page open, every 2 minutes while the app is awake, and on the hourly cron. You get one email per site if it is still stuck after 30 minutes.</p>` : html`<p class="muted small mt">Every site's address is confirmed reachable.</p>`} <span class="muted small">provisions pending subdomains and rebuilds every tenant folder (the hourly cron does the same)</span></div>` : ''}
+<div class="card"><h2>WhatsApp help ${h.support?.enabled ? pill('on') : pill('off')}</h2>
+<p class="muted small">The “WhatsApp a real human” panel on every public and dashboard page. It shows three quick answers for the page first, then the WhatsApp link. Outside the hours below it tells people to expect a reply in the morning. Changes apply at once, no deploy.</p>
+<form method="post" action="/admin/health/support" class="form">${hidden(h.csrf)}
+  <div class="grid three tight">
+    <label>Number (digits, country code first) <input name="number" value="${h.support?.number ?? ''}" pattern="[0-9]{8,15}"></label>
+    <label>Hours from (SGT, 0–23) <input name="start" type="number" min="0" max="23" value="${h.support?.start ?? 9}"></label>
+    <label>Hours to (SGT, 1–24) <input name="end" type="number" min="1" max="24" value="${h.support?.end ?? 22}"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="enabled" value="1" ${h.support?.enabled ? 'checked' : ''}> Show the WhatsApp help button</label>
+  <p class="muted small">Right now it is ${h.support?.open ? 'inside' : 'outside'} the hours (${h.support?.hoursText ?? ''}).</p>
+  <button class="btn btn-tiny btn-primary" type="submit">Save</button>
+</form></div>
 <div class="card"><h2>Stored evidence packs <span class="muted">${(h.packs ?? []).length}</span></h2>
 <p class="muted small">Packs kept on the server, including for accounts that were deleted permanently. Each has a SHA-256 manifest and a chain-of-custody note. Kept 90 days, or until legal hold is lifted.</p>
 ${(h.packs ?? []).length ? html`<table class="table small"><thead><tr><th>Account</th><th>Stored</th><th>Why</th><th>SHA-256</th><th>Until</th><th></th></tr></thead><tbody>${h.packs.map((p) => html`<tr><td>${p.email || p.user_id}</td><td class="muted">${formatDate(p.generated_at)}</td><td class="muted">${p.reason || ''}</td><td><code title="${p.sha256}">${(p.sha256 || '').slice(0, 12)}…</code></td><td class="muted">${p.legal_hold ? 'legal hold' : formatDate(p.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/packs/${p.user_id}/${p.ts}.zip">Download</a></td></tr>`)}</tbody></table>` : html`<p class="muted">None stored.</p>`}
