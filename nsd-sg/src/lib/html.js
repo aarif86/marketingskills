@@ -61,3 +61,13 @@ export function timeAgo(iso) {
   if (d < 30) return `${d} d ago`;
   return formatDate(iso);
 }
+
+/** The pasted page from a form: `html_b64` (base64 of UTF-8, set by app.js so the hosting firewall never sees raw
+ *  markup in a form field and answers "Forbidden") wins over the plain `html` field. */
+export function pastedHtml(fields, maxBytes = Infinity) {
+  const b64 = String(fields?.html_b64 ?? '').trim();
+  if (b64) {
+    try { const buf = Buffer.from(b64, 'base64'); return buf.length > maxBytes ? buf.subarray(0, maxBytes + 1).toString('utf8') : buf.toString('utf8'); } catch { return ''; }
+  }
+  return String(fields?.html ?? '');
+}

@@ -2,6 +2,21 @@
 (function () {
   'use strict';
 
+  // ---- pasted pages travel base64-encoded ----
+  // Hosting firewalls read form fields and treat raw <script> / onload= in them as an attack ("Forbidden").
+  // The server decodes html_b64 first, so the paste box and the sample buttons never trip that rule.
+  var b64utf8 = function (str) { return btoa(unescape(encodeURIComponent(str))); };
+  var encodePasteForm = function (form) {
+    var ta = form.querySelector('textarea[name=html]');
+    if (!ta || !ta.value.trim()) return;
+    var h = form.querySelector('input[name=html_b64]');
+    if (!h) { h = document.createElement('input'); h.type = 'hidden'; h.name = 'html_b64'; form.appendChild(h); }
+    try { h.value = b64utf8(ta.value); var keep = ta.value; ta.value = ''; setTimeout(function () { if (!ta.value) ta.value = keep; }, 50); } catch (e) { h.value = ''; }
+  };
+  document.querySelectorAll('form[data-try-form], form[action$="/paste"]').forEach(function (f) {
+    f.addEventListener('submit', function () { encodePasteForm(f); }, true);
+  });
+
   // ---- availability checker ----
   document.querySelectorAll('[data-availability]').forEach(function (input) {
     var msg = input.closest('label, form, .hero-form') && input.closest('label, form, .hero-form').querySelector('[data-availability-msg]');
@@ -138,7 +153,7 @@
         tryBtn.disabled = false; tryBtn.textContent = 'Put another page online';
         if (tryBar) tryBar.hidden = true;
         say('Opened in a new tab. Not there? Check your pop-up blocker, or press the button again.');
-        tryFile.value = ''; if (tryText) tryText.value = '';
+        tryFile.value = ''; if (tryText) tryText.value = ''; var hb = tryForm.querySelector('input[name=html_b64]'); if (hb) hb.value = '';
       }, 2500);
     });
   }

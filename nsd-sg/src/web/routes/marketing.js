@@ -7,6 +7,7 @@ import { audit } from '../../lib/audit.js';
 import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { appLayout, marketingLayout, html } from '../views/layout.js';
+import { pastedHtml } from '../../lib/html.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
 import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage, tryLimitPage } from '../views/marketing.js';
 import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, listShowcasePreviews, readTryCookie, writeTryCookie, anonBlockReason, TRY_COOKIE, TRY_FREE_PER_PERSON, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
@@ -60,9 +61,9 @@ export async function registerMarketingRoutes(app) {
       await csrfGuard(req, { code: (c) => ({ send: (m) => { rejected = m; return c; } }) });
       if (rejected) return back('That page sat open too long. Refresh it and try again.');
       if (tooBig) return back('That file is bigger than 1 MB. Test pages are for a single page; sign up to publish something bigger.');
-      if (!htmlText) htmlText = String(fields.html ?? '');
+      if (!htmlText) htmlText = pastedHtml(fields, TRY_MAX_BYTES);
     } else {
-      htmlText = String(req.body?.html ?? '');
+      htmlText = pastedHtml(req.body, TRY_MAX_BYTES);
     }
     if (!htmlText.trim()) return back('Choose the file or paste the code first, then press the button.');
     const problem = validatePaste(htmlText);

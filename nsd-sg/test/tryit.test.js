@@ -263,3 +263,21 @@ test('sample pages: served as html, offered in the try box, and a sample pasted 
   assert.equal(r.statusCode, 302, r.body);
   assert.match(r.headers.location, /^\/try\//);
 });
+
+test('pasted pages may arrive base64-encoded (html_b64) on /try and on a site paste; samples carry no onload= attributes', async () => {
+  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html']) assert.doesNotMatch((await get(`/assets/${f}`)).body, /onload=/, f);
+  forgetIp();
+  const page = '<!doctype html><html><body><h1>Encoded</h1><script>document.title="x"</script><img onload="x()" src="a.png"></body></html>';
+  const b64 = Buffer.from(page, 'utf8').toString('base64');
+  const csrf = csrfFrom((await get('/')).body);
+  const mp = multipart({ _csrf: csrf, html: '', html_b64: b64 }, []);
+  const r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.statusCode, 302, r.body);
+  const id = r.headers.location.split('/')[2];
+  const served = await get(`/${id}/page.html`, '', `try.${H}`);
+  assert.equal(served.statusCode, 200);
+  assert.match(served.body, /<h1>Encoded<\/h1>/);
+  // and the urlencoded form of the same field
+  const r2 = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrfFrom((await get('/')).body), html_b64: b64 }).toString() });
+  assert.equal(r2.statusCode, 302, r2.body);
+});

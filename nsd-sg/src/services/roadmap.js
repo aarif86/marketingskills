@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-6', '0.13.6', 'Pasting a page no longer trips the hosting firewall', `- Fixed: pasting a page with scripts in it (including our sample pages) could be answered with “Forbidden” by the hosting provider’s firewall before it reached NSD.SG. The browser now sends the pasted code encoded, so the firewall has nothing to object to. Uploading the file was never affected.`, 'fix', '2026-10-21T07:00:00Z'],
   ['cl-0-13-5', '0.13.5', 'Help that shows up when you need it; the badge moves out of the way', `- Changed: the badge on free sites now sits bottom-left and folds to a small chip after a few seconds, so it never covers a site's own buttons.
 - Changed: “WhatsApp a real human” is now a small help panel in the site's own style. It offers three quick answers for the page you are on, then the WhatsApp link. On most pages it appears only when you seem stuck (an error, 40 seconds without a click, a test page still waiting); on Plan & billing and the 404 page it is always there.
 - New: outside support hours the panel says when to expect a reply. Admin sets the hours or switches the button off under System health, no deploy needed.

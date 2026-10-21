@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { config, publicUrlForSubdomain } from '../../config.js';
-import { formatBytes } from '../../lib/html.js';
+import { pastedHtml, formatBytes } from '../../lib/html.js';
 import { audit } from '../../lib/audit.js';
 import { limiter } from '../../lib/ratelimit.js';
 import { validatePasswordStrength } from '../../lib/password.js';
@@ -174,7 +174,7 @@ export async function registerDashboardRoutes(app) {
     const back = `/sites/${site.id}`;
     if (ent.expired) { flash(reply, 'error', 'Your plan has expired. Request an extension or upgrade before publishing.'); return reply.redirect(back); }
     if (site.status === 'suspended') { flash(reply, 'error', 'This site is suspended.'); return reply.redirect(back); }
-    const htmlText = String(req.body?.html ?? '');
+    const htmlText = pastedHtml(req.body);
     let page = String(req.body?.page ?? '').trim().toLowerCase().replace(/\.html?$/, '').replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
     const relPath = page && page !== 'index' ? `${page}.html` : 'index.html';
     if (htmlText.trim().length < 20 || !/<[a-z!][^>]*>/i.test(htmlText)) { flash(reply, 'error', 'That does not look like HTML. Paste the whole file, from <!doctype html> to </html>.'); return reply.redirect(back); }
