@@ -286,3 +286,16 @@ document.querySelectorAll('[data-rm-more]').forEach(function (btn) {
   });
   btn.setAttribute('data-label', btn.textContent);
 });
+
+// WhatsApp button: on phones, show the label for a few seconds on arrival, then shrink to the icon. A tap on the icon
+// when collapsed expands it first; a second tap opens WhatsApp.
+(function () {
+  var fab = document.querySelector('[data-wa-fab]');
+  if (!fab) return;
+  if (!window.matchMedia('(max-width: 600px)').matches) return;
+  fab.classList.add('peek');
+  setTimeout(function () { fab.classList.remove('peek'); }, 4500);
+  fab.addEventListener('click', function (e) {
+    if (!fab.classList.contains('open') && !fab.classList.contains('peek')) { e.preventDefault(); fab.classList.add('open'); setTimeout(function () { fab.classList.remove('open'); }, 6000); }
+  });
+})();

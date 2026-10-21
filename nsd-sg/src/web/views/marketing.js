@@ -1,6 +1,7 @@
 // Marketing pages. Copy is deliberately plain: the audience is non-technical.
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
+import { whatsappLink } from './layout.js';
 import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
@@ -177,7 +178,7 @@ export function faqPage() {
   ];
   return html`<section class="section"><div class="container narrow"><h1>Questions people ask</h1>
   ${qa.map(([q, a]) => html`<details><summary>${q}</summary><p>${a}</p></details>`)}
-  <p class="mt">Something else? Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();
+  <p class="mt">Something else? ${config.branding.whatsapp ? html`<a href="${whatsappLink('from the FAQ page')}" target="_blank" rel="noopener">WhatsApp a real human</a> or email` : 'Email'} <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();
 }
 
 export function termsPage() {

@@ -1,82 +1,190 @@
 <!doctype html>
+<!--
+  Sample page for trying out NSD.SG · a one-page proposal
+  Created: 21 Oct 2026, 11:40 SGT · By Aarif Raziff
+  Milestone log:
+  [21 Oct 2026] v1 · first version. Variation: hero = key phrase draws its own underline, depth = soft green beam,
+                signature = sticky stacking timeline cards, back-to-top = slim progress bar in the nav, glow = soft ellipse.
+  Notes: everything in this page is made up. Replace the words, keep the bones.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Proposal · Website refresh for Kopi &amp; Kaya</title>
-<meta name="description" content="A one-page proposal from Nur Ashikin Consulting: scope, price and timeline for the Kopi & Kaya website refresh.">
+<meta name="description" content="A one-page proposal from Nur Ashikin Consulting: what you told me, what I will do, the price, the three-week plan, and a button to say yes.">
+<meta property="og:title" content="Proposal · Website refresh for Kopi & Kaya">
+<meta property="og:description" content="Scope, price and a three-week plan, on one page.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;600&display=swap" rel="stylesheet"></noscript>
 <style>
-  :root{--ink:#1b1b1f;--muted:#5f6370;--line:#e6e6ea;--accent:#1f6f5f;--bg:#fbfaf7}
-  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
-  .wrap{max-width:720px;margin:0 auto;padding:32px 20px 64px}
-  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}
-  .eyebrow{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 6px}
-  h1{font-size:clamp(1.7rem,4.5vw,2.4rem);line-height:1.15;margin:0 0 8px}
-  .meta{color:var(--muted);font-size:.95rem}
-  h2{font-size:1.15rem;margin:30px 0 10px}
-  p{margin:0 0 12px}
-  ul{padding-left:20px;margin:0 0 12px}li{margin:4px 0}
-  table{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:.97rem}
-  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-weight:600;color:var(--muted);font-size:.85rem;text-transform:uppercase;letter-spacing:.06em}
-  td.num,th.num{text-align:right;white-space:nowrap}
-  tr.total td{font-weight:700;border-bottom:0;border-top:2px solid var(--ink)}
-  .timeline{display:grid;gap:10px}
-  .step{display:grid;grid-template-columns:72px 1fr;gap:12px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:12px}
-  .step b{color:var(--accent)}
-  .cta{margin-top:32px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:16px}
-  .btn{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:600}
-  .btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent);margin-left:8px}
-  footer{margin-top:40px;color:var(--muted);font-size:.85rem}
-  @media(max-width:480px){.step{grid-template-columns:1fr}.btn.ghost{margin:10px 0 0}}
+  :root{
+    --ink:#17221d;--ink-2:#44524b;--muted:#6b776f;--line:#e2e6e1;--cream:#f7f5ef;--white:#fff;
+    --brand:#1f6f5f;--brand-text:#155a4d;--brand-rgb:31,111,95;--brand-soft:#e4f0ec;
+    --r:18px;--r-sm:12px;--shadow:0 1px 2px rgba(23,34,29,.05),0 14px 34px -18px rgba(23,34,29,.25);
+    --ease:cubic-bezier(.2,.7,.2,1);--display:"Fraunces",Georgia,serif;--body:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--body);color:var(--ink);background:var(--cream);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  /* nav with reading progress */
+  .nav{position:sticky;top:0;z-index:20;background:rgba(247,245,239,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:58px}
+  .brand{font-family:var(--display);font-weight:700;font-size:1.05rem;letter-spacing:-.01em;color:var(--brand-text);text-decoration:none}
+  .nav .chip{font-size:.78rem;color:var(--muted);display:inline-flex;gap:8px;align-items:center;text-decoration:none}
+  .nav .chip b{color:var(--brand-text);font-weight:600}
+  .bar{position:absolute;left:0;bottom:-1px;height:2px;width:0;background:var(--brand);transition:width .12s linear}
+  /* hero */
+  .hero{position:relative;overflow:hidden;padding:clamp(48px,9svh,96px) 0 clamp(36px,6svh,64px)}
+  .beam{position:absolute;inset:-20% -10% auto;height:70%;background:radial-gradient(60% 60% at 70% 30%,rgba(var(--brand-rgb),.16),transparent 70%);pointer-events:none}
+  .eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-text);font-weight:600;margin:0 0 14px}
+  h1{font-family:var(--display);font-weight:500;font-size:clamp(2.1rem,min(6.2vw,8.2svh),4rem);line-height:1.04;letter-spacing:-.02em;margin:0 0 18px}
+  h1 .u{position:relative;white-space:nowrap}
+  h1 .u::after{content:"";position:absolute;left:0;right:0;bottom:.06em;height:.14em;background:rgba(var(--brand-rgb),.35);border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform .9s var(--ease) 1.1s}
+  .loaded h1 .u::after{transform:scaleX(1)}
+  .sub{font-size:1.08rem;color:var(--ink-2);max-width:56ch;margin:0 0 26px}
+  .ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:999px;font-weight:600;text-decoration:none;border:1.5px solid transparent;transition:transform .25s var(--ease),box-shadow .25s,background .2s}
+  .btn.p{background:var(--brand);color:#fff;box-shadow:0 10px 24px -10px rgba(var(--brand-rgb),.6)}.btn.p:hover{transform:translateY(-2px)}
+  .btn.g{background:transparent;color:var(--brand-text);border-color:rgba(var(--brand-rgb),.4)}.btn.g:hover{background:var(--brand-soft)}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:26px;font-size:.85rem;color:var(--muted)}
+  /* load choreography */
+  .lo{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  .loaded .lo{opacity:1;transform:none}
+  .loaded .lo:nth-child(1){transition-delay:.05s}.loaded .lo:nth-child(2){transition-delay:.2s}.loaded .lo:nth-child(3){transition-delay:.4s}.loaded .lo:nth-child(4){transition-delay:.55s}.loaded .lo:nth-child(5){transition-delay:.7s}
+  .lo.keep{opacity:1;transform:translateY(10px)}.loaded .lo.keep{transform:none}
+  /* sections */
+  section{padding:clamp(34px,6vw,56px) 0}
+  h2{font-family:var(--display);font-weight:500;font-size:clamp(1.5rem,3.4vw,2rem);letter-spacing:-.015em;margin:0 0 14px}
+  .lead{color:var(--ink-2);max-width:60ch}
+  .tiles{display:grid;gap:14px;margin-top:18px}@media(min-width:640px){.tiles{grid-template-columns:1fr 1fr}}
+  .tile{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;gap:14px;box-shadow:var(--shadow);transition:transform .25s var(--ease)}
+  .tile:hover{transform:translateY(-3px)}
+  .ic{flex:none;width:44px;height:44px;border-radius:12px;background:var(--cream);border:1px solid rgba(var(--brand-rgb),.25);display:grid;place-items:center;color:var(--brand)}
+  .ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tile h3{margin:0 0 4px;font-size:1rem}.tile p{margin:0;color:var(--ink-2);font-size:.95rem}
+  /* price */
+  .price{background:var(--white);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+  .price table{width:100%;border-collapse:collapse}
+  .price td{padding:14px 18px;border-top:1px solid var(--line);vertical-align:top}.price tr:first-child td{border-top:0}
+  .price td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .price small{display:block;color:var(--muted)}
+  .total{background:var(--brand);color:#fff}.total td{border-top:0;font-weight:600}
+  .total .n{font-family:var(--display);font-size:1.8rem;font-weight:700;letter-spacing:-.02em}
+  .terms{margin:12px 0 0;color:var(--muted);font-size:.9rem}
+  /* stacking timeline */
+  .stack{display:grid;gap:14px}
+  .card{position:sticky;top:76px;background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+  .card:nth-child(2){background:var(--cream);top:92px}.card:nth-child(3){background:var(--brand);color:#fff;border-color:transparent;top:108px}
+  .card .wk{font-family:var(--display);font-size:2.6rem;font-weight:700;line-height:1;letter-spacing:-.03em;color:var(--brand);opacity:.9;margin:0 0 8px}
+  .card:nth-child(3) .wk{color:#fff}
+  .card h3{margin:0 0 6px;font-size:1.1rem}.card p{margin:0;color:var(--ink-2)}.card:nth-child(3) p{color:rgba(255,255,255,.88)}
+  @media(max-width:640px){.card{position:static}}
+  /* yes box */
+  .yes{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow)}
+  .yes label{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 6px}
+  .yes input,.yes textarea{width:100%;font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--cream)}
+  .yes input:focus,.yes textarea:focus{outline:none;border-color:var(--brand)}
+  footer{padding:30px 0 60px;color:var(--muted);font-size:.85rem}
+  /* reveal */
+  .reveal:not(.in){opacity:0;transform:translateY(26px)}.reveal{transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  @media(max-width:640px){.reveal:not(.in){transform:translateY(16px)}.reveal{transition-duration:.5s}}
+  canvas.fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+  @media(prefers-reduced-motion:reduce){.lo,.reveal,.reveal:not(.in){opacity:1!important;transform:none!important;transition:none!important}h1 .u::after{transform:scaleX(1);transition:none}canvas.fx{display:none}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <p class="eyebrow">Proposal · 21 October 2026</p>
-    <h1>Website refresh for Kopi &amp; Kaya, Tiong Bahru</h1>
-    <p class="meta">Prepared for Mdm Siti Rahmah · by Nur Ashikin, Nur Ashikin Consulting · valid for 14 days</p>
-  </header>
+<canvas class="fx" aria-hidden="true"></canvas>
+<nav class="nav"><div class="wrap"><a class="brand" href="#top">Nur Ashikin Consulting</a><a class="chip" href="#top" data-top><b data-pct>0%</b> read · top ↑</a></div><div class="bar" data-bar></div></nav>
 
-  <h2>What you told me</h2>
-  <p>Customers find you on Google Maps but the website still shows the 2019 menu and no way to order. You want something simple that works on a phone, shows today's menu, and lets people order kueh for Hari Raya and Deepavali without calling.</p>
+<main id="top">
+<header class="hero"><div class="beam"></div><div class="wrap">
+  <p class="eyebrow lo">Proposal · 21 October 2026 · for Mdm Siti Rahmah</p>
+  <h1 class="lo">A website that <span class="u">takes orders</span> while you're frying the kueh.</h1>
+  <p class="sub lo keep">Kopi &amp; Kaya, Tiong Bahru. One page that shows today's menu, opens on any phone, and sends festive pre-orders straight to your WhatsApp. Built in three weeks.</p>
+  <div class="ctas lo"><a class="btn p" href="#yes">Yes, let's start</a><a class="btn g" href="#price">See the price</a></div>
+  <div class="meta lo"><span>Valid 14 days</span><span>No GST (not registered)</span><span>Prepared by Nur Ashikin</span></div>
+</div></header>
 
-  <h2>What I will do</h2>
-  <ul>
-    <li><strong>One-page site</strong> with menu, opening hours, location and a WhatsApp order button.</li>
-    <li><strong>Festive pre-orders</strong>: a simple form that lands in your WhatsApp, no app to manage.</li>
-    <li><strong>Photos</strong>: a 2-hour shoot of 12 dishes, edited for web and Instagram.</li>
-    <li><strong>Google Business Profile</strong> tidied up so the hours and menu match.</li>
-  </ul>
+<section><div class="wrap">
+  <h2 class="reveal">What you told me</h2>
+  <p class="lead reveal">Customers find you on Google Maps, but the website still shows the 2019 menu and there is no way to order. You want something simple that works on a phone, shows what's cooking today, and lets people order kueh for Hari Raya and Deepavali without calling the shop.</p>
+</div></section>
 
-  <h2>Price</h2>
-  <table>
-    <thead><tr><th>Item</th><th class="num">S$</th></tr></thead>
-    <tbody>
-      <tr><td>Design and build, one page, mobile first</td><td class="num">1,200</td></tr>
-      <tr><td>Festive pre-order form (WhatsApp)</td><td class="num">300</td></tr>
-      <tr><td>Photo shoot, 12 dishes, edited</td><td class="num">450</td></tr>
-      <tr><td>Google Business Profile clean-up</td><td class="num">150</td></tr>
-      <tr class="total"><td>Total (no GST, not registered)</td><td class="num">2,100</td></tr>
-    </tbody>
-  </table>
-  <p class="meta">50% to start, 50% when the site goes live. Hosting and domain renewals are yours, about S$80 a year.</p>
-
-  <h2>Timeline</h2>
-  <div class="timeline">
-    <div class="step"><b>Week 1</b><span>Photo shoot on a weekday morning before opening. First draft of the page by Friday.</span></div>
-    <div class="step"><b>Week 2</b><span>Your changes, pre-order form tested with three real orders, Google profile updated.</span></div>
-    <div class="step"><b>Week 3</b><span>Go live. A 30-minute call so you can change the menu yourself.</span></div>
+<section><div class="wrap">
+  <h2 class="reveal">What I will do</h2>
+  <div class="tiles">
+    <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 14h5"/></svg></div><div><h3>One page, phone first</h3><p>Menu, opening hours, location and a WhatsApp order button. Loads in a second on 4G.</p></div></div>
+    <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div><div><h3>Festive pre-orders</h3><p>A short form that lands in your WhatsApp as a tidy message. No app for you to manage.</p></div></div>
+    <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><circle cx="12" cy="12.5" r="3.2"/><path d="M8 6l1.5-2h5L16 6"/></svg></div><div><h3>Twelve dishes, shot properly</h3><p>A two-hour morning shoot before opening, edited for the page and for Instagram.</p></div></div>
+    <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg></div><div><h3>Google profile tidied</h3><p>Hours, menu and photos on Google match the site, so Maps stops showing 2019.</p></div></div>
   </div>
+</div></section>
 
-  <div class="cta">
-    <p><strong>Happy with this?</strong> Reply on WhatsApp or press the button and I will send the invoice for the first half.</p>
-    <a class="btn" href="https://wa.me/6591234567?text=Hi%20Nur%2C%20let%27s%20go%20ahead%20with%20the%20Kopi%20%26%20Kaya%20proposal">Yes, let's start</a>
-    <a class="btn ghost" href="mailto:nur@example.sg?subject=Kopi%20%26%20Kaya%20proposal">Ask a question</a>
+<section id="price"><div class="wrap">
+  <h2 class="reveal">Price</h2>
+  <div class="price reveal"><table>
+    <tr><td>Design and build, one page, mobile first</td><td>S$1,200</td></tr>
+    <tr><td>Festive pre-order form<small>Delivered to your WhatsApp</small></td><td>S$300</td></tr>
+    <tr><td>Photo shoot, 12 dishes, edited</td><td>S$450</td></tr>
+    <tr><td>Google Business Profile clean-up</td><td>S$150</td></tr>
+    <tr class="total"><td>Total, one-time</td><td class="n">S$<span data-count="2100">0</span></td></tr>
+  </table></div>
+  <p class="terms reveal">Half to start, half when the site goes live. Domain and hosting renewals are yours, about S$80 a year.</p>
+</div></section>
+
+<section><div class="wrap">
+  <h2 class="reveal">Three weeks, three cards</h2>
+  <p class="lead reveal">Scroll and they stack. Each one is a week.</p>
+  <div class="stack" style="margin-top:18px">
+    <div class="card reveal"><p class="wk">01</p><h3>Shoot and first draft</h3><p>Photos on a weekday morning before opening. You see the first draft of the page by Friday, on your phone.</p></div>
+    <div class="card reveal"><p class="wk">02</p><h3>Your changes, real orders</h3><p>We adjust the words and prices together. The pre-order form is tested with three real orders from your regulars.</p></div>
+    <div class="card reveal"><p class="wk">03</p><h3>Go live, hand over</h3><p>The site goes live on your address. A 30-minute call so you can change the menu yourself, any time.</p></div>
   </div>
+</div></section>
 
-  <footer>Nur Ashikin Consulting · UEN 53xxxxxxA · Singapore. This is a sample page made for trying out NSD.SG; the business and people in it are made up.</footer>
-</div>
+<section id="yes"><div class="wrap">
+  <h2 class="reveal">Happy with this?</h2>
+  <form class="yes reveal" data-wa>
+    <p style="margin:0;color:var(--ink-2)">Press the button and it opens WhatsApp with your message ready. I reply the same day with the invoice for the first half.</p>
+    <label for="n">Your name</label><input id="n" name="name" value="Siti Rahmah" autocomplete="name">
+    <label for="m">Anything to add?</label><textarea id="m" name="msg" rows="3" placeholder="e.g. can we start after Deepavali?"></textarea>
+    <div class="ctas" style="margin-top:16px"><button class="btn p" type="submit">Yes, let's start on WhatsApp</button><a class="btn g" href="mailto:nur@example.sg?subject=Kopi%20%26%20Kaya%20proposal">Ask by email</a></div>
+  </form>
+</div></section>
+</main>
+<footer><div class="wrap">Nur Ashikin Consulting · UEN 53xxxxxxA · Singapore. This is a sample page made for trying out NSD.SG. The business, the people and the numbers are made up.</div></footer>
+
+<script>
+(function(){
+  var rm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.add('loaded');});});
+  // reveal: one motion, rise + fade
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.01,rootMargin:'0px 0px -6% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+  // counter lands on the real total
+  var c=document.querySelector('[data-count]');if(c){var end=+c.getAttribute('data-count');var run=function(){if(rm){c.textContent=end.toLocaleString();return;}var t0=null;var step=function(t){t0=t0||t;var p=Math.min(1,(t-t0)/1100);var e=1-Math.pow(1-p,3);c.textContent=Math.round(end*e).toLocaleString();if(p<1)requestAnimationFrame(step);};requestAnimationFrame(step);};var co=new IntersectionObserver(function(es){if(es[0].isIntersecting){run();co.disconnect();}},{threshold:.4});co.observe(c);}
+  // reading progress in the nav
+  var bar=document.querySelector('[data-bar]'),pct=document.querySelector('[data-pct]'),top=document.querySelector('[data-top]');
+  var upd=function(){var h=document.documentElement;var p=h.scrollHeight-h.clientHeight;var v=p>0?Math.min(100,Math.round(h.scrollTop/p*100)):0;bar.style.width=v+'%';pct.textContent=v+'%';};
+  window.addEventListener('scroll',upd,{passive:true});upd();
+  top.addEventListener('click',function(e){e.preventDefault();window.scrollTo({top:0,behavior:rm?'auto':'smooth'});});
+  // WhatsApp pre-fill
+  var f=document.querySelector('[data-wa]');f.addEventListener('submit',function(e){e.preventDefault();var n=f.name.value.trim()||'there';var m=f.msg.value.trim();var txt='Hi Nur, this is '+n+'. Yes, let\'s go ahead with the Kopi & Kaya proposal (S$2,100).'+(m?' '+m:'');window.open('https://wa.me/6591234567?text='+encodeURIComponent(txt),'_blank','noopener');});
+  // ambient glow (soft ellipse) + touch trail, drawn only while active
+  if(rm)return;var cv=document.querySelector('canvas.fx'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);var W,H;var size=function(){W=cv.width=innerWidth*dpr;H=cv.height=innerHeight*dpr;};size();addEventListener('resize',size);
+  var pts=[],glow={x:-1,y:-1,a:0},raf=null,last=0;
+  var draw=function(t){raf=null;ctx.clearRect(0,0,W,H);var alive=false;
+    if(glow.a>0.005){alive=true;var g=ctx.createRadialGradient(glow.x,glow.y,0,glow.x,glow.y,190*dpr);g.addColorStop(0,'rgba(31,111,95,'+(0.11*glow.a)+')');g.addColorStop(1,'rgba(31,111,95,0)');ctx.save();ctx.translate(glow.x,glow.y);ctx.scale(1.35,1);ctx.translate(-glow.x,-glow.y);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.restore();if(t-last>80)glow.a*=0.9;}
+    pts=pts.filter(function(p){return t-p.t<700;});if(pts.length>1){alive=true;ctx.lineCap='round';for(var i=1;i<pts.length;i++){var k=1-(t-pts[i].t)/700;ctx.strokeStyle='rgba(31,111,95,'+(0.22*k)+')';ctx.lineWidth=(1+5*k)*dpr;ctx.beginPath();ctx.moveTo(pts[i-1].x,pts[i-1].y);ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();}}
+    if(alive)raf=requestAnimationFrame(draw);};
+  var kick=function(){if(!raf)raf=requestAnimationFrame(draw);};
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches){addEventListener('mousemove',function(e){glow.x=e.clientX*dpr;glow.y=e.clientY*dpr;glow.a=1;last=performance.now();kick();},{passive:true});addEventListener('wheel',function(e){var d=e.deltaY>0?-1:1;pts.push({x:glow.x,y:glow.y,t:performance.now()},{x:glow.x,y:glow.y+d*60*dpr,t:performance.now()});kick();},{passive:true});}
+  var tm=function(e){var t=e.touches[0];glow.x=t.clientX*dpr;glow.y=t.clientY*dpr;glow.a=1;last=performance.now();pts.push({x:glow.x,y:glow.y,t:performance.now()});kick();};
+  addEventListener('touchstart',tm,{passive:true});addEventListener('touchmove',tm,{passive:true});addEventListener('touchend',function(){glow.a=0.6;kick();},{passive:true});
+})();
+</script>
 </body>
 </html>

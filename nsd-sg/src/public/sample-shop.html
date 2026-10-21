@@ -1,82 +1,178 @@
 <!doctype html>
+<!--
+  Sample page for trying out NSD.SG · a one-page shop
+  Created: 21 Oct 2026, 12:00 SGT · By Aarif Raziff
+  Milestone log:
+  [21 Oct 2026] v1 · first version. Variation: hero = counter that lands on a real year, depth = outlined ghost numeral,
+                signature = horizontal snap rail of dishes (grid on desktop), one dark catering band, back-to-top = ring, glow = two-tone.
+  Notes: the stall, the prices and the numbers are made up. Change the dishes, keep the bones.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Haji Ali Nasi Padang · Bedok</title>
-<meta name="description" content="Home-style nasi padang in Bedok since 1998. Opening hours, what's good today, and how to order on WhatsApp.">
+<title>Haji Ali Nasi Padang · Bedok, since 1998</title>
+<meta name="description" content="Home-style Minang food in Bedok since 1998. What's good today, opening hours, where to find us, and a WhatsApp button to order.">
+<meta property="og:title" content="Haji Ali Nasi Padang · Bedok">
+<meta property="og:description" content="Home-style nasi padang since 1998. Order on WhatsApp.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet"></noscript>
 <style>
-  :root{--ink:#241c15;--muted:#6b5f55;--line:#eadfd3;--accent:#b4452e;--bg:#fff8f1}
-  *{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
-  .hero{background:linear-gradient(160deg,#b4452e,#7a2a1a);color:#fff;padding:44px 20px 36px;text-align:center}
-  .hero h1{font-size:clamp(1.9rem,6vw,2.8rem);margin:0 0 6px;letter-spacing:-.02em}
-  .hero p{margin:0;opacity:.92;font-size:1.05rem}
-  .open{display:inline-block;margin-top:14px;background:rgba(255,255,255,.16);padding:6px 14px;border-radius:999px;font-size:.9rem}
-  .wrap{max-width:640px;margin:0 auto;padding:24px 18px 70px}
-  .grid{display:grid;gap:14px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
-  .card h2{font-size:1.1rem;margin:0 0 10px}
-  .hours{width:100%;border-collapse:collapse}.hours td{padding:6px 0;border-bottom:1px dashed var(--line)}.hours td:last-child{text-align:right;color:var(--muted)}
-  .menu li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
-  .menu ul{list-style:none;margin:0;padding:0}.menu small{display:block;color:var(--muted)}
-  .btns{display:grid;gap:10px;margin-top:4px}
-  .btn{display:block;text-align:center;text-decoration:none;padding:14px 18px;border-radius:999px;font-weight:600;background:var(--accent);color:#fff}
-  .btn.ghost{background:#fff;color:var(--accent);border:1.5px solid var(--accent)}
-  .sticky{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,248,241,.95);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
-  .sticky .btn{max-width:640px;margin:0 auto}
-  footer{margin-top:28px;color:var(--muted);font-size:.85rem;text-align:center}
-  @media(min-width:600px){.grid{grid-template-columns:1fr 1fr}.grid .card.wide{grid-column:1/-1}.sticky{display:none}}
+  :root{
+    --ink:#2a1d14;--ink-2:#5c4a3d;--muted:#7a6a5e;--line:#eadfd3;--cream:#fff8f0;--white:#fff;--dark:#2a1a12;
+    --brand:#b8452b;--brand-text:#9a3621;--brand-rgb:184,69,43;--brand-soft:#fbe9e2;--gold:#d9a441;
+    --r:20px;--r-sm:14px;--shadow:0 1px 2px rgba(42,29,20,.05),0 16px 36px -20px rgba(42,29,20,.3);
+    --ease:cubic-bezier(.2,.7,.2,1);--font:"Plus Jakarta Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;font-family:var(--font);color:var(--ink);background:var(--cream);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  /* hero */
+  .hero{position:relative;overflow:hidden;padding:clamp(52px,10svh,110px) 0 clamp(34px,6svh,60px)}
+  .ghost{position:absolute;right:-2vw;top:-4vh;font-size:clamp(9rem,28vw,20rem);font-weight:800;line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(var(--brand-rgb),.14);pointer-events:none;letter-spacing:-.05em;user-select:none}
+  .eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-text);font-weight:800;margin:0 0 12px}
+  h1{font-weight:800;font-size:clamp(2.2rem,min(6.8vw,8.6svh),4.4rem);line-height:1;letter-spacing:-.03em;margin:0 0 16px;max-width:12ch}
+  h1 em{font-style:normal;color:var(--brand)}
+  .since{font-size:1.1rem;color:var(--ink-2);margin:0 0 24px;transform:translateY(10px);transition:transform .7s var(--ease) .3s}.loaded .since{transform:none}
+  .since b{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+  .lo{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}.loaded .lo{opacity:1;transform:none}
+  .loaded .lo.d1{transition-delay:.05s}.loaded .lo.d2{transition-delay:.2s}.loaded .lo.d3{transition-delay:.5s}.loaded .lo.d4{transition-delay:.65s}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:999px;font-weight:700;text-decoration:none;border:1.5px solid transparent;transition:transform .25s var(--ease),box-shadow .25s,background .2s}
+  .btn.p{background:var(--brand);color:#fff;box-shadow:0 12px 26px -12px rgba(var(--brand-rgb),.7)}.btn.p:hover{transform:translateY(-2px)}
+  .btn.g{background:transparent;color:var(--brand-text);border-color:rgba(var(--brand-rgb),.35)}.btn.g:hover{background:var(--brand-soft)}
+  .ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .open{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:8px 14px;border-radius:999px;background:var(--white);border:1px solid var(--line);font-size:.88rem;color:var(--ink-2)}
+  .open i{width:9px;height:9px;border-radius:50%;background:#2aa15a;box-shadow:0 0 0 4px rgba(42,161,90,.18)}
+  /* sections */
+  section{padding:clamp(30px,5.5vw,52px) 0}
+  h2{font-weight:800;font-size:clamp(1.5rem,3.4vw,2rem);letter-spacing:-.02em;margin:0 0 6px}
+  .lead{color:var(--ink-2);margin:0 0 18px}
+  /* snap rail */
+  .rail{display:grid;grid-auto-flow:column;grid-auto-columns:min(78%,300px);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 20px 14px;margin:0 -20px;scrollbar-width:none}.rail::-webkit-scrollbar{display:none}
+  .dish{scroll-snap-align:start;background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;min-height:150px;transition:transform .25s var(--ease)}
+  .dish:hover{transform:translateY(-3px)}
+  .dish .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .dish h3{margin:0;font-size:1.05rem}.dish .pr{font-weight:800;color:var(--brand-text);white-space:nowrap}
+  .dish p{margin:0;color:var(--ink-2);font-size:.95rem;flex:1}
+  .dish .tag{align-self:flex-start;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-text);background:var(--brand-soft);padding:4px 9px;border-radius:999px}
+  .hint{color:var(--muted);font-size:.85rem;margin:4px 0 0}
+  @media(min-width:720px){.rail{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);grid-auto-columns:auto;overflow:visible;margin:0;padding:4px 0 0}.hint{display:none}}
+  /* info tiles */
+  .info{display:grid;gap:14px}@media(min-width:640px){.info{grid-template-columns:1fr 1fr}}
+  .tile{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+  .tile .ic{width:44px;height:44px;border-radius:14px;border:1.5px solid rgba(var(--brand-rgb),.35);display:grid;place-items:center;color:var(--brand);margin-bottom:12px}
+  .tile .ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tile h3{margin:0 0 8px;font-size:1.05rem}.tile p{margin:0 0 10px;color:var(--ink-2)}
+  .hours{width:100%;border-collapse:collapse}.hours td{padding:7px 0;border-bottom:1px dashed var(--line)}.hours td:last-child{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}.hours tr.today td{font-weight:800;color:var(--brand-text)}
+  /* dark band */
+  .band{background:var(--dark);color:#fff;margin:10px 0 0;padding:clamp(38px,7vw,64px) 0}
+  .band h2{color:#fff}.band .lead{color:rgba(255,255,255,.8)}
+  .band .tile{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#fff;box-shadow:none}.band .tile p{color:rgba(255,255,255,.8)}
+  .band .ic{border-color:rgba(217,164,65,.5);color:var(--gold)}
+  .band label{display:block;font-size:.85rem;color:rgba(255,255,255,.7);margin:12px 0 6px}
+  .band input,.band select{width:100%;font:inherit;padding:12px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--r-sm);background:rgba(255,255,255,.06);color:#fff}
+  .band input:focus,.band select:focus{outline:none;border-color:var(--gold)}
+  .band select option{color:var(--ink)}
+  .band .btn.p{background:var(--gold);color:var(--dark);box-shadow:none}
+  footer{padding:30px 0 90px;color:var(--muted);font-size:.85rem;text-align:center}
+  /* sticky order bar on phones */
+  .sticky{position:fixed;left:0;right:0;bottom:0;z-index:25;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,248,240,.94);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
+  .sticky .btn{width:100%}
+  @media(min-width:720px){.sticky{display:none}footer{padding-bottom:50px}}
+  /* ring back-to-top */
+  .top{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:30;width:48px;height:48px;border-radius:50%;border:0;background:var(--white);color:var(--brand-text);box-shadow:var(--shadow);display:grid;place-items:center;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .3s,transform .3s var(--ease);cursor:pointer}
+  .top.show{opacity:1;transform:none;pointer-events:auto}
+  .top svg.ring{position:absolute;inset:0;transform:rotate(-90deg)}.top .ring circle{fill:none;stroke-width:3}.top .ring .bg{stroke:var(--line)}.top .ring .fg{stroke:var(--brand);stroke-dasharray:138;stroke-dashoffset:138}
+  .top svg.ar{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  @media(min-width:720px){.top{bottom:20px}}
+  .reveal:not(.in){opacity:0;transform:translateY(26px)}.reveal{transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  @media(max-width:640px){.reveal:not(.in){transform:translateY(16px)}.reveal{transition-duration:.5s}}
+  canvas.fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+  @media(prefers-reduced-motion:reduce){.lo,.reveal,.reveal:not(.in),.since{opacity:1!important;transform:none!important;transition:none!important}canvas.fx{display:none}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-  <section class="hero">
-    <h1>Haji Ali Nasi Padang</h1>
-    <p>Home-style Minang food in Bedok, since 1998. Halal.</p>
-    <span class="open">Open today 10.30am – 8pm · closed Mondays</span>
-  </section>
+<canvas class="fx" aria-hidden="true"></canvas>
+<main>
+<header class="hero"><div class="ghost" aria-hidden="true">98</div><div class="wrap">
+  <p class="eyebrow lo d1">Bedok North · Halal · Open today till 8pm</p>
+  <h1 class="lo d2">Nasi padang the way <em>mak</em> cooked it.</h1>
+  <p class="since">Haji Ali's stall, serving Bedok since <b data-year="1998">1970</b>. That's <b data-years>0</b> years of rendang.</p>
+  <div class="ctas lo d3"><a class="btn p" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order" target="_blank" rel="noopener">WhatsApp to order</a><a class="btn g" href="#menu">What's good today</a></div>
+  <div class="open lo d4"><i></i>Open now · Tuesday to Sunday, 10.30am to 8pm</div>
+</div></header>
 
-  <div class="wrap"><div class="grid">
-    <div class="card wide menu">
-      <h2>What's good today</h2>
-      <ul>
-        <li><span>Rendang daging<small>Slow-cooked beef, the one people queue for</small></span><span>S$5.50</span></li>
-        <li><span>Ayam bakar<small>Grilled chicken, sambal on the side</small></span><span>S$4.50</span></li>
-        <li><span>Sayur lodeh<small>Vegetables in coconut gravy</small></span><span>S$2.00</span></li>
-        <li><span>Sambal goreng<small>Tempeh, long beans, tau kwa</small></span><span>S$2.00</span></li>
-        <li><span>Nasi padang set<small>Rice, one meat, two vegetables</small></span><span>from S$6.50</span></li>
-      </ul>
-    </div>
-
-    <div class="card">
-      <h2>Opening hours</h2>
-      <table class="hours">
-        <tr><td>Tuesday – Friday</td><td>10.30am – 8pm</td></tr>
-        <tr><td>Saturday – Sunday</td><td>9am – 8pm</td></tr>
-        <tr><td>Monday</td><td>Closed</td></tr>
-        <tr><td>Public holidays</td><td>9am – 3pm</td></tr>
-      </table>
-    </div>
-
-    <div class="card">
-      <h2>Find us</h2>
-      <p>Blk 216 Bedok North Street 1, #01-xx, Singapore 460216<br>Two minutes from Bedok MRT, exit B. Coffee shop on the corner.</p>
-      <div class="btns">
-        <a class="btn ghost" href="https://maps.google.com/?q=Blk+216+Bedok+North+Street+1+Singapore">Open in Google Maps</a>
-      </div>
-    </div>
-
-    <div class="card wide">
-      <h2>Catering and bulk orders</h2>
-      <p>Office lunches, kenduri, class parties. Order one day ahead for 10 packets or more. Delivery in the east from S$8.</p>
-      <div class="btns">
-        <a class="btn" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order">WhatsApp us to order</a>
-        <a class="btn ghost" href="tel:+6598765432">Call 9876 5432</a>
-      </div>
-    </div>
+<section id="menu"><div class="wrap">
+  <h2 class="reveal">What's good today</h2>
+  <p class="lead reveal">Cooked this morning. When it's finished, it's finished.</p>
+  <div class="rail reveal">
+    <div class="dish"><div class="dh"><h3>Rendang daging</h3><span class="pr">S$5.50</span></div><p>Beef slow-cooked for four hours in coconut and spices. The one people queue for.</p><span class="tag">House favourite</span></div>
+    <div class="dish"><div class="dh"><h3>Ayam bakar</h3><span class="pr">S$4.50</span></div><p>Grilled chicken, charred at the edges, sambal on the side.</p></div>
+    <div class="dish"><div class="dh"><h3>Sayur lodeh</h3><span class="pr">S$2.00</span></div><p>Cabbage, long beans and tempeh in a light coconut gravy.</p></div>
+    <div class="dish"><div class="dh"><h3>Sambal goreng</h3><span class="pr">S$2.00</span></div><p>Tempeh, tau kwa and long beans in a dry, sweet-spicy sambal.</p></div>
+    <div class="dish"><div class="dh"><h3>Telur balado</h3><span class="pr">S$1.50</span></div><p>Hard-boiled egg in red chilli. Good with everything.</p></div>
+    <div class="dish"><div class="dh"><h3>Nasi padang set</h3><span class="pr">from S$6.50</span></div><p>Rice, one meat, two vegetables, gravy over everything.</p><span class="tag">Lunch deal</span></div>
   </div>
-  <footer>Haji Ali Nasi Padang · Sample page made for trying out NSD.SG. The stall, prices and numbers are made up.</footer>
-  </div>
+  <p class="hint">Swipe for more →</p>
+</div></section>
 
-  <div class="sticky"><a class="btn" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order">WhatsApp us to order</a></div>
+<section><div class="wrap"><div class="info">
+  <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Opening hours</h3>
+    <table class="hours"><tr data-days="2,3,4,5"><td>Tuesday to Friday</td><td>10.30am – 8pm</td></tr><tr data-days="6,0"><td>Saturday and Sunday</td><td>9am – 8pm</td></tr><tr data-days="1"><td>Monday</td><td>Closed</td></tr><tr><td>Public holidays</td><td>9am – 3pm</td></tr></table></div>
+  <div class="tile reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg></div><h3>Find us</h3>
+    <p>Blk 216 Bedok North Street 1, #01-xx, Singapore 460216. Two minutes from Bedok MRT, exit B, the coffee shop on the corner.</p>
+    <a class="btn g" href="https://maps.google.com/?q=Blk+216+Bedok+North+Street+1+Singapore" target="_blank" rel="noopener">Open in Google Maps</a></div>
+</div></div></section>
+
+<section class="band"><div class="wrap">
+  <h2 class="reveal">Catering and bulk orders</h2>
+  <p class="lead reveal">Office lunches, kenduri, class parties. Ten packets or more, one day ahead. Delivery in the east from S$8.</p>
+  <form class="tile reveal" data-wa>
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div>
+    <h3>Tell us what you need</h3>
+    <label for="pk">How many packets?</label><input id="pk" name="packets" type="number" min="10" value="20">
+    <label for="dt">For which day?</label><input id="dt" name="day" type="date">
+    <label for="set">Which set?</label><select id="set" name="set"><option>Rendang set</option><option>Ayam bakar set</option><option>Mixed, let Haji Ali decide</option></select>
+    <div class="ctas" style="margin-top:18px"><button class="btn p" type="submit">Send on WhatsApp</button><a class="btn g" style="color:#fff;border-color:rgba(255,255,255,.35)" href="tel:+6598765432">Call 9876 5432</a></div>
+  </form>
+</div></section>
+</main>
+<footer><div class="wrap">Haji Ali Nasi Padang · This is a sample page made for trying out NSD.SG. The stall, prices and phone numbers are made up.</div></footer>
+
+<div class="sticky"><a class="btn p" href="https://wa.me/6598765432?text=Hi%20Haji%20Ali%2C%20I%20would%20like%20to%20order" target="_blank" rel="noopener">WhatsApp to order</a></div>
+<button class="top" type="button" data-top aria-label="Back to top"><svg class="ring" width="48" height="48" viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="22"/><circle class="fg" cx="24" cy="24" r="22" data-ring/></svg><svg class="ar" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+
+<script>
+(function(){
+  var rm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.add('loaded');});});
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.01,rootMargin:'0px 0px -6% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+  // counter lands on the real year; years in business follows
+  var y=document.querySelector('[data-year]'),ys=document.querySelector('[data-years]'),end=+y.getAttribute('data-year'),now=new Date().getFullYear();
+  if(rm){y.textContent=end;ys.textContent=now-end;}else{setTimeout(function(){var t0=null;var step=function(t){t0=t0||t;var p=Math.min(1,(t-t0)/1300);var e=1-Math.pow(1-p,3);y.textContent=Math.round(1970+(end-1970)*e);ys.textContent=Math.round((now-end)*e);if(p<1)requestAnimationFrame(step);};requestAnimationFrame(step);},900);}
+  // today's row in the hours table
+  var d=new Date().getDay();document.querySelectorAll('.hours tr[data-days]').forEach(function(tr){if(tr.getAttribute('data-days').split(',').indexOf(String(d))>-1)tr.classList.add('today');});
+  // WhatsApp pre-fill
+  var f=document.querySelector('[data-wa]');f.addEventListener('submit',function(e){e.preventDefault();var txt='Hi Haji Ali, I would like to order '+(f.packets.value||'?')+' packets of '+f.set.value.toLowerCase()+(f.day.value?' for '+f.day.value:'')+'. Delivery to the east. Can?';window.open('https://wa.me/6598765432?text='+encodeURIComponent(txt),'_blank','noopener');});
+  // ring back-to-top
+  var top=document.querySelector('[data-top]'),ring=document.querySelector('[data-ring]');
+  var upd=function(){var h=document.documentElement;var p=h.scrollHeight-h.clientHeight;var v=p>0?Math.min(1,h.scrollTop/p):0;ring.style.strokeDashoffset=138-138*v;top.classList.toggle('show',h.scrollTop>420);};
+  addEventListener('scroll',upd,{passive:true});upd();top.addEventListener('click',function(){scrollTo({top:0,behavior:rm?'auto':'smooth'});});
+  // ambient two-tone glow + touch trail
+  if(rm)return;var cv=document.querySelector('canvas.fx'),ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),W,H;var size=function(){W=cv.width=innerWidth*dpr;H=cv.height=innerHeight*dpr;};size();addEventListener('resize',size);
+  var pts=[],glow={x:-1,y:-1,a:0},raf=null,last=0;
+  var draw=function(t){raf=null;ctx.clearRect(0,0,W,H);var alive=false;
+    if(glow.a>0.005){alive=true;var g=ctx.createRadialGradient(glow.x,glow.y,0,glow.x,glow.y,170*dpr);g.addColorStop(0,'rgba(217,164,65,'+(0.12*glow.a)+')');g.addColorStop(.5,'rgba(184,69,43,'+(0.07*glow.a)+')');g.addColorStop(1,'rgba(184,69,43,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);if(t-last>80)glow.a*=0.9;}
+    pts=pts.filter(function(p){return t-p.t<700;});if(pts.length>1){alive=true;ctx.lineCap='round';for(var i=1;i<pts.length;i++){var k=1-(t-pts[i].t)/700;ctx.strokeStyle='rgba(184,69,43,'+(0.2*k)+')';ctx.lineWidth=(1+5*k)*dpr;ctx.beginPath();ctx.moveTo(pts[i-1].x,pts[i-1].y);ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();}}
+    if(alive)raf=requestAnimationFrame(draw);};
+  var kick=function(){if(!raf)raf=requestAnimationFrame(draw);};
+  if(matchMedia('(hover:hover) and (pointer:fine)').matches){addEventListener('mousemove',function(e){glow.x=e.clientX*dpr;glow.y=e.clientY*dpr;glow.a=1;last=performance.now();kick();},{passive:true});addEventListener('wheel',function(e){var dd=e.deltaY>0?-1:1;pts.push({x:glow.x,y:glow.y,t:performance.now()},{x:glow.x,y:glow.y+dd*60*dpr,t:performance.now()});kick();},{passive:true});}
+  var tm=function(e){var t=e.touches[0];glow.x=t.clientX*dpr;glow.y=t.clientY*dpr;glow.a=1;last=performance.now();pts.push({x:glow.x,y:glow.y,t:performance.now()});kick();};
+  addEventListener('touchstart',tm,{passive:true});addEventListener('touchmove',tm,{passive:true});addEventListener('touchend',function(){glow.a=0.6;kick();},{passive:true});
+})();
+</script>
 </body>
 </html>

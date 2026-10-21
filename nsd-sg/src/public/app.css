@@ -215,3 +215,13 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 .table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}}
 .domain-box{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:14px 0}.domain-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}.domain-head form{margin-left:auto}.table.dns code{overflow-wrap:anywhere}.flash.small{padding:10px 14px;font-size:.88rem}
 .try-samples{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.sample-row{display:grid;gap:12px;margin-top:10px}@media(min-width:720px){.sample-row{grid-template-columns:repeat(3,1fr)}}.sample{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;display:flex;flex-direction:column;gap:6px}.sample h4{margin:0;font-size:1rem}.sample p{margin:0;flex:1}.sample-icon{font-size:1.4rem}.sample-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
+/* WhatsApp a real human: bottom-left pill. Label shows on desktop; on phones it peeks for a few seconds, then collapses to the icon until tapped/hovered. */
+.wa-fab{position:fixed;left:20px;bottom:20px;z-index:150;display:inline-flex;align-items:center;gap:10px;height:48px;padding:0 18px 0 13px;border-radius:999px;background:#25d366;color:#0b2d1c;font-weight:600;font-size:.92rem;text-decoration:none;box-shadow:0 10px 28px rgba(37,211,102,.35),var(--shadow-md);transition:transform .25s var(--spring),box-shadow .25s;white-space:nowrap}
+.wa-fab:hover,.wa-fab:focus-visible{transform:translateY(-2px);box-shadow:0 14px 34px rgba(37,211,102,.45),var(--shadow-md);color:#0b2d1c}
+.wa-fab svg{flex:none}
+.drawer-open .wa-fab{opacity:0;pointer-events:none}
+@media(max-width:600px){
+  .wa-fab{left:14px;bottom:calc(14px + env(safe-area-inset-bottom));padding:0 13px;height:48px}
+  .wa-fab span{max-width:0;overflow:hidden;opacity:0;transition:max-width .35s ease,opacity .25s,padding .35s;padding:0}
+  .wa-fab.peek span,.wa-fab:hover span,.wa-fab:focus-visible span,.wa-fab.open span{max-width:220px;opacity:1;padding-right:4px}
+}

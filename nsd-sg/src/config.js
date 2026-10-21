@@ -112,6 +112,7 @@ export const config = Object.freeze({
     text: env('BRANDING_TEXT', 'Powered by NasarDigital · nsd.sg'),
     url: env('BRANDING_URL', `https://${baseDomain}`),
     partnerUrl: env('BRANDING_PARTNER_URL', 'https://nasardigital.com'),
+    whatsapp: env('SUPPORT_WHATSAPP', '6584235041').replace(/\D/g, ''), // digits only, country code first; blank hides the button
   },
   smtp: {
     host: env('SMTP_HOST', ''),

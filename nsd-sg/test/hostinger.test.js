@@ -518,3 +518,20 @@ test('promo: edit page shows redemptions and lets admin raise the cap, push the 
   assert.match(list.body, /href="\/admin\/promo\/USED1"/); assert.match(list.body, /99 left/);
   assert.equal((await app.inject({ method: 'GET', url: '/admin/promo/NOPE', headers: { host: H, cookie: admin } })).statusCode, 404);
 });
+
+test('WhatsApp a real human: on public pages and the dashboard with context, in the footer and FAQ, not in admin, hidden when unset', async () => {
+  const { config } = await import('../src/config.js');
+  const home = await get('/');
+  assert.match(home.body, /data-wa-fab/);
+  assert.match(home.body, new RegExp(`https://wa\\.me/${config.branding.whatsapp}\\?text=Hi%20NSD\\.SG`));
+  assert.match(home.body, /on%20the%20home%20page/);
+  assert.match((await get('/faq')).body, /WhatsApp a real human<\/a> or email/);
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const c = cookiesFrom(login);
+  const dash = await get('/dashboard', c);
+  assert.match(dash.body, /data-wa-fab/);
+  assert.match(dash.body, /admin%40nsd\.test%2C%20on%20/, 'dashboard message carries the account and page');
+  assert.doesNotMatch((await get('/admin', c)).body, /data-wa-fab/, 'not in admin');
+  const saved = config.branding.whatsapp; config.branding.whatsapp = '';
+  try { assert.doesNotMatch((await get('/')).body, /data-wa-fab/); } finally { config.branding.whatsapp = saved; }
+});
