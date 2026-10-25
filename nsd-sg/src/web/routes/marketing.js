@@ -171,7 +171,7 @@ export async function registerMarketingRoutes(app) {
       for (const t of temps) fs.rmSync(t, { force: true });
     }
   });
-  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), previews: listShowcasePreviews(), baseDomain: config.baseDomain }) }));
+  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
   app.get('/badge', async (req, reply) => {
     // The real badge markup minus its guard <script> (platform CSP forbids inline scripts; the demo does not need it).
     const badgeHtml = brandingMarkup().replace(/<script>[\s\S]*<\/script>/, '').replace('position:fixed !important', 'position:absolute !important');

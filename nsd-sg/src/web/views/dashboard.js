@@ -100,7 +100,7 @@ ${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<s
 
 <div class="grid two">
 <section class="card">
-  <h2>Files <span class="muted small">(what is online now)</span></h2>
+  <h2>Files <span class="muted small">(what is online now)</span>${files.length ? (ent.features.export_zip && !ent.expired ? html` <a class="btn btn-ghost btn-tiny" href="/sites/${site.id}/download.zip">Download all as ZIP</a>` : html` <span class="muted small">· ZIP download on Plus</span>`) : ''}</h2>
   ${files.length === 0 ? html`<p class="muted">Nothing yet. Paste your page above.</p>` : html`
   <div class="file-list">${files.map((f) => html`
     <div class="file-row">

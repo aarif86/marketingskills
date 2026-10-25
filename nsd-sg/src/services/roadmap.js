@@ -143,6 +143,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-28', '0.13.28', 'More in Plus, clearer words, no test pages on the showcase', `- Changed: Plus keeps 20 versions (was 10) and can download the whole site as a ZIP any time; so can every plan with a code. The plan cards now say what you get in plain words: your address is at nsd.sg (mybusiness.nsd.sg), the monthly visitor traffic allowance, help first in line on WhatsApp, no expiry while you subscribe and 30 days of grace if a payment fails. Own a .sg or .com name? Connect it from Settings and we switch it on.
+- Changed: the public showcase lists real sites only. Test pages made from the try box no longer appear there.`, 'improved', '2026-10-25T22:00:00Z'],
   ['cl-0-13-27', '0.13.27', 'Codes at sign-up, real sites on the front page, straighter words', `- New: a “Have a code?” box on the sign-up page, and links like nsd.sg/signup?code=YOURCODE fill it in. The code is applied the moment the account exists, also when you continue with Google.
 - New: “Live right now” on the home page shows three real sites and a link to the full showcase.
 - Changed: the Free plan now says what it is, one site at your own nsd.sg address. “Last 3 copies kept” reads “3 versions kept, so you can go back”. Help says WhatsApp or email, not email only.

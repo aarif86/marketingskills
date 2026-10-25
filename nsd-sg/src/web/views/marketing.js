@@ -133,16 +133,7 @@ ${live.sites.length ? html`<section id="live" class="section live"><div class="c
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}">
       <h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div>
       <p>${p.description}</p>
-      <ul>
-        ${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}
-        <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
-        <li>${space(p.limits.max_storage_bytes)} of space</li>
-        <li>${p.limits.max_releases} versions kept, so you can go back</li>
-        <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
-        ${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}
-        <li>${{ always: html`Listed on the public <a href="/showcase">showcase</a>`, opt_out: html`On the public <a href="/showcase">showcase</a>, unless you hide it`, opt_in: 'Off the public showcase unless you want to be on it' }[showcaseMode(p.features)]}</li>
-        ${p.trial_days ? html`<li>Free for ${period(p.trial_days)}, then ask for more time or upgrade</li>` : ''}
-      </ul>
+      ${planBullets(p)}
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>
     </div>`)}
   </div>
@@ -180,16 +171,34 @@ function jsonLd({ baseDomain, plans }) {
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
 
+
+// One list of what a plan gives, used on the home page and the pricing page. Every address is on nsd.sg; a
+// customer who owns a .sg or .com name can connect it from Settings (we check the records and switch it on).
+function planBullets(p) {
+  const paid = p.price_cents_month > 0;
+  const items = [
+    html`<strong>Your own address, like ${p.id === 'free' ? 'yourname' : 'mybusiness'}.${config.baseDomain}</strong>`,
+    `${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like`,
+    `${space(p.limits.max_storage_bytes)} of space, files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each`,
+    `${space(p.limits.max_bandwidth_bytes_month)} of visitor traffic a month`,
+    `${p.limits.max_releases} versions kept, so you can go back`,
+    p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages',
+    { always: html`Listed on the public <a href="/showcase">showcase</a>`, opt_out: html`On the public <a href="/showcase">showcase</a>, unless you hide it`, opt_in: 'Off the public showcase unless you want to be on it' }[showcaseMode(p.features)],
+    p.features.export_zip ? 'Download your whole site as a ZIP any time' : null,
+    p.features.custom_domains ? 'Own a .sg or .com name? Connect it from Settings and we switch it on' : null,
+    p.features.priority_support ? html`Help <strong>first in line</strong> on WhatsApp and email` : 'Help on WhatsApp and email',
+    paid ? 'No expiry while you subscribe, and 30 days of grace if a payment fails' : p.trial_days ? `Free for ${period(p.trial_days)}, then ask for more time or upgrade` : null,
+  ].filter(Boolean);
+  return html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`;
+}
+
 export function pricingPage({ plans }) {
   return html`<section class="section"><div class="container">
   <h1>Pricing</h1>
-  <p class="section-lead">Start free for 30 days. Plus gives you your own domain name, no badge, and more sites.</p>
+  <p class="section-lead">Start free for 30 days. Plus removes the badge, gives you five sites, 20 versions, ten times the traffic and help first in line.</p>
   <div class="grid pricing">${plans.map((p) => html`
     <div class="card plan ${p.id === 'plus' ? 'featured' : ''}"><h3>${p.name}</h3><div class="price">${price(p.price_cents_month)}</div><p>${p.description}</p>
-    <ul>${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}<li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}</li><li>${space(p.limits.max_storage_bytes)} of space</li>
-    <li>Files up to ${Math.round(p.limits.max_file_bytes / 1024 / 1024)} MB each</li><li>Last ${p.limits.max_releases} copies kept</li>
-    <li>${p.features.branding_removable ? 'No badge, on pages or in link previews' : html`Small <a href="/badge">“Powered by” badge</a>`}</li>${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}<li>${p.features.hide_from_showcase ? 'Off the showcase unless you opt in' : html`Listed on the <a href="/showcase">showcase</a>`}</li>
-    <li>${p.features.priority_support ? 'Faster help by email' : 'Help by email'}</li></ul>
+    ${planBullets(p)}
     <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a></div>`)}
   </div>
   <div class="card mt"><h3>Want your own domain name and a professional website?</h3><p><a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> designs, builds and grows websites for Singapore businesses. NSD.SG customers go to the front of the queue.</p></div>

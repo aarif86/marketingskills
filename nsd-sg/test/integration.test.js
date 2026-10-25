@@ -660,10 +660,27 @@ test('showcase modes: a beta (promo) site is listed by default and can be hidden
   assert.match(homeLive.body, /id="live"/);
   assert.match(homeLive.body, /bettysite\.nsd\.test/);
   assert.match(homeLive.body, /See all \d+ →/);
+  // Free cannot download the site as a ZIP; the page says so
+  assert.equal((await get(`/sites/${siteId}/download.zip`, cookie)).statusCode, 302, 'free: ZIP refused');
+  assert.match((await get(`/sites/${siteId}`, cookie)).body, /ZIP download on Plus/);
   assert.ok(names().includes('bettysite'), 'free: listed');
   assert.doesNotMatch((await get(`/sites/${siteId}/settings`, cookie)).body, /name="listed"/, 'free: no choice');
   await post(`/admin/users/${betty.id}/action`, admin.cookie, { action: 'plan', plan_id: 'beta' });
   assert.ok(names().includes('bettysite'), 'beta: listed by default');
+  // paid and code plans can pull the whole site down as a ZIP; Free cannot
+  const zipR = await get(`/sites/${siteId}/download.zip`, cookie);
+  assert.equal(zipR.statusCode, 200, zipR.body);
+  assert.match(zipR.headers['content-type'], /application\/zip/);
+  assert.match(zipR.headers['content-disposition'], /bettysite-v1\.zip/);
+  assert.equal(zipR.rawPayload.subarray(0, 2).toString(), 'PK');
+  assert.match((await get(`/sites/${siteId}`, cookie)).body, /Download all as ZIP/);
+  // pricing copy: addresses are on nsd.sg, Plus lists its extra value
+  const pricing = await get('/pricing');
+  assert.match(pricing.body, /mybusiness\.nsd\.test/);
+  assert.doesNotMatch(pricing.body, /like mybusiness\.sg/);
+  assert.match(pricing.body, /20 versions kept/);
+  assert.match(pricing.body, /Download your whole site as a ZIP/);
+  assert.match(pricing.body, /first in line/);
   let settings = await get(`/sites/${siteId}/settings`, cookie);
   assert.match(settings.body, /name="listed" value="1" checked/); assert.match(settings.body, /untick to hide it/);
   await post(`/sites/${siteId}/settings`, cookie, { title: 'Betty' }); // untick

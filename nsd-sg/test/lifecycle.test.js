@@ -119,8 +119,9 @@ test('own domain stops answering 30 days after expiry; holding page at 60; remov
 test('pricing page matches the plans', async () => {
   const p = await get('/pricing');
   assert.match(p.body, /1 GB of space/);
-  assert.match(p.body, /Your own domain name, like mybusiness\.sg/);
-  assert.match(p.body, /Off the showcase unless you opt in/);
+  assert.match(p.body, /mybusiness\.nsd\.test/);
+  assert.doesNotMatch(p.body, /like mybusiness\.sg/, 'addresses are on nsd.sg, not a .sg domain');
+  assert.match(p.body, /Off the public showcase unless you want to be on it/);
   assert.doesNotMatch(p.body, /1024 MB/);
 });
 

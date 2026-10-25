@@ -22,6 +22,9 @@ import { getDb } from '../../db/index.js';
 import {
   deployZip, deployFiles, deleteFileFromSite, rollbackTo, listReleases, listReleaseFiles, readReleaseFile, tempFile, StorageError,
 } from '../../storage/releases.js';
+import { zipBuffer } from '../../lib/zipwrite.js';
+import { releaseDir } from '../../storage/releases.js';
+import path from 'node:path';
 import { appLayout } from '../views/layout.js';
 import * as V from '../views/dashboard.js';
 import { requireUser, csrfTokenFor, csrfGuard, readFlash, flash, clearSessionCookie } from '../middleware.js';
@@ -226,6 +229,29 @@ export async function registerDashboardRoutes(app) {
     if (TEXT_PREVIEW.has(ext)) return reply.type('text/plain; charset=utf-8').send(buf);
     reply.header('Content-Disposition', `attachment; filename="${r.path.split('/').pop().replace(/[^\w.-]/g, '_')}"`);
     return reply.type(ext && !['svg'].includes(ext) ? contentTypeFor(r.path) : 'application/octet-stream').send(buf);
+  });
+
+  // Your files are yours: paid plans can pull the live version down as a ZIP (built in memory, so capped).
+  const EXPORT_MAX_BYTES = 200 * 1024 * 1024;
+  app.get('/sites/:id/download.zip', { preHandler: requireUser }, async (req, reply) => {
+    const site = loadSite(req, reply); if (!site) return;
+    const ent = entitlementsFor(req.user);
+    if (!ent.features.export_zip || ent.expired) { flash(reply, 'error', 'Downloading your whole site as a ZIP is part of Plus. Until then, open each file from the list and save it.'); return reply.redirect(`/sites/${site.id}`); }
+    if (!site.current_release_id) { flash(reply, 'error', 'Nothing to download yet.'); return reply.redirect(`/sites/${site.id}`); }
+    const root = releaseDir(site.id, site.current_release_id);
+    const entries = []; let total = 0;
+    (function walk(dir, prefix) {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith('.')) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p, `${prefix}${e.name}/`);
+        else if (e.isFile()) { const data = fs.readFileSync(p); total += data.length; entries.push({ name: `${prefix}${e.name}`, data }); }
+      }
+    })(root, '');
+    if (total > EXPORT_MAX_BYTES) { flash(reply, 'error', 'This site is bigger than 200 MB, too big for a single ZIP. WhatsApp us and we send it another way.'); return reply.redirect(`/sites/${site.id}`); }
+    const version = getDb().prepare('SELECT version FROM releases WHERE id = ?').get(site.current_release_id)?.version ?? 0;
+    audit({ req, action: 'site.export', targetType: 'site', targetId: site.id, details: { version, files: entries.length, bytes: total } });
+    return reply.type('application/zip').header('Content-Disposition', `attachment; filename="${site.subdomain}-v${version}.zip"`).header('Cache-Control', 'no-store').send(zipBuffer(entries));
   });
 
   app.post('/sites/:id/rollback', { preHandler: requireUser }, async (req, reply) => {

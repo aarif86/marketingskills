@@ -170,9 +170,8 @@ test('live test pages show on the showcase as temporary; admin can remove one', 
   const ids = made.headers.location.split('/').pop();
   await get(`/try/${ids}/status`); // marks it reachable
   const sc = await get('/showcase');
-  assert.match(sc.body, /Test pages right now/);
-  assert.match(sc.body, new RegExp(`try\\.nsd\\.test/<i>${ids}</i>`));
-  assert.match(sc.body, /pill-temp/);
+  assert.doesNotMatch(sc.body, /Test pages right now/, 'test pages are not shown on the public showcase');
+  assert.doesNotMatch(sc.body, new RegExp(ids));
   assert.ok(removePreview(ids));
   assert.equal(getPreview(ids), null);
   assert.doesNotMatch((await get('/showcase')).body, new RegExp(ids));
