@@ -146,3 +146,21 @@ test('email gate: an unconfirmed account cannot publish through the connector ei
     assert.match(r.result.content[0].text, /\/account/);
   } finally { config.publish.requireVerifiedEmail = saved; getDb().prepare('UPDATE users SET email_verified_at = ? WHERE id = ?').run(verified, uid); }
 });
+
+test('publish to a new address leads with the padlock warning as plain text; the tool description says it too', async () => {
+  const made = await post('/connect/tokens', u.cookie, { name: 'padlock test' }, '/connect');
+  const nc = String(made.headers['set-cookie']).match(/nsd_newtoken=([^;]+)/)[1];
+  const token = (await get('/connect', `${u.cookie}; nsd_newtoken=${nc}`)).body.match(/(nsd_[A-Za-z0-9_-]{43})/)[1];
+  const uid = getDb().prepare('SELECT id FROM users WHERE email = ?').get('mia@example.com').id;
+  const prevPlan = getDb().prepare('SELECT plan_id FROM users WHERE id = ?').get(uid).plan_id;
+  getDb().prepare("UPDATE users SET plan_id = 'plus' WHERE id = ?").run(uid); // room for a second site
+  const list = (await rpc('tools/list', {}, { token })).json();
+  assert.match(list.result.tools.find((t) => t.name === 'nsd_publish').description, /5-15 minutes/);
+  const res = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'padlock-site', html: '<!doctype html><html><body><p>hello padlock</p></body></html>' } }, { token })).json();
+  assert.ok(!res.result.isError, JSON.stringify(res.result));
+  assert.match(res.result.content[0].text, /^Published\. Live at https?:\/\/padlock-site\./);
+  // In tests the Hostinger publisher is off, so the address counts as ready at once; with it on, the warning leads.
+  if (res.result.structuredContent.ready === false) { assert.match(res.result.content[0].text, /padlock takes 5 to 15 minutes/); assert.match(res.result.structuredContent.message, /IMPORTANT, tell the user/); }
+  else assert.match(res.result.structuredContent.message, /^Published\. Live at /);
+  getDb().prepare('UPDATE users SET plan_id = ? WHERE id = ?').run(prevPlan, uid);
+});

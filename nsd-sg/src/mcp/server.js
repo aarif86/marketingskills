@@ -23,7 +23,7 @@ const upgradeUrl = () => platformUrl('/billing');
 const pricingUrl = () => platformUrl('/pricing');
 
 export const TOOLS = [
-  { name: 'nsd_publish', description: 'Put a page online at <name>.nsd.sg. Give a site name and either the full HTML of the page or a list of text files. Creates the site if you do not have it yet; on a site you already own it adds or replaces the given files and keeps the rest. Returns the live URL.',
+  { name: 'nsd_publish', description: 'Put a page online at <name>.nsd.sg. Give a site name and either the full HTML of the page or a list of text files. Creates the site if you do not have it yet; on a site you already own it adds or replaces the given files and keeps the rest. Returns the live URL. A brand-new address needs 5-15 minutes before HTTPS works (the browser shows a secure-connection error until then); always pass that on to the user when the result says ready: false.',
     inputSchema: { type: 'object', required: ['name'], properties: {
       name: { type: 'string', description: 'The site name: letters, numbers, hyphens. Becomes <name>.nsd.sg. Use an existing site name to update it.' },
       html: { type: 'string', description: 'Full HTML of the home page (index.html). Use this for a single page.' },
@@ -128,7 +128,10 @@ async function runTool(name, args, ctx) {
       const result = await writeAndDeploy({ site, user, list, replaceAll: false, client: ctx.client, note: `Published from Claude (${list.length} file${list.length === 1 ? '' : 's'})` });
       audit({ req, actor: user, action: 'site.deploy', targetType: 'site', targetId: site.id, details: { source: 'mcp', version: result.version, files: result.count, bytes: result.bytes } });
       const fresh = getSiteForUser(site.id, user.id);
-      return { ok: true, created, url: publicUrlForSubdomain(sub), site_id: site.id, version: result.version, files: result.count, ...(knownReady(fresh) ? {} : { note: 'New address: the padlock (HTTPS) takes 5-15 minutes the first time. The link works after that.' }), badge: !(site.branding_removed || ent.brandingRemoved) ? `A small "Powered by NasarDigital" badge shows on free sites. Remove it with Plus: ${pricingUrl()}` : 'none', days_left: daysLeft(ent), dashboard: platformUrl(`/sites/${site.id}`) };
+      const url = publicUrlForSubdomain(sub);
+      const ready = knownReady(fresh);
+      const message = ready ? `Published. Live at ${url}.` : `Published. Live at ${url}. IMPORTANT, tell the user: this is a new address, so the secure padlock takes 5 to 15 minutes the first time. Until then the browser says "can't provide a secure connection" (ERR_SSL_PROTOCOL_ERROR). Nothing is wrong: wait a few minutes and reload. Progress: https://nsd.sg/sites/${site.id}`;
+      return { message, ok: true, created, url, site_id: site.id, version: result.version, files: result.count, ...(ready ? {} : { ready: false, note: 'New address: the padlock (HTTPS) takes 5-15 minutes the first time. The link works after that.' }), badge: !(site.branding_removed || ent.brandingRemoved) ? `A small "Powered by NasarDigital" badge shows on free sites. Remove it with Plus: ${pricingUrl()}` : 'none', days_left: daysLeft(ent), dashboard: platformUrl(`/sites/${site.id}`) };
     }
     case 'nsd_update': {
       const site = getSiteForUser(String(args.site_id ?? ''), user.id);
@@ -177,7 +180,8 @@ async function handleMessage(msg, ctx) {
       }
       try {
         const out = await runTool(name, params.arguments ?? {}, ctx);
-        return rpcResult(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        const text = (out && typeof out.message === 'string' ? out.message + '\n\n' : '') + JSON.stringify(out, null, 2);
+        return rpcResult(id, { content: [{ type: 'text', text }], structuredContent: out });
       } catch (e) {
         if (e instanceof ToolError) return rpcResult(id, { content: [{ type: 'text', text: e.message }], isError: true });
         ctx.req.log.error({ err: e, tool: name }, 'mcp tool failed');

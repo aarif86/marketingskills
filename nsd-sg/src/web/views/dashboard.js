@@ -332,6 +332,7 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
 <div class="card"><h2>Step 3 · Just ask</h2>
   <p class="example">“Put this page online as <strong>${example}</strong>.”</p>
   <p class="muted">Your AI sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “change it” to update it, “show my sites” to see what you have, “remove ${example}” to delete it. Same rules as this dashboard: Free plan, one site with the small badge; Plus, up to five, no badge, your own domain name.</p>
+  <p class="muted small"><strong>New address?</strong> The first time, the secure padlock takes 5 to 15 minutes. Until then the browser says “can’t provide a secure connection”. Nothing is wrong: wait a few minutes and reload. Updates to an existing site are instant.</p>
   <p class="muted small">If the AI writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” When it asks “allow NSD.SG to publish?”, say yes. That question is the safety catch, not a fault: it means nothing goes online without you nodding.</p>
 </div>
 <div class="card"><h2>Is this safe?</h2>
