@@ -575,3 +575,11 @@ test('capacity gauge: counts sites against the configured ceiling and shows on S
   const page = await get('/admin/health', cookiesFrom(login));
   assert.match(page.body, /<h2>Capacity/); assert.match(page.body, /of <strong>100<\/strong> subdomains used/); assert.match(page.body, /bar-fill ok/);
 });
+
+test('public menu links to Roadmap and What’s new, and underlines the current page', async () => {
+  const home = await get('/');
+  assert.match(home.body, /<a href="\/roadmap"[^>]*>Roadmap<\/a>/); assert.match(home.body, /<a href="\/changelog"[^>]*>What’s new<\/a>/);
+  const rm = await get('/roadmap');
+  assert.match(rm.body, /<a href="\/roadmap" class="active"[^>]*>Roadmap<\/a>|<a href="\/roadmap"[^>]*class="active"/);
+  assert.doesNotMatch(rm.body, /<a href="\/changelog" class="active"/);
+});

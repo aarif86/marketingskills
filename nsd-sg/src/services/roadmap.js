@@ -98,7 +98,7 @@ export function deleteItem(id) {
   fs.rmSync(attachmentDir(id), { recursive: true, force: true });
 }
 
-export function listChangelog(limit = 50) {
+export function listChangelog(limit = 1000) {
   return getDb().prepare('SELECT * FROM changelog ORDER BY published_at DESC LIMIT ?').all(limit);
 }
 export function upsertChangelog({ id, version, title, body, tags, published_at }) {
@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-10', '0.13.10', 'Roadmap and What’s new in the public menu', `- Changed: the public menu now has Roadmap and What’s new, so you can vote and read the release notes without logging in. The page you are on is underlined.`, 'improved', '2026-10-25T05:00:00Z'],
   ['cl-0-13-9', '0.13.9', 'Security update of the web server library', `- Changed: the web server library (Fastify) and a helper it uses were updated to versions with the October 2026 security fixes. No change to how anything works.`, 'fix', '2026-10-25T04:00:00Z'],
   ['cl-0-13-8', '0.13.8', 'Capacity gauge', `- Admin: System health shows how many subdomains are in use against the hosting plan's ceiling, with a bar that turns amber at 70% and red at 90%. The ceiling is a setting, because the provider does not publish it.`, 'new', '2026-10-25T03:00:00Z'],
   ['cl-0-13-7', '0.13.7', 'No false alarms from routine patches', `- Fixed: the hosting-status bar treated the provider's routine security updates as outages and told visitors "some pages may not load". Only incidents that actually affect service show the bar now.`, 'fix', '2026-10-25T02:00:00Z'],

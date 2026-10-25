@@ -42,7 +42,7 @@ const brand = html`<a class="brand" href="/">NSD<span>.SG</span></a>`;
 // One header for all three shells: brand · desktop links · CTAs · hamburger. The drawer repeats links + CTAs
 // for phones (app.js toggles .open; every link still works without JS).
 function header({ links, ctas, extra = '', cls = '' }) {
-  const linkHtml = links.map(([href, label, active, extraCls]) => html`<a href="${href}" class="${active ? 'active' : ''} ${extraCls ?? ''}">${label}</a>`);
+  const linkHtml = links.map(([href, label, active, extraCls]) => html`<a href="${href}" class="${[active ? 'active' : '', extraCls ?? ''].filter(Boolean).join(' ')}">${label}</a>`);
   return html`<header class="site-header ${cls}"><div class="container nav">${brand}${raw(extra)}
 <nav class="nav-links" aria-label="Primary">${linkHtml}</nav>
 <div class="nav-cta">${raw(ctas)}</div>
@@ -71,7 +71,7 @@ function head(title, { description = '' } = {}) {
 export function marketingLayout({ title, description, body, user, flash, path = '', waMode = 'smart' }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#try', 'Try it'], ['/#who', 'Who it’s for'], ['/#how', 'How it works'], ['/pricing', 'Pricing'], ['/showcase', 'Showcase'], ['/faq', 'FAQ']],
+    links: [['/#try', 'Try it'], ['/#who', 'Who it’s for'], ['/#how', 'How it works'], ['/pricing', 'Pricing'], ['/showcase', 'Showcase'], ['/roadmap', 'Roadmap'], ['/changelog', 'What’s new'], ['/faq', 'FAQ']].map(([href, label]) => [href, label, href === path]),
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Sign up free</a>`,

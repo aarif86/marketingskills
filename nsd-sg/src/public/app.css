@@ -32,6 +32,8 @@ img{max-width:100%;display:block}
 .drawer-close{position:absolute;top:12px;right:calc(var(--px) - 12px);width:44px;height:44px;font-size:30px;line-height:1;color:var(--muted);background:none;border:0;cursor:pointer}
 .drawer-links{display:flex;flex-direction:column;gap:6px}.drawer-links a{font-size:2rem;font-weight:700;letter-spacing:-.03em;color:var(--text);padding:8px 0}.drawer-links a.active{color:var(--accent2)}
 .drawer-cta{display:flex;flex-direction:column;gap:12px;padding-top:24px;border-top:1px solid var(--line)}.drawer-cta .btn{width:100%}.drawer-cta .inline{display:block}.drawer-cta .inline .btn{width:100%}.drawer-cta .nav-email{max-width:none;text-align:center}
+@media(max-width:1180px){.marketing .nav-links{gap:18px}.marketing .nav-links a{font-size:.85rem}}
+@media(max-width:980px){.marketing .nav-links{display:none}.marketing .nav::after{content:"";flex:1}.marketing .nav-cta{margin-left:0;order:3}.marketing .hamburger{display:flex;order:4}.marketing .nav-cta .btn-ghost{display:none}}
 @media(max-width:880px){.nav-links{display:none}.nav::after{content:"";flex:1}.nav-cta{margin-left:0;order:3}.hamburger{display:flex;order:4}.marketing .nav-cta .btn-ghost{display:none}.app .nav-cta{display:none}}
 @media(max-width:380px){.marketing .nav-cta{display:none}}
 @keyframes fade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
