@@ -236,20 +236,20 @@ test('admin removes branding, suspends and restores a site, reserves a name', as
   assert.equal((await get('/', '', 'alice.nsd.test')).statusCode, 200);
 
   r = await post('/admin/reserved', admin.cookie, { action: 'add', names: 'brandx brandy', reason: 'trademark' });
-  assert.equal((await get('/api/availability?name=brandx')).json().reason, 'That name is reserved.');
+  assert.equal((await get('/api/availability?name=brandx')).json().reason, 'That name is reserved by NSD.SG (platform or well-known names). Pick another.');
   // Blocked words match inside any name; system words cannot be removed; admin words can.
-  assert.equal((await get('/api/availability?name=hamas-relief')).json().reason, 'That name is not available.');
-  assert.equal((await get('/api/availability?name=israel')).json().reason, 'That name is reserved.');
+  assert.match((await get('/api/availability?name=hamas-relief')).json().reason, /not available/);
+  assert.equal((await get('/api/availability?name=israel')).json().reason, 'That name is reserved by NSD.SG (platform or well-known names). Pick another.');
   assert.equal((await get('/api/availability?name=israeli-food')).json().available, true, 'country names are exact-match only');
   assert.equal((await get('/api/availability?name=badwordshop')).json().available, true);
   r = await post('/admin/reserved', admin.cookie, { action: 'add-word', words: 'badword', reason: 'test' });
   assert.equal(r.statusCode, 302);
-  assert.equal((await get('/api/availability?name=badwordshop')).json().reason, 'That name is not available.');
+  assert.match((await get('/api/availability?name=badwordshop')).json().reason, /not available/);
   assert.match((await get('/admin/reserved', admin.cookie)).body, /Blocked words/);
   r = await post('/admin/reserved', admin.cookie, { action: 'remove-word', word: 'badword' });
   assert.equal((await get('/api/availability?name=badwordshop')).json().available, true);
   r = await post('/admin/reserved', admin.cookie, { action: 'remove-word', word: 'terror' });
-  assert.equal((await get('/api/availability?name=terrorsg')).json().reason, 'That name is not available.', 'system word stays');
+  assert.match((await get('/api/availability?name=terrorsg')).json().reason, /not available/, 'system word stays');
 });
 
 test('admin plan override removes branding for the user; suspending the user takes the site offline', async () => {
@@ -646,4 +646,42 @@ test('showcase modes: a beta (promo) site is listed by default and can be hidden
   assert.ok(names().includes('bettysite'), 'plus: her earlier explicit choice (shown) is kept');
   const health = await get('/admin/plans?edit=beta', admin.cookie);
   assert.match(health.body, /<option value="opt_out" selected>/);
+});
+
+test('builder files: _redirects gives same-site redirects, a single-page-app fallback and gone pages; external targets are refused; hashed assets are immutable', async () => {
+  resetLimit('signup:127.0.0.1');
+  const su = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/signup')).body), email: 'spa@example.com', name: 'Spa', password: 'correct-horse-battery', subdomain: 'spaapp', agree: '1' }).toString() });
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const H = 'spaapp.nsd.test';
+  // an external redirect is refused before anything is published, with the line number
+  let r = await upload(cookie, siteId, [{ name: 'index.html', data: '<h1>app</h1>' }, { name: '_redirects', data: '/out https://evil.example 301\n' }], 'replace');
+  assert.equal(r.statusCode, 400, r.body);
+  assert.match(r.body, /line 1: redirects to other websites are not allowed/);
+  r = await upload(cookie, siteId, [
+    { name: 'index.html', data: '<!doctype html><html><body><h1>app</h1></body></html>' },
+    { name: 'about.html', data: '<p>about</p>' },
+    { name: 'assets/index-BxK3f9aQ.js', data: 'console.log(1)' },
+    { name: 'assets/app.js', data: 'console.log(2)' },
+    { name: '_redirects', data: '/old-page /about 301\n/blog/* /about 302\n/gone / 404\n/* /index.html 200\n' },
+  ], 'replace');
+  assert.equal(r.statusCode, 200, r.body);
+  assert.equal((await get('/', '', H)).statusCode, 200);
+  assert.equal((await get('/about', '', H)).statusCode, 200, 'clean URL still wins over the /* rule');
+  assert.match((await get('/about', '', H)).body, /about/);
+  const spa = await get('/app/settings/123', '', H);
+  assert.equal(spa.statusCode, 200);
+  assert.match(spa.body, /<h1>app<\/h1>/, 'unknown route serves index.html (single-page app)');
+  assert.match(spa.body, /data-nsd="badge"/, 'badge still injected on the fallback');
+  const red = await get('/old-page', '', H);
+  assert.equal(red.statusCode, 301);
+  assert.equal(red.headers.location, '/about');
+  assert.equal((await get('/blog/2024/x', '', H)).statusCode, 302);
+  assert.equal((await get('/gone', '', H)).statusCode, 404, 'a 404 rule marks the address gone even with an SPA fallback below it');
+  assert.equal((await get('/_redirects', '', H)).statusCode, 404, 'the rules file itself is never served');
+  assert.match((await get('/assets/index-BxK3f9aQ.js', '', H)).headers['cache-control'], /immutable/);
+  assert.match((await get('/assets/app.js', '', H)).headers['cache-control'], /max-age=3600/);
+  // availability messages say why
+  assert.match((await get('/api/availability?name=mylogin')).json().reason, /word we block/);
 });

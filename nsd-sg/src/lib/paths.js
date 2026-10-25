@@ -4,7 +4,8 @@
 import { config } from '../config.js';
 import { isAllowedFileName } from './mime.js';
 
-const SEGMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._ ()@~-]{0,127}$/;
+// A leading underscore is allowed: build tools emit _astro/, _next/ and the _redirects file.
+const SEGMENT_RE = /^[A-Za-z0-9_][A-Za-z0-9._ ()@~-]{0,127}$/;
 
 /**
  * Normalize a user/zip-provided path into a safe relative path.

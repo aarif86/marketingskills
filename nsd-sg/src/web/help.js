@@ -32,6 +32,7 @@ export const TIPS = {
   connect: [
     ['My AI says the connector failed', 'Copy the whole long address from step 1, including the part after /mcp/. Paste it as the URL, choose “No sign-in” under Authentication, leave headers empty, press Add.'],
     ['Does it work with ChatGPT or Gemini, not only Claude?', 'Yes. Any AI tool that supports connectors (MCP) works: Claude, ChatGPT, Codex, Gemini CLI, Cursor and more. Steps for each are on the page.'],
+    ['My site has hundreds of files (Astro, Next, Vite build)', 'The connector takes up to 100 files a time. For a full build, ZIP the output folder and drop it on your site page in the dashboard instead. Add 404.html for your own not-found page and a _redirects file (/* /index.html 200) if your app has its own page addresses.'],
     ['Can the AI delete my sites?', 'Only the ones on your account, and only if you leave “delete site” allowed. Keep it on “Needs approval” and the AI must ask you first. Press Switch off next to the key any time.'],
     ['Published, but the browser says "can’t provide a secure connection"', 'A new address needs 5 to 15 minutes for its padlock the first time. Wait, then reload. Updates to an existing site show at once.'],
     ['Publishing says "quota"', 'Your plan’s site limit or storage is full. The message carries a link to the Plan page.'],

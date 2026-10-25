@@ -57,6 +57,7 @@ export const DANGEROUS_EXTENSIONS = new Set([
 // Files that may exist at the root without an extension.
 export const ALLOWED_BARE_NAMES = new Map([
   ['_headers', null], // ignored, never served
+  ['_redirects', null], // read at publish time (lib/redirects.js), never served
   ['CNAME', null], // ignored, never served
 ]);
 
@@ -80,11 +81,28 @@ export function isAllowedFileName(name) {
   return ALLOWED_EXTENSIONS.has(ext);
 }
 
+// Build tools (Vite, Astro, Next, webpack) put a content hash in asset names: index-BxK3f9aQ.js, main.3f2a9c1b.css.
+// Those never change without changing name, so browsers may keep them for a year. The same expression is used
+// verbatim in the generated .htaccess (publish/hostinger.js) so both serving paths agree. It needs a digit and a
+// letter in the token so "site-settings.js" or "hero-landing.jpg" are never mistaken for hashes.
+export const FINGERPRINT_RE_SOURCE = String.raw`[.-](?=[A-Za-z0-9_-]*[0-9])(?=[A-Za-z0-9_-]*[A-Za-z])(?:[a-f0-9]{8,}|[A-Za-z0-9_-]{8})\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|webp|avif|svg|gif)$`;
+const FINGERPRINT_RE = new RegExp(FINGERPRINT_RE_SOURCE);
+export const CACHE = {
+  html: 'public, max-age=60, must-revalidate',
+  asset: 'public, max-age=3600, stale-while-revalidate=86400',
+  immutable: 'public, max-age=31536000, immutable',
+};
+export function isFingerprinted(name) {
+  const base = String(name).split('/').pop();
+  return FINGERPRINT_RE.test(base) || /(^|\/)(_astro|_next\/static)\//.test(name);
+}
+
 // Long-lived caching for fingerprinted assets, short for HTML (which we may inject into).
 export function cacheControlFor(name) {
   const ext = extensionOf(name);
+  if (isFingerprinted(name)) return CACHE.immutable;
   if (HTML_EXTENSIONS.has(ext) || ext === 'json' || ext === 'webmanifest' || ext === 'xml' || ext === 'txt') {
-    return 'public, max-age=60, must-revalidate';
+    return CACHE.html;
   }
-  return 'public, max-age=3600, stale-while-revalidate=86400';
+  return CACHE.asset;
 }

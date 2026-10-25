@@ -338,6 +338,15 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
   <p class="muted small"><strong>New address?</strong> The first time, the secure padlock takes 5 to 15 minutes. Until then the browser says “can’t provide a secure connection”. Nothing is wrong: wait a few minutes and reload. Updates to an existing site are instant.</p>
   <p class="muted small">If the AI writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” When it asks “allow NSD.SG to publish?”, say yes. That question is the safety catch, not a fault: it means nothing goes online without you nodding.</p>
 </div>
+<div class="card"><h2>Building something bigger?</h2>
+  <p class="muted">A single page or a handful of files goes straight through the connector (up to 100 files, 8 MB a time). A site built with a tool like Astro, Next, Vite or Hugo has hundreds of files: build it, ZIP the output folder (<code>dist</code>, <code>out</code> or <code>build</code>) and drop the ZIP on your site page here. Same result, no limit on file count.</p>
+  <ul class="plain">
+    <li><strong>Your own “page not found” page:</strong> add a file called <code>404.html</code>.</li>
+    <li><strong>App with its own page addresses</strong> (React, Vue, Svelte router) so refreshing a deep link works: add a file called <code>_redirects</code> with one line, <code>/* /index.html 200</code>.</li>
+    <li><strong>Moved a page?</strong> In the same file: <code>/old-page /new-page 301</code>. Only to pages on your own site; links to other websites are refused so nobody can misuse your address.</li>
+    <li><strong>Caching</strong> is automatic: pages refresh within a minute, hashed build files (<code>index-BxK3f9aQ.js</code>) are kept by browsers for a year. Nothing to configure.</li>
+  </ul>
+</div>
 <div class="card"><h2>Is this safe?</h2>
   <ul class="plain">
     <li>Your AI can only put up, change, list and remove <strong>your</strong> sites, within your plan. Nothing else.</li>

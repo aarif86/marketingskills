@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
 import { contentTypeFor, cacheControlFor, extensionOf, HTML_EXTENSIONS } from '../lib/mime.js';
+import { REDIRECTS_FILE, parseRedirects, matchRedirect } from '../lib/redirects.js';
 import { hit, LIMITS } from '../lib/ratelimit.js';
 import { getSiteForServing, recordTraffic } from '../services/sites.js';
 import { shouldLog, logVisit } from '../services/visits.js';
@@ -25,6 +26,19 @@ import { isDormant } from '../services/lifecycle.js';
 import { platformUrl, publicUrlForSubdomain } from '../config.js';
 
 const MAX_HTML_INJECT_BYTES = 5 * 1024 * 1024;
+
+// Parsed _redirects per release. Releases are immutable, so the cache never goes stale; it is bounded by size.
+const redirectCache = new Map();
+function redirectRulesFor(site, root) {
+  const key = `${site.id}:${site.current_release_id}`;
+  if (redirectCache.has(key)) return redirectCache.get(key);
+  let rules = [];
+  const f = resolveWithin(root, REDIRECTS_FILE);
+  if (f) { try { rules = parseRedirects(fs.readFileSync(f, 'utf8')).rules; } catch { rules = []; } }
+  if (redirectCache.size > 500) redirectCache.clear();
+  redirectCache.set(key, rules);
+  return rules;
+}
 
 function securityHeaders(reply, { allowFraming }) {
   reply.header('X-Content-Type-Options', 'nosniff');
@@ -121,11 +135,24 @@ export async function serveTenant(req, reply, label) {
     if (abs) { chosen = c; break; }
   }
   if (!abs) {
+    // Owner's _redirects rules: same-site redirects, 200 rewrites (single-page apps), 404 "gone" marks.
+    const m = matchRedirect(redirectRulesFor(site, root), `/${rel}`);
+    if (m && (m.status === 301 || m.status === 302)) return reply.code(m.status).header('Cache-Control', 'no-store').redirect(m.to);
+    if (m && m.status === 200) {
+      const target = m.to.replace(/^\//, '');
+      const tAbs = resolveWithin(root, target);
+      const tType = tAbs ? contentTypeFor(target) : null;
+      if (tAbs && tType) {
+        reply.header('Cache-Control', cacheControlFor(target));
+        if (HTML_EXTENSIONS.has(extensionOf(target))) return sendHtml(req, reply, site, tAbs, 200);
+        return sendFile(req, reply, site, tAbs, tType);
+      }
+    }
     // A folder without an index.html gets a branded file list instead of "page not found".
     const dirAbs = path.join(root, ...parsed.parts);
     let isDir = false;
     try { isDir = dirAbs.startsWith(root) && fs.lstatSync(dirAbs).isDirectory(); } catch { /* not a dir */ }
-    if (isDir && !parsed.parts.some((p) => p.startsWith('.'))) {
+    if (!m && isDir && !parsed.parts.some((p) => p.startsWith('.'))) {
       if (!parsed.trailingSlash) return reply.code(301).header('Cache-Control', 'no-store').redirect(`/${rel}/`);
       const host = `${site.subdomain}.${config.baseDomain}`;
       let body = Buffer.from(listingPage({ host, dir: rel, entries: readListing(dirAbs) }), 'utf8');
@@ -149,7 +176,10 @@ export async function serveTenant(req, reply, label) {
   if (!type) return sendPage(reply, 404, PAGES.notFoundFile()); // never serve an unknown type
   reply.header('Cache-Control', cacheControlFor(chosen));
   if (HTML_EXTENSIONS.has(extensionOf(chosen))) return sendHtml(req, reply, site, abs, 200);
+  return sendFile(req, reply, site, abs, type);
+}
 
+function sendFile(req, reply, site, abs, type) {
   const st = fs.statSync(abs);
   reply.header('Content-Type', type);
   reply.header('Content-Length', String(st.size));

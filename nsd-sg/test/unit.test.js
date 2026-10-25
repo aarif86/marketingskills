@@ -164,3 +164,36 @@ test('CSP form-action allows the HitPay checkout redirect', async () => {
   const headers = {}; platformSecurityHeaders({ header: (k, v) => { headers[k] = v; } });
   assert.match(headers['Content-Security-Policy'], /form-action 'self' https:\/\/\*\.hit-pay\.com/);
 });
+
+test('_redirects: parsing, same-site only, first rule wins, htaccess mirrors it; hashed build assets cache for a year', async () => {
+  const { parseRedirects, matchRedirect, htaccessRules } = await import('../src/lib/redirects.js');
+  const { isFingerprinted, cacheControlFor } = await import('../src/lib/mime.js');
+  const ok = parseRedirects('# comment\n/old /new\n/blog/* /posts/:splat 302\n/gone / 404\n/* /index.html 200\n');
+  assert.deepEqual(ok.errors, []);
+  assert.equal(ok.rules.length, 4);
+  assert.deepEqual(matchRedirect(ok.rules, '/old/'), { to: '/new', status: 301, rule: ok.rules[0] });
+  assert.equal(matchRedirect(ok.rules, '/blog/2024/hello').to, '/posts/2024/hello');
+  assert.equal(matchRedirect(ok.rules, '/gone').status, 404);
+  assert.equal(matchRedirect(ok.rules, '/app/settings').to, '/index.html');
+  const bad = parseRedirects('/a https://evil.example 301\n/:id /x\n/a /b 307\nhttps://x.example /a\n/a /b?x=1 200\n/a\n');
+  assert.equal(bad.rules.length, 0);
+  assert.match(bad.errors[0], /other websites/);
+  assert.match(bad.errors[1], /placeholders/);
+  assert.match(bad.errors[2], /status must be/);
+  assert.match(bad.errors[3], /must be a path/);
+  assert.match(bad.errors[4], /without \?/);
+  assert.match(bad.errors[5], /from to/);
+  const ht = htaccessRules(ok.rules).join('\n');
+  assert.match(ht, /RewriteRule \^old\/\?\$ \/new \[R=301,L\]/);
+  assert.match(ht, /RewriteRule \^blog\(\?:\/\(\.\*\)\)\?\$ \/posts\/\$1 \[R=302,L\]/);
+  assert.match(ht, /RewriteRule \^gone\/\?\$ - \[R=404,L\]/);
+  assert.match(ht, /RewriteRule \^\(\.\*\)\$ \/index\.html \[L\]/);
+  assert.match(ht, /REQUEST_FILENAME}\.html !-f/, 'clean URLs still win over rules');
+  assert.ok(isFingerprinted('assets/index-BxK3f9aQ.js'));
+  assert.ok(isFingerprinted('main.3f2a9c1b.css'));
+  assert.ok(isFingerprinted('_astro/hero.css'));
+  assert.ok(!isFingerprinted('site-settings.js'));
+  assert.ok(!isFingerprinted('hero-landing.jpg'));
+  assert.match(cacheControlFor('assets/index-BxK3f9aQ.js'), /immutable/);
+  assert.match(cacheControlFor('index.html'), /max-age=60/);
+});

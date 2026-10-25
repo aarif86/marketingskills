@@ -143,6 +143,11 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-23', '0.13.23', 'Builder essentials: redirects, single-page apps, caching', `- New: a _redirects file in your site works like on Netlify or Cloudflare Pages: /old /new 301, /blog/* /posts/:splat 302, /gone / 404, and /* /index.html 200 for apps with their own page addresses (React, Vue, Svelte). Rules only point to pages on your own site; links to other websites are refused with the line number, so nobody can misuse an nsd.sg address.
+- New: hashed build files (index-BxK3f9aQ.js, _astro/…) are cached by browsers for a year; pages still refresh within a minute. Same on the Node server and the LiteSpeed docroot.
+- Fixed: folders and files starting with an underscore (_astro/, _next/) were refused at upload.
+- Changed: the connector takes 100 files a time (was 40) and its description names 404.html and _redirects; the Connect page, FAQ and help panel explain ZIP upload for build output.
+- Changed: a refused site name now says why (blocked word to protect visitors, or reserved by NSD.SG).`, 'new', '2026-10-25T17:00:00Z'],
   ['cl-0-13-22', '0.13.22', 'Images through the connector', `- Fixed: an image sent through the AI connector was saved as text and showed up broken. Binary files (images, fonts, PDFs) are now sent as base64 and land as real files; sending one as plain text is refused with a clear hint.
 - Changed: a site name with capitals, spaces or underscores gets a suggested fix in the error, e.g. “Try abc-test-site”.`, 'fix', '2026-10-25T15:00:00Z'],
   ['cl-0-13-21', '0.13.21', 'Who is on the showcase', `- Changed: every plan now has a showcase rule. Free sites are listed. Sites on a promo, gift or beta plan are listed unless the owner hides them (one tick on the site’s Settings). Paid plans stay hidden unless the owner shows them. Admin can change the rule for any plan without a deploy. Choices people already made are kept.`, 'improved', '2026-10-25T14:00:00Z'],

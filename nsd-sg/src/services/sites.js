@@ -19,7 +19,7 @@ export function isReserved(name) {
 export function subdomainUnavailableReason(name) {
   const syntax = validateSubdomainSyntax(name);
   if (syntax) return syntax;
-  if (isReserved(name)) return 'That name is reserved.';
+  if (isReserved(name)) return 'That name is reserved by NSD.SG (platform or well-known names). Pick another.';
   if (getDb().prepare("SELECT 1 FROM sites WHERE subdomain = ? AND status != 'deleted'").get(name)) return 'That name is already taken.';
   return null;
 }

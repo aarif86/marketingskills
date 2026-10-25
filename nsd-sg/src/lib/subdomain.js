@@ -55,7 +55,7 @@ export function validateSubdomainSyntax(name) {
   if (name.includes('--')) return 'Consecutive hyphens are not allowed.';
   if (/^xn--/.test(name)) return 'Punycode names are not allowed.';
   if (/^\d+$/.test(name)) return 'Names cannot be numbers only.';
-  if (blockedTermIn(name)) return 'That name is not available.';
+  if (blockedTermIn(name)) return 'That name is not available: it contains a word we block (sign-in, payment, bank or brand look-alikes, adult, gambling or rude words) to protect visitors. Pick another.';
   return null;
 }
 

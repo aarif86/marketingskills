@@ -17,7 +17,7 @@ import { deployFiles, listReleaseFiles, tempFile, StorageError } from '../storag
 import { listDomainsForSite } from '../services/domains.js';
 
 const PROTOCOL = '2025-06-18';
-const MAX_FILES = 40;
+const MAX_FILES = 100;
 const MAX_TOTAL = 8 * 1024 * 1024;
 
 const upgradeUrl = () => platformUrl('/billing');
@@ -28,7 +28,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', required: ['name'], properties: {
       name: { type: 'string', description: 'The site name: letters, numbers, hyphens. Becomes <name>.nsd.sg. Use an existing site name to update it.' },
       html: { type: 'string', description: 'Full HTML of the home page (index.html). Use this for a single page.' },
-      files: { type: 'array', description: 'Files to publish, e.g. [{path:"index.html", content:"..."}, {path:"style.css", content:"..."}]. Text files as plain text; images, fonts and PDFs as {path, content: <base64>, encoding: "base64"}. Max 40 files, 8 MB total.', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' }, encoding: { type: 'string', enum: ['utf8', 'base64'], description: 'base64 for images, fonts, PDFs and other binary files' } } } },
+      files: { type: 'array', description: 'Files to publish, e.g. [{path:"index.html", content:"..."}, {path:"style.css", content:"..."}]. Text files as plain text; images, fonts and PDFs as {path, content: <base64>, encoding: "base64"}. Max 100 files, 8 MB total; a build output bigger than that goes up as a ZIP from the dashboard. Special files: 404.html = the site\'s own not-found page; _redirects (one rule per line: "/old /new 301", "/* /index.html 200" for a single-page app) = same-site redirects only.', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' }, encoding: { type: 'string', enum: ['utf8', 'base64'], description: 'base64 for images, fonts, PDFs and other binary files' } } } },
       title: { type: 'string', description: 'Optional label shown only in the owner\'s dashboard.' },
     } } },
   { name: 'nsd_update', description: 'Replace ALL files of an existing site with the given HTML or files. Older versions are kept and can be restored from the dashboard.',

@@ -592,3 +592,25 @@ test('contact page lists every door and is linked from the footer', async () => 
   for (const re of [/Talk to a real person/, /WhatsApp a real human/, /hello@nsd\.test/, /href="\/roadmap#suggest"/, /href="\/report"/, /ignored and blocked/]) assert.match(r.body, re);
   assert.match((await get('/')).body, /<a href="\/contact">Contact<\/a>/);
 });
+
+test('_redirects is compiled into the docroot .htaccess (and not published as a file); cache headers present', async () => {
+  const zip = buildZip([
+    { name: 'index.html', data: '<html><body>spa</body></html>' },
+    { name: '_redirects', data: '/old /index.html 301\n/* /index.html 200\n' },
+  ]);
+  resetLimit('signup:127.0.0.1');
+  const su = await post('/signup', '', { email: 'kim@example.com', name: 'Kim', password: 'correct-horse-battery', subdomain: 'kimapp', agree: '1' });
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  await new Promise((r) => setTimeout(r, 50));
+  const csrf = csrfFrom((await get(`/sites/${siteId}`, cookie)).body);
+  const mp = multipart({ _csrf: csrf, mode: 'replace' }, [{ name: 'site.zip', data: zip, type: 'application/zip' }]);
+  const r = await app.inject({ method: 'POST', url: `/sites/${siteId}/upload`, headers: { host: H, cookie, accept: 'application/json', origin: `http://${H}`, ...mp.headers }, body: mp.body });
+  assert.equal(r.statusCode, 200, r.body);
+  const ht = read('kimapp', '.htaccess');
+  assert.match(ht, /RewriteRule \^old\/\?\$ \/index\.html \[R=301,L\]/);
+  assert.match(ht, /RewriteRule \^\(\.\*\)\$ \/index\.html \[L\]/);
+  assert.match(ht, /_redirects\$\|_headers\$/, 'config files denied');
+  assert.match(ht, /max-age=31536000, immutable/);
+  assert.ok(!exists('kimapp', '_redirects'), 'rules file not copied to the docroot');
+});

@@ -5,6 +5,7 @@
 // so a one-file edit costs one file of disk, not a full copy.
 import fs from 'node:fs';
 import path from 'node:path';
+import { REDIRECTS_FILE, redirectsProblems } from '../lib/redirects.js';
 import { pipeline } from 'node:stream/promises';
 import { config } from '../config.js';
 import { getDb } from '../db/index.js';
@@ -14,6 +15,16 @@ import { extractZip, ZipError } from './zip.js';
 import { syncSite } from '../publish/hostinger.js';
 
 export class StorageError extends Error {}
+
+// A broken _redirects file is refused before the release is committed, with line numbers, so the owner
+// (or their AI) can fix it. Absent file = nothing to check.
+function checkRedirects(dir) {
+  const f = path.join(dir, REDIRECTS_FILE);
+  if (!fs.existsSync(f)) return;
+  if (fs.statSync(f).size > 64 * 1024) throw new StorageError('_redirects is too large (64 KB max).');
+  const errors = redirectsProblems(fs.readFileSync(f, 'utf8'));
+  if (errors.length) throw new StorageError(`_redirects has problems: ${errors.slice(0, 5).join('; ')}${errors.length > 5 ? '; …' : ''}`);
+}
 
 const sitesRoot = () => path.join(config.dataDir, 'sites');
 const tmpRoot = () => path.join(config.dataDir, 'tmp');
@@ -187,6 +198,7 @@ export async function deployZip({ site, zipPath, user, limits, note = 'ZIP uploa
   const { id, dir } = stageRelease(site.id, null);
   try {
     const result = await extractZip(zipPath, dir, { maxFileBytes: limits.max_file_bytes, maxTotalBytes: limits.max_storage_bytes });
+    checkRedirects(dir);
     const rel = commitRelease({ siteId: site.id, releaseId: id, source: 'zip', note, userId: user.id, maxReleases: limits.max_releases, client });
     return { ...rel, skipped: result.skipped, rejected: result.rejected, strippedPrefix: result.strippedPrefix };
   } catch (e) {
@@ -217,6 +229,7 @@ export async function deployFiles({ site, files, user, limits, replaceAll = fals
     }
     const { bytes } = measure(dir);
     if (bytes > limits.max_storage_bytes) throw new StorageError('This upload would exceed your storage quota.');
+    checkRedirects(dir);
     return commitRelease({ siteId: site.id, releaseId: id, source: replaceAll ? 'files' : 'edit', note, userId: user.id, maxReleases: limits.max_releases, client });
   } catch (e) {
     fs.rmSync(dir, { recursive: true, force: true });
