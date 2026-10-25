@@ -124,7 +124,7 @@ const SEED_ROADMAP = [
   ['rm-abuse-tools', 'Blocked words, evidence holds and share cards', 'Admin-managed blocked words, 90-day evidence copies of removed sites, and proper link previews on WhatsApp and Telegram.', 'shipped', 'admin', 14],
   ['rm-domain-buy', 'Buy a domain inside NSD.SG', 'Search, pay and connect a name without leaving the site. Needs a registrar arrangement first.', 'planned', 'billing', 15],
   ['rm-capacity', 'Capacity gauge and waitlist mode', 'The gauge is live in admin (amber at 70%, red at 90%). Next: sign-ups switch to a waitlist automatically near the ceiling.', 'in_progress', 'admin', 2],
-  ['rm-email-gate', 'Confirm your email before the first publish', 'A small gate that keeps throwaway accounts from putting pages online.', 'planned', 'admin', 10],
+  ['rm-email-gate', 'Confirm your email before the first publish', 'A site goes online only once the owner has confirmed their email. Google sign-ups are already confirmed; test pages are unaffected.', 'shipped', 'admin', 3],
   ['rm-vs-pages', 'Honest comparisons with Vercel and shared hosting', 'Two pages that show what a one-page site really costs elsewhere.', 'planned', 'design', 14],
   ['rm-try-it', 'Try it before you sign up', 'Paste the code on the home page, no account, and get a link that works for 3 hours. Sign up to keep it at your own address.', 'shipped', 'platform', 9],
   ['rm-google-login', 'Sign in with Google', 'One-click sign-up and login with a Google account, alongside email + password.', 'shipped', 'platform', 10],
@@ -143,6 +143,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-15', '0.13.15', 'Confirm your email before your site goes online', `- Changed: a site can only go online once the owner has confirmed their email address. Sign-ups with Google are already confirmed. Test pages on the home page are unchanged. This closes the easiest path for throwaway accounts, which protects every site on nsd.sg from being flagged together.`, 'new', '2026-10-25T10:00:00Z'],
   ['cl-0-13-14', '0.13.14', 'Roadmap caught up', `- Changed: the roadmap now shows the help panel, the sample pages and the evidence upgrade as shipped, and the “publish from your AI” card no longer says Claude only. In progress: visitor stats and the capacity gauge (waitlist mode next). Planned list unchanged.`, 'improved', '2026-10-25T09:00:00Z'],
   ['cl-0-13-13', '0.13.13', '“Connect your AI”: not only Claude', `- Changed: the page is now called Connect your AI, because it works with any AI tool that supports connectors (MCP): Claude, ChatGPT, Codex, Gemini CLI, Cursor, VS Code and more. Setup steps for each are on the page, in plain words.`, 'improved', '2026-10-25T08:00:00Z'],
   ['cl-0-13-12', '0.13.12', 'Connect to Claude, explained in plain words', `- Changed: the Connect to Claude page now says why you need a key (“like a house key you give to a helper”), walks through the three steps in order, and uses everyday words throughout. Tokens are now called keys on that page; nothing changed underneath.`, 'improved', '2026-10-25T07:00:00Z'],

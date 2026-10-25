@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { config, publicUrlForSubdomain } from '../../config.js';
 import { pastedHtml, formatBytes } from '../../lib/html.js';
+import { publishGate } from '../gate.js';
 import { audit } from '../../lib/audit.js';
 import { limiter } from '../../lib/ratelimit.js';
 import { validatePasswordStrength } from '../../lib/password.js';
@@ -107,6 +108,7 @@ export async function registerDashboardRoutes(app) {
       return reply.redirect(`/sites/${site.id}`);
     };
     if (ent.expired) return fail(403, 'Your plan has expired. Request an extension or upgrade before publishing.');
+    { const g = publishGate(req.user); if (g) return fail(403, g); }
     if (!req.isMultipart()) return fail(400, 'Expected a file upload.');
 
     const temps = [];
@@ -173,6 +175,7 @@ export async function registerDashboardRoutes(app) {
     const ent = entitlementsFor(req.user);
     const back = `/sites/${site.id}`;
     if (ent.expired) { flash(reply, 'error', 'Your plan has expired. Request an extension or upgrade before publishing.'); return reply.redirect(back); }
+    { const g = publishGate(req.user); if (g) { flash(reply, 'error', g); return reply.redirect(back); } }
     if (site.status === 'suspended') { flash(reply, 'error', 'This site is suspended.'); return reply.redirect(back); }
     const htmlText = pastedHtml(req.body);
     let page = String(req.body?.page ?? '').trim().toLowerCase().replace(/\.html?$/, '').replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
@@ -197,6 +200,7 @@ export async function registerDashboardRoutes(app) {
 
   app.post('/sites/:id/files/delete', { preHandler: requireUser }, async (req, reply) => {
     const site = loadSite(req, reply); if (!site) return;
+    { const g = publishGate(req.user); if (g) { flash(reply, 'error', g); return reply.redirect(`/sites/${site.id}`); } }
     const ent = entitlementsFor(req.user);
     try {
       const r = deleteFileFromSite({ site, relPath: String(req.body?.path ?? ''), user: req.user, limits: ent.limits, client: clientOf(req) });
@@ -226,6 +230,7 @@ export async function registerDashboardRoutes(app) {
 
   app.post('/sites/:id/rollback', { preHandler: requireUser }, async (req, reply) => {
     const site = loadSite(req, reply); if (!site) return;
+    { const g = publishGate(req.user); if (g) { flash(reply, 'error', g); return reply.redirect(`/sites/${site.id}`); } }
     const ent = entitlementsFor(req.user);
     try {
       const r = rollbackTo({ site, releaseId: String(req.body?.release_id ?? ''), user: req.user, limits: ent.limits, client: clientOf(req) });

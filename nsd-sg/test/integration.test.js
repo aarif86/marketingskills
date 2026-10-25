@@ -564,3 +564,30 @@ test('evidence grade: upload IP per version, visitor log on flagged sites, manif
   assert.match(health.body, /Stored evidence packs/); assert.match(health.body, /bye@example\.com/);
   assert.equal(buildPack('01AAAAAAAAAAAAAAAAAAAAAAAA'), null);
 });
+
+test('email gate: with REQUIRE_VERIFIED_EMAIL on, an unconfirmed account cannot put a site online (upload, paste, rollback); confirmed accounts can', async () => {
+  const { config } = await import('../src/config.js');
+  const { publishGate } = await import('../src/web/gate.js');
+  resetLimit('signup:127.0.0.1');
+  const su = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/signup')).body), email: 'unconfirmed@example.com', name: 'Unc', password: 'correct-horse-battery', subdomain: 'uncsite', agree: '1' }).toString() });
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const row = getDb().prepare('SELECT * FROM users WHERE email = ?').get('unconfirmed@example.com');
+  assert.equal(publishGate(row), null, 'gate off by default in tests (no SMTP)');
+  const saved = config.publish.requireVerifiedEmail; config.publish.requireVerifiedEmail = true;
+  try {
+    assert.match(publishGate(row), /Confirm your email before your site goes online/);
+    let r = await upload(cookie, siteId, [{ name: 'index.html', data: '<h1>no</h1>' }], 'replace');
+    assert.equal(r.statusCode, 403); assert.match(r.body, /Confirm your email/);
+    r = await post(`/sites/${siteId}/paste`, cookie, { html: '<!doctype html><html><body><h1>no</h1></body></html>', page: '' }, `/sites/${siteId}`);
+    assert.equal(r.statusCode, 302); assert.match(decodeURIComponent(String(r.headers['set-cookie'])), /Confirm your email/);
+    assert.match((await get('/dashboard', cookie)).body, /cannot go online until you confirm your email/);
+    assert.equal((await get('/', '', 'uncsite.nsd.test')).statusCode, 200, 'site answers with the empty page');
+    assert.doesNotMatch((await get('/', '', 'uncsite.nsd.test')).body, /<h1>no<\/h1>/);
+    getDb().prepare("UPDATE users SET email_verified_at = datetime('now') WHERE id = ?").run(row.id);
+    r = await upload(cookie, siteId, [{ name: 'index.html', data: '<h1>yes</h1>' }], 'replace');
+    assert.equal(r.statusCode, 200, r.body);
+    assert.match((await get('/', '', 'uncsite.nsd.test')).body, /<h1>yes<\/h1>/);
+  } finally { config.publish.requireVerifiedEmail = saved; }
+});

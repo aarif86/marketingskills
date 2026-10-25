@@ -13,7 +13,7 @@ function planBanner(ent) {
 export function sitesIndex({ sites, ent, storageUsed, user }) {
   return html`
 ${planBanner(ent)}
-${!user.email_verified_at ? html`<div class="flash flash-warn">Please confirm your email: we sent you a link. Did not get it? <a href="/account">Send it again from your account page →</a></div>` : ''}
+${!user.email_verified_at ? html`<div class="flash flash-warn">${config.publish.requireVerifiedEmail ? html`<strong>Your site cannot go online until you confirm your email.</strong> We sent a link to ${user.email}.` : 'Please confirm your email: we sent you a link.'} Did not get it? <a href="/account">Send it again from your account page →</a></div>` : ''}
 <div class="page-head"><div><h1>Your sites</h1><p class="muted">${sites.length} of ${ent.limits.max_sites} site${ent.limits.max_sites === 1 ? '' : 's'} · ${formatBytes(storageUsed)} of ${formatBytes(ent.limits.max_storage_bytes)} space used · ${ent.plan.name} plan</p></div>
 ${sites.length < ent.limits.max_sites && !ent.expired ? html`<a class="btn btn-primary" href="/sites/new">+ New site</a>` : ''}</div>
 ${sites.length === 0 ? html`<div class="card empty"><h3>No sites yet</h3><p>Pick your <strong>name.${config.baseDomain}</strong> address, then paste the page your AI made.</p><a class="btn btn-primary" href="/sites/new">Pick my address</a></div>` : ''}

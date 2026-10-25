@@ -114,6 +114,9 @@ export const config = Object.freeze({
     partnerUrl: env('BRANDING_PARTNER_URL', 'https://nasardigital.com'),
     whatsapp: env('SUPPORT_WHATSAPP', '6584235041').replace(/\D/g, ''), // digits only, country code first; blank hides the button
   },
+  // Nothing goes online on a real site until the email is confirmed. Default: on whenever mail can be sent
+  // (without SMTP nobody could ever confirm). REQUIRE_VERIFIED_EMAIL=1 forces it on, 0 forces it off.
+  publish: { requireVerifiedEmail: env('REQUIRE_VERIFIED_EMAIL', '') ? env('REQUIRE_VERIFIED_EMAIL', '') === '1' : !!env('SMTP_HOST', '') },
   smtp: {
     host: env('SMTP_HOST', ''),
     port: int('SMTP_PORT', 587),

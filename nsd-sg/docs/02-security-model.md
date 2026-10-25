@@ -93,6 +93,15 @@ pack for an account (`/admin/users/<id>/evidence.zip`: user record without hash,
 deleted, releases, plan events, IPs, test pages from those IPs, held files; capped at 200 MB). Both downloads are
 audited. Every audit row records the User-Agent (migration 012). Retention is stated on /privacy and /terms.
 
+## Email confirmation before the first publish (0.13.15)
+
+`src/web/gate.js` `publishGate(user)`: with `config.publish.requireVerifiedEmail` on (default when SMTP is configured;
+`REQUIRE_VERIFIED_EMAIL=1|0` forces it), every path that creates a release (upload, paste, rollback, file delete, MCP
+publish/update) refuses until `users.email_verified_at` is set. Claiming a name, the dashboard and try pages are
+unaffected; Google sign-ups arrive verified. Why: one throwaway account with a phishing page can get the whole
+`*.nsd.sg` zone flagged by Safe Browsing, which takes every customer down until delisting. Admin can "Mark email
+verified" on a user page for stuck cases.
+
 ## Evidence grade (0.13.0)
 
 What an investigator gets from Admin → Users → *account* → "Download evidence pack", or from a pack stored on the server:

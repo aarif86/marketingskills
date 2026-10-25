@@ -126,3 +126,23 @@ test('nsd_update replaces everything; nsd_delete_site needs confirm; revoked tok
   await post(`/connect/tokens/${id}/revoke`, u.cookie, {}, '/connect');
   assert.equal((await rpc('ping', {})).statusCode, 401);
 });
+
+test('email gate: an unconfirmed account cannot publish through the connector either', async () => {
+  const { config } = await import('../src/config.js');
+  const saved = config.publish.requireVerifiedEmail; config.publish.requireVerifiedEmail = true;
+  const uid = getDb().prepare('SELECT id FROM users WHERE email = ?').get('mia@example.com').id;
+  const verified = getDb().prepare('SELECT email_verified_at FROM users WHERE id = ?').get(uid).email_verified_at;
+  getDb().prepare('UPDATE users SET email_verified_at = NULL WHERE id = ?').run(uid);
+  // a fresh key: earlier tests revoke the shared one
+  const made = await post('/connect/tokens', u.cookie, { name: 'gate test' }, '/connect');
+  const nc = String(made.headers['set-cookie']).match(/nsd_newtoken=([^;]+)/)[1];
+  const token = (await get('/connect', `${u.cookie}; nsd_newtoken=${nc}`)).body.match(/(nsd_[A-Za-z0-9_-]{43})/)[1];
+  try {
+    const res = await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'gated-site', html: '<!doctype html><html><body>x</body></html>' } }, { token });
+    assert.equal(res.statusCode, 200, res.body);
+    const r = res.json();
+    assert.equal(r.result.isError, true, JSON.stringify(r.result));
+    assert.match(r.result.content[0].text, /Confirm your email before your site goes online/);
+    assert.match(r.result.content[0].text, /\/account/);
+  } finally { config.publish.requireVerifiedEmail = saved; getDb().prepare('UPDATE users SET email_verified_at = ? WHERE id = ?').run(verified, uid); }
+});

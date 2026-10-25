@@ -1,0 +1,1 @@
+UPDATE roadmap_items SET status = 'shipped', shipped_at = COALESCE(shipped_at, '2026-10-25T10:00:00Z'), sort_order = 3, body = 'A site goes online only once the owner has confirmed their email. Google sign-ups are already confirmed; test pages are unaffected.' WHERE id = 'rm-email-gate';

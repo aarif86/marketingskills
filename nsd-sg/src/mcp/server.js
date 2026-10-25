@@ -3,6 +3,7 @@
 // Stateless JSON-RPC: initialize, ping, tools/list, tools/call. No server-initiated streams (GET answers 405).
 import fs from 'node:fs';
 import { config, publicUrlForSubdomain, platformUrl } from '../config.js';
+import { publishGate } from '../web/gate.js';
 import { audit, watchdog } from '../lib/audit.js';
 import { hit, LIMITS } from '../lib/ratelimit.js';
 import { formatBytes } from '../lib/html.js';
@@ -77,6 +78,7 @@ function collectFiles(args, { needPage = true } = {}) {
 async function writeAndDeploy({ site, user, list, replaceAll, note, client }) {
   const ent = entitlementsFor(user);
   if (ent.expired) throw new ToolError(`Your free period ended on ${ent.expiresAt.slice(0, 10)}. Your site stays online, but publishing is paused. Ask for more time (free) or upgrade at ${upgradeUrl()}`);
+  { const g = publishGate(user); if (g) throw new ToolError(`${g} Account page: ${platformUrl('/account')}`); }
   if (site.status === 'suspended') throw new ToolError('This site has been switched off by NSD.SG. Log in to the dashboard to see why.');
   const temps = [];
   try {
