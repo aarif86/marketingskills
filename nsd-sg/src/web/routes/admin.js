@@ -551,7 +551,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), proofMin: getSetting('home.proof_min', '10'), changelog: listChangelog(60), testimonials: listTestimonials(), capacity,
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), proofMin: getSetting('home.proof_min', '10'), changelog: listChangelog(60), testimonials: listTestimonials(), cronLast: getSetting('cron.last_sync_all', ''), capacity,
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),

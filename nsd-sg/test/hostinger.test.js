@@ -138,6 +138,18 @@ test('deleting the site removes the docroot', async () => {
   assert.ok(!fs.existsSync(tenantDir('carol')));
 });
 
+test('health page shows whether the hourly cron has run', async () => {
+  const { setSetting } = await import('../src/services/settings.js');
+  let page = await get('/admin/health', admin.cookie);
+  assert.match(page.body, /Hourly cron/); assert.match(page.body, /never seen|No run recorded yet/);
+  setSetting('cron.last_sync_all', new Date().toISOString());
+  page = await get('/admin/health', admin.cookie);
+  assert.match(page.body, /sync-all<\/code> last ran/); assert.match(page.body, /doing its job/);
+  setSetting('cron.last_sync_all', new Date(Date.now() - 5 * 3600_000).toISOString());
+  assert.match((await get('/admin/health', admin.cookie)).body, /More than two hours ago/);
+  setSetting('cron.last_sync_all', '');
+});
+
 test('admin health page renders the publisher block with orphan removal forms carrying a CSRF token', async () => {
   const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
   const cookie = cookiesFrom(login);

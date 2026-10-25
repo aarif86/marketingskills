@@ -10,6 +10,7 @@ import { expireStalePending } from './services/hitpay.js';
 import { expirePreviews, ensureTryHost } from './services/tryit.js';
 import { purgeEvidence } from './services/evidence.js';
 import { lifecycleSweep } from './services/lifecycle.js';
+import { setSetting } from './services/settings.js';
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -69,6 +70,7 @@ async function main() {
     }
     case 'sync-all': {
       if (!hostingEnabled()) throw new Error('TENANT_ROOT is not set; nothing to sync');
+      setSetting('cron.last_sync_all', new Date().toISOString()); // Health shows this so the hPanel cron can be verified from inside the app
       console.log(await syncAll());
       { const r = await repairPending(); if (r.checked) console.log('repair:', JSON.stringify(r)); }
       try { await ensureTryHost(); } catch (e) { console.log(`try host: ${e.message}`); }
