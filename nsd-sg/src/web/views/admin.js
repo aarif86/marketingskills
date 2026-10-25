@@ -13,6 +13,7 @@ export function overview({ stats, alerts, recentUsers, recentDeploys, extensions
   ${stat('Sites', stats.sites, `${stats.live} live · ${stats.suspended} suspended`)}
   ${stat('Storage', formatBytes(stats.storage))}
   ${stat('Deploys (7d)', stats.deploys7d)}
+  ${stat('Published within 24 h', stats.signups30d ? `${Math.round((stats.activated30d / stats.signups30d) * 100)}%` : '–', `${stats.activated30d} of ${stats.signups30d} sign-ups (30 d) · ${stats.nudged30d} day-after nudges sent`)}
   ${stat('Requests (7d)', stats.requests7d.toLocaleString(), formatBytes(stats.bytes7d) + ' served')}
   ${stat('Monthly recurring', `S$${(stats.mrrCents / 100).toFixed(0)}`, `${stats.payers} paying · active HitPay subscriptions`)}
   ${stat('Open abuse', stats.openAbuse)}
@@ -282,6 +283,7 @@ ${h.hosting.unready?.length ? html`<table class="table small mt"><thead><tr><th>
 <div class="card"><h2>Home page “New” pill</h2>
 <p class="muted small">The small “NEW …” link at the top of the home page. Pin the release you want visitors to see first (for a launch), or let it follow the latest release.</p>
 <form method="post" action="/admin/health/home-pill" class="form">${hidden(h.csrf)}
+  <label>Show the proof line (“N sites live”) once this many sites are live <input type="number" name="proof_min" min="0" max="100000" value="${h.proofMin ?? 10}" style="max-width:120px"></label>
   <label>Show <select name="pill"><option value="latest" ${h.homePill === 'latest' ? 'selected' : ''}>Latest release (automatic)</option>${(h.changelog ?? []).map((e) => html`<option value="${e.id}" ${h.homePill === e.id ? 'selected' : ''}>${e.version} · ${e.title}</option>`)}</select></label>
   <button class="btn btn-tiny btn-primary" type="submit">Save</button>
 </form></div>

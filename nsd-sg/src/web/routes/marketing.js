@@ -42,8 +42,17 @@ export async function registerMarketingRoutes(app) {
 
   // The "New" pill in the hero shows the changelog entry the admin pinned (settings home.pill), else the latest one.
   const heroPill = () => { const pin = getSetting('home.pill', 'latest'); const all = listChangelog(200); return (pin !== 'latest' && all.find((e) => e.id === pin)) || all[0] || null; };
+  // Proof line in the hero: shown only once there is enough to be proud of (admin sets the threshold on Health).
+  const heroProof = () => {
+    const min = Math.max(0, parseInt(getSetting('home.proof_min', '10'), 10) || 0);
+    const db = getDb();
+    const live = db.prepare("SELECT COUNT(*) n FROM sites s JOIN users u ON u.id = s.user_id WHERE s.status = 'live' AND s.current_release_id IS NOT NULL AND u.status = 'active'").get().n;
+    if (live < min) return null;
+    const week = db.prepare("SELECT COUNT(DISTINCT site_id) n FROM releases WHERE created_at > datetime('now', '-7 days')").get().n;
+    return { live, week };
+  };
   const liveStrip = () => { const sites = listShowcaseSites(); const previews = listShowcasePreviews(); return { total: sites.length, sites: sites.slice(0, 3), previews: previews.slice(0, 3), previewTotal: previews.length }; };
-  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), latest: heroPill() ?? null }) }));
+  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), proof: heroProof(), latest: heroPill() ?? null }) }));
 
   // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
   app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {

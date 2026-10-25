@@ -62,7 +62,7 @@ const MAIL = {
 /** Idempotent daily-ish sweep. Safe to run every 10 minutes; each notice goes out once per expiry date. */
 export async function lifecycleSweep({ now = Date.now() } = {}) {
   const db = getDb();
-  const out = { reminded: 0, dormant: 0, warned: 0, deleted: 0 };
+  const out = { reminded: 0, dormant: 0, warned: 0, deleted: 0, nudged: 0 };
   const users = db.prepare("SELECT * FROM users WHERE status = 'active' AND plan_expires_at IS NOT NULL").all();
   for (const u of users) {
     if (liveSubscriptionFor(u.id, u.plan_id)) continue; // card saved, HitPay charges on the expiry date: nothing to remind
@@ -92,7 +92,29 @@ export async function lifecycleSweep({ now = Date.now() } = {}) {
       }
     }
   }
+  out.nudged = await nudgeSweep({ now });
   return out;
+}
+
+// Day-after nudge: signed up, picked an address, never published. One email, 24-72 h after sign-up, never again.
+// The 72 h ceiling means a deploy of this feature does not mail every old silent account.
+export async function nudgeSweep({ now = Date.now() } = {}) {
+  const db = getDb();
+  const rows = db.prepare(`SELECT u.* FROM users u WHERE u.status = 'active' AND u.role != 'admin'
+      AND NOT EXISTS (SELECT 1 FROM sites s WHERE s.user_id = u.id AND s.current_release_id IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM plan_notices n WHERE n.user_id = u.id AND n.kind = 'nudge_day0')`).all();
+  let sent = 0;
+  for (const u of rows) {
+    const age = (now - Date.parse(u.created_at)) / DAY;
+    if (age < 1 || age > 3) continue;
+    const site = db.prepare("SELECT subdomain FROM sites WHERE user_id = ? AND status != 'deleted' ORDER BY created_at LIMIT 1").get(u.id);
+    markSent(u.id, 'nudge_day0', u.created_at);
+    const where = site ? `${site.subdomain}.${config.baseDomain}` : 'your address';
+    const text = `Hi ${u.name || ''},\n\nYesterday you picked ${where} on NSD.SG. There is nothing on it yet, and it takes about a minute to change that.\n\nThree ways:\n1. Paste the code your AI gave you: ${platformUrl('/dashboard')}\n2. No page yet? Use one of ours (a proposal, a quiz, a one-page shop): ${platformUrl('/#try')}\n3. Let your AI do it for you: ${platformUrl('/connect')}\n\nStuck on anything at all? Reply to this email or WhatsApp a real human from any page: ${platformUrl('/contact')}\n\nNSD.SG`;
+    await sendMail({ to: u.email, subject: `${where} is waiting for its first page`, text }).catch(() => {});
+    sent += 1;
+  }
+  return sent;
 }
 
 export const holdingUrl = (site) => publicUrlForSubdomain(site.subdomain);

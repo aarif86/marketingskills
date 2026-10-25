@@ -143,6 +143,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-31', '0.13.31', 'Lead with the problem, show the proof, nudge the silent', `- Changed: the home page opens with the problem (the link your AI gives you is random letters, a file, or a page in someone else’s branding) before the promise.
+- New: a proof line in the hero, “N sites live · M put online this week”, that appears once enough sites are live (admin sets the number on the Health page).
+- New: a single day-after email to anyone who signed up, picked an address and never published: three ways to get a page up and a WhatsApp link. Sent once, between 24 and 72 hours after sign-up, never to older accounts.
+- Admin: the Overview shows the activation rate, how many sign-ups in the last 30 days published within 24 hours.`, 'improved', '2026-10-26T01:00:00Z'],
   ['cl-0-13-30', '0.13.30', 'A clear answer when an extension is not approved', `- New: when a second free extension is not approved, the Plan page says so plainly, your pages stay online, nothing is deleted, and the paid plans are right there. An email says the same, with a reply address that reaches a person.
 - Admin: a Decline button next to +90 days on the extension queue. Declined requests leave the queue instead of sitting forever.`, 'improved', '2026-10-26T00:00:00Z'],
   ['cl-0-13-29', '0.13.29', 'Try it, explained the first time; test pages back on show', `- Changed: the Try it box now says what a test page is in one breath (your page, at a real link, for 3 hours, no account), shows the four steps, and lists what it is good for: feedback tonight, seeing it on a real phone, things that live for an afternoon, showing a client in the meeting.

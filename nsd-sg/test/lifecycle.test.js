@@ -245,3 +245,26 @@ test('a looked-at-but-unpaid checkout: note shows for 20 minutes, the clear butt
   page = (await get('/billing', cookie)).body;
   assert.doesNotMatch(page, /Payment page opened/);
 });
+
+test('day-after nudge: a silent sign-up gets one email 24-72 h in; published or older accounts get none; admin sees the activation rate', async () => {
+  const { nudgeSweep } = await import('../src/services/lifecycle.js');
+  reset('signup:127.0.0.1');
+  const mk = async (email, sub) => { const r = await post('/signup', '', { email, name: 'T', password: 'correct-horse-battery', subdomain: sub, agree: '1' }, '/signup'); reset('signup:127.0.0.1'); return getDb().prepare('SELECT id FROM users WHERE email = ?').get(email).id; };
+  const silent = await mk('silent@example.com', 'silentsite');
+  const old = await mk('old@example.com', 'oldsite');
+  const fresh = await mk('fresh@example.com', 'freshsite');
+  const ago = (h) => new Date(Date.now() - h * 3600_000).toISOString();
+  getDb().prepare('UPDATE users SET created_at = ? WHERE id = ?').run(ago(30), silent);
+  getDb().prepare('UPDATE users SET created_at = ? WHERE id = ?').run(ago(30 * 24), old);
+  const sent1 = await nudgeSweep();
+  const nudged = getDb().prepare("SELECT user_id FROM plan_notices WHERE kind = 'nudge_day0'").all().map((r) => r.user_id);
+  assert.ok(nudged.includes(silent), 'silent 30 h account nudged');
+  assert.ok(!nudged.includes(old), 'month-old account left alone');
+  assert.ok(!nudged.includes(fresh), 'too fresh, not yet');
+  assert.equal(sent1, 1);
+  assert.equal(await nudgeSweep(), 0, 'never twice');
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' }, '/login');
+  const ov = await get('/admin', cookiesFrom(login));
+  assert.match(ov.body, /Published within 24 h/);
+  assert.match(ov.body, /day-after nudges sent/);
+});

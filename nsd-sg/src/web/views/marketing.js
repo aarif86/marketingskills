@@ -9,13 +9,14 @@ const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
-export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [], previews: [], previewTotal: 0 } }) {
+export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [], previews: [], previewTotal: 0 }, proof = null }) {
   return html`
 <section class="hero"><div class="container">
   ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
-  <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
+  <p class="eyebrow">Made something with AI? Sharing it is the hard part.</p>
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
-  <p class="lead">Claude, ChatGPT, Gemini, or a builder like Cursor or v0 made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours. Or <a href="#connect">connect your AI</a> and just say “put this online”.</p>
+  <p class="lead">The link your AI gives you is a string of random letters, a file on your laptop, or a page wrapped in someone else’s branding. Paste it here and it lives at <strong>yourname.${baseDomain}</strong> in a minute. Free. Or <a href="#connect">connect your AI</a> and just say “put this online”.</p>
+  ${proof ? html`<p class="hero-proof"><span><b>${proof.live.toLocaleString()}</b> sites live</span><span><b>${proof.week.toLocaleString()}</b> put online this week</span><span>Singapore</span></p>` : ''}
   <form class="hero-form" action="/signup" method="get">
     <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Pick your web address"><span>.${baseDomain}</span></div>
     <button class="btn btn-primary btn-lg" type="submit">Claim my address</button>

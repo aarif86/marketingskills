@@ -49,6 +49,9 @@ export async function registerAdminRoutes(app) {
       suspended: q("SELECT COUNT(*) n FROM sites WHERE status = 'suspended'").n,
       storage: q("SELECT COALESCE(SUM(total_storage_bytes),0) n FROM sites WHERE status != 'deleted'").n,
       deploys7d: q("SELECT COUNT(*) n FROM releases WHERE created_at > datetime('now','-7 days')").n,
+      signups30d: q("SELECT COUNT(*) n FROM users WHERE created_at > datetime('now','-30 days') AND role != 'admin'").n,
+      activated30d: q("SELECT COUNT(*) n FROM users u WHERE u.created_at > datetime('now','-30 days') AND u.role != 'admin' AND EXISTS (SELECT 1 FROM releases r JOIN sites s ON s.id = r.site_id WHERE s.user_id = u.id AND r.created_at <= strftime('%Y-%m-%dT%H:%M:%fZ', u.created_at, '+1 day'))").n,
+      nudged30d: q("SELECT COUNT(*) n FROM plan_notices WHERE kind = 'nudge_day0' AND ref > datetime('now','-30 days')").n,
       requests7d: q("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       bytes7d: q("SELECT COALESCE(SUM(bytes),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       openAbuse: q("SELECT COUNT(*) n FROM abuse_reports WHERE status IN ('open','reviewing')").n,
@@ -532,7 +535,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), changelog: listChangelog(60), capacity,
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), proofMin: getSetting('home.proof_min', '10'), changelog: listChangelog(60), capacity,
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
@@ -572,6 +575,7 @@ export async function registerAdminRoutes(app) {
     const want = String(req.body?.pill ?? 'latest');
     const ok = want === 'latest' || listChangelog(500).some((e) => e.id === want);
     setSetting('home.pill', ok ? want : 'latest');
+    if (req.body?.proof_min !== undefined) setSetting('home.proof_min', String(Math.max(0, Math.min(100000, parseInt(req.body.proof_min, 10) || 0))));
     audit({ req, action: 'admin.home_pill.update', targetType: 'system', targetId: 'home.pill', details: { pill: ok ? want : 'latest' } });
     flash(reply, 'success', ok && want !== 'latest' ? 'The home page “New” pill is pinned.' : 'The home page “New” pill follows the latest release.');
     return reply.redirect('/admin/health');

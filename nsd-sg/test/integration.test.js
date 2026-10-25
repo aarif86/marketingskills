@@ -44,6 +44,8 @@ test('marketing pages render', async () => {
   }
   const r = await get('/');
   assert.match(r.body, /Give it a proper address/);
+  assert.match(r.body, /Sharing it is the hard part/, 'hero opens with the pain');
+  assert.doesNotMatch(r.body, /hero-proof/, 'proof line hidden below the threshold');
   assert.match(r.body, /Who this is for/);
   assert.match(r.headers['content-security-policy'], /frame-ancestors 'none'/);
   // the connector is marketed on the landing page and discoverable by AI assistants
