@@ -143,6 +143,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-16', '0.13.16', 'Two more guard rails before the crowd arrives', `- New: a site that uses more transfer than its plan allows in a month is paused with a plain notice until the 1st, so one busy or abused site cannot slow down everyone else's.
+- New: anonymous test pages cannot contain a password or login form. Real sites can; sign up for those.
+- Changed: the promo code boxes show a made-up example instead of a real-looking code.
+- New: a Contact page (in the footer) that lists every way to reach a person: WhatsApp, email, the roadmap for ideas, Report abuse. WhatsApp taps now go through nsd.sg, so the number is not in the page for scrapers and taps are rate-limited.`, 'improved', '2026-10-25T11:00:00Z'],
   ['cl-0-13-15', '0.13.15', 'Confirm your email before your site goes online', `- Changed: a site can only go online once the owner has confirmed their email address. Sign-ups with Google are already confirmed. Test pages on the home page are unchanged. This closes the easiest path for throwaway accounts, which protects every site on nsd.sg from being flagged together.`, 'new', '2026-10-25T10:00:00Z'],
   ['cl-0-13-14', '0.13.14', 'Roadmap caught up', `- Changed: the roadmap now shows the help panel, the sample pages and the evidence upgrade as shipped, and the “publish from your AI” card no longer says Claude only. In progress: visitor stats and the capacity gauge (waitlist mode next). Planned list unchanged.`, 'improved', '2026-10-25T09:00:00Z'],
   ['cl-0-13-13', '0.13.13', '“Connect your AI”: not only Claude', `- Changed: the page is now called Connect your AI, because it works with any AI tool that supports connectors (MCP): Claude, ChatGPT, Codex, Gemini CLI, Cursor, VS Code and more. Setup steps for each are on the page, in plain words.`, 'improved', '2026-10-25T08:00:00Z'],

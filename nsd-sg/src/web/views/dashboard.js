@@ -258,7 +258,7 @@ ${planBanner(ent)}
     <label>In your own words <textarea name="note" rows="3" maxlength="500" minlength="20" required placeholder="What is the site for, and what happens in the next 3 months?"></textarea></label>
     <button class="btn btn-ghost" type="submit">Get more time</button></form>` : ''}
   <hr><h3>Have a promo code?</h3>
-  <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. ASATIZAH-2026" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
+  <form method="post" action="/billing/redeem" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="code" placeholder="e.g. YOURCODE" maxlength="32" required autocomplete="off" style="text-transform:uppercase"><button class="btn btn-ghost" type="submit">Redeem</button></form>
 </div>
 <div class="card"><h2>${activeSub ? 'Subscription' : 'Upgrade'}</h2>
   ${activeSub ? html`<div class="sub-box"><p><strong>${plans.find((p) => p.id === activeSub.plan_id)?.name ?? 'Plus'} · ${activeSub.status === 'scheduled' ? `card saved, first charge on ${formatDate(activeSub.starts_at ?? ent.expiresAt)}` : 'paid monthly by card'}.</strong> ${activeSub.status === 'scheduled' ? 'Your free period runs to the end; the monthly charge starts after it.' : `Started ${formatDate(activeSub.created_at)}.`} Receipts come from HitPay by email.</p>

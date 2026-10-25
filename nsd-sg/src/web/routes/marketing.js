@@ -6,10 +6,11 @@ import { limiter } from '../../lib/ratelimit.js';
 import { audit } from '../../lib/audit.js';
 import { listPlans } from '../../services/plans.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
-import { appLayout, marketingLayout, html } from '../views/layout.js';
+import { appLayout, marketingLayout, html, whatsappTarget } from '../views/layout.js';
+import { supportConfig } from '../help.js';
 import { pastedHtml } from '../../lib/html.js';
 import { csrfTokenFor, readFlash, flash } from '../middleware.js';
-import { homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage, tryLimitPage } from '../views/marketing.js';
+import { contactPage, homePage, pricingPage, faqPage, termsPage, privacyPage, reportPage, showcasePage, badgePage, roadmapPage, changelogPage, tryResultPage, tryGonePage, tryLimitPage } from '../views/marketing.js';
 import { createPreview, getPreview, claimPreview, previewUrl, checkReady, validatePaste, listShowcasePreviews, readTryCookie, writeTryCookie, anonBlockReason, TRY_COOKIE, TRY_FREE_PER_PERSON, TRY_MAX_BYTES, TryError } from '../../services/tryit.js';
 import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
@@ -165,6 +166,15 @@ export async function registerMarketingRoutes(app) {
   app.get('/terms', async (req, reply) => render(req, reply, { title: 'Terms of Service', body: termsPage() }));
   app.get('/privacy', async (req, reply) => render(req, reply, { title: 'Privacy', body: privacyPage() }));
 
+  // WhatsApp hand-off: the number lives only here. Rate-limited per IP; every tap is counted in the audit log.
+  app.get('/wa', { preHandler: limiter('waClick') }, async (req, reply) => {
+    const ctx = String(req.query?.c ?? '').slice(0, 200);
+    const target = whatsappTarget(ctx);
+    if (!target) return reply.code(404).send('WhatsApp help is switched off.');
+    audit({ req, action: 'support.whatsapp_tap', targetType: 'support', targetId: 'whatsapp', details: { ctx } });
+    return reply.redirect(target);
+  });
+  app.get('/contact', async (req, reply) => render(req, reply, { title: 'Contact', description: 'How to reach a real person at NSD.SG.', body: contactPage({ support: supportConfig(), user: req.user }) }));
   app.get('/report', async (req, reply) => render(req, reply, { title: 'Report abuse', body: reportPage({ csrf: csrfTokenFor(req), site: normalizeSubdomain(req.query.site ?? '') }) }));
 
   app.post('/report', { preHandler: limiter('abuseReport') }, async (req, reply) => {

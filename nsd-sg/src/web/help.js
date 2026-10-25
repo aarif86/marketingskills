@@ -48,7 +48,7 @@ export const TIPS = {
   default: [
     ['How does NSD.SG work?', 'Ask an AI for a page, paste it here, and it is online at yourname.nsd.sg. Three steps on the home page.'],
     ['Is my page safe?', 'Every page gets a padlock. Pages cannot run programs on the server, so nothing on your page can be hacked into.'],
-    ['Need a real website?', 'NasarDigital builds and grows websites for Singapore businesses. Ask us from the same WhatsApp.'],
+    ['How do I contact a person?', 'The green button below, or the Contact page in the footer: WhatsApp, email, the roadmap for ideas, Report abuse for bad sites.'],
   ],
 };
 

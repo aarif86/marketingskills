@@ -55,6 +55,7 @@ export function expiresLabel(expiresAt) {
 export function validatePaste(text) {
   const s = String(text ?? '');
   if (s.trim().length < 20 || !/<[a-z!][^>]*>/i.test(s)) return 'That does not look like a web page. Copy the whole code, from the first line to the last, and paste it again.';
+  if (/<input[^>]+type\s*=\s*["']?password/i.test(s)) return 'Test pages cannot contain a password or login form. Test pages are anonymous, and login forms are what phishing looks like. Sign up (free) to publish a real site.';
   if (Buffer.byteLength(s, 'utf8') > TRY_MAX_BYTES) return 'That page is bigger than 1 MB. Test pages are for a single page; sign up to publish something bigger.';
   return null;
 }

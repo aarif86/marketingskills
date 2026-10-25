@@ -591,3 +591,26 @@ test('email gate: with REQUIRE_VERIFIED_EMAIL on, an unconfirmed account cannot 
     assert.match((await get('/', '', 'uncsite.nsd.test')).body, /<h1>yes<\/h1>/);
   } finally { config.publish.requireVerifiedEmail = saved; }
 });
+
+test('guard rails: a site over its monthly transfer is paused at the edge; test pages refuse password forms; promo placeholders are made up', async () => {
+  const { resetBandwidthCache } = await import('../src/services/bandwidth.js');
+  const { flushTraffic } = await import('../src/services/sites.js');
+  flushTraffic();
+  const before = (await get('/', '', 'alice.nsd.test')).statusCode;
+  assert.equal(before, 200);
+  // pretend alice served far more than any plan allows this month
+  getDb().prepare("INSERT INTO site_traffic_daily (site_id, day, requests, bytes) VALUES (?, strftime('%Y-%m-%d','now'), 1, ?) ON CONFLICT(site_id, day) DO UPDATE SET bytes = excluded.bytes").run(alice.siteId, 2 * 1024 ** 4); // 2 TB: above every plan
+  resetBandwidthCache();
+  const paused = await get('/', '', 'alice.nsd.test');
+  assert.equal(paused.statusCode, 429); assert.match(paused.body, /used its monthly allowance/);
+  getDb().prepare("DELETE FROM site_traffic_daily WHERE site_id = ? AND day = strftime('%Y-%m-%d','now')").run(alice.siteId);
+  resetBandwidthCache();
+  assert.equal((await get('/', '', 'alice.nsd.test')).statusCode, 200, 'back once the month resets');
+  // try page with a login form
+  const { validatePaste } = await import('../src/services/tryit.js');
+  assert.match(validatePaste('<!doctype html><html><body><form><input type="password" name="p"><button>Log in</button></form></body></html>'), /password or login form/);
+  assert.equal(validatePaste('<!doctype html><html><body><form><input type="email"><button>Subscribe</button></form><p>hello world page</p></body></html>'), null);
+  const c = cookiesFrom(await app.inject({ method: 'POST', url: '/login', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrfFrom((await get('/login')).body), email: 'alice@example.com', password: 'correct-horse-battery' }).toString() }));
+  assert.match((await get('/billing', c)).body, /placeholder="e.g\. YOURCODE"/);
+  assert.match((await get('/admin/promo', admin.cookie)).body, /placeholder="e.g\. WELCOME2026"/);
+});

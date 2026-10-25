@@ -525,8 +525,10 @@ test('WhatsApp help: panel with page tips, smart on most pages, always on billin
   const home = await get('/');
   assert.match(home.body, /data-wa data-wa-mode="smart" data-wa-key="home" hidden/);
   assert.match(home.body, /Where do I get the file\?/);
-  assert.match(home.body, /https:\/\/wa\.me\/6584235041\?text=Hi%20NSD\.SG/);
-  assert.match(home.body, /on%20the%20home%20page/);
+  assert.doesNotMatch(home.body, /6584235041/, 'number never in the page source');
+  assert.match(home.body, /href="\/wa\?c=on%20the%20home%20page"/);
+  const hop = await get('/wa?c=on%20the%20home%20page');
+  assert.equal(hop.statusCode, 302); assert.match(hop.headers.location, /^https:\/\/wa\.me\/6584235041\?text=Hi%20NSD\.SG.*home%20page/);
   assert.match(home.body, /Singapore time/);
   assert.match((await get('/login')).body, /data-wa-key="auth"/);
   assert.match((await get('/faq')).body, /WhatsApp a real human<\/a> or email/);
@@ -545,11 +547,11 @@ test('WhatsApp help: panel with page tips, smart on most pages, always on billin
   assert.match(health.body, /WhatsApp help/); assert.match(health.body, /name="number" value="6584235041"/);
   let r = await post('/admin/health/support', c, { number: '6512345678', start: '8', end: '21' }, '/admin/health'); // no enabled=1 -> off
   assert.equal(r.statusCode, 302);
-  assert.doesNotMatch((await get('/')).body, /data-wa-fab/, 'off everywhere');
+  assert.doesNotMatch((await get('/')).body, /data-wa-fab/, 'off everywhere'); assert.equal((await get('/wa?c=x')).statusCode, 404);
   assert.doesNotMatch((await get('/faq')).body, /WhatsApp a real human<\/a> or email/);
   r = await post('/admin/health/support', c, { enabled: '1', number: '6512345678', start: '8', end: '21' }, '/admin/health');
   const again = await get('/');
-  assert.match(again.body, /wa\.me\/6512345678/); assert.match(again.body, /8am to 9pm, Singapore time/);
+  assert.match((await get('/wa?c=x')).headers.location, /wa\.me\/6512345678/); assert.match(again.body, /8am to 9pm, Singapore time/);
   assert.equal(db().prepare("SELECT value FROM settings WHERE key = 'support.hours.end'").get().value, '21');
   // back to defaults for the other tests
   await post('/admin/health/support', c, { enabled: '1', number: '6584235041', start: '9', end: '22' }, '/admin/health');
@@ -582,4 +584,11 @@ test('public menu links to Roadmap and What’s new, and underlines the current 
   const rm = await get('/roadmap');
   assert.match(rm.body, /<a href="\/roadmap" class="active"[^>]*>Roadmap<\/a>|<a href="\/roadmap"[^>]*class="active"/);
   assert.doesNotMatch(rm.body, /<a href="\/changelog" class="active"/);
+});
+
+test('contact page lists every door and is linked from the footer', async () => {
+  const r = await get('/contact');
+  assert.equal(r.statusCode, 200);
+  for (const re of [/Talk to a real person/, /WhatsApp a real human/, /hello@nsd\.test/, /href="\/roadmap#suggest"/, /href="\/report"/, /ignored and blocked/]) assert.match(r.body, re);
+  assert.match((await get('/')).body, /<a href="\/contact">Contact<\/a>/);
 });

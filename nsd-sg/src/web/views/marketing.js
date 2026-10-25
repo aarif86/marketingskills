@@ -374,3 +374,20 @@ export function tryGonePage() {
   <p class="section-lead">Test pages last 3 hours, then they are deleted. <a href="/#try">Make a new one</a>, or <a href="/signup">sign up</a> to keep a page online for good.</p>
 </div></section>`.toString();
 }
+
+export function contactPage({ support, user }) {
+  return html`<section class="section"><div class="container narrow">
+  <p class="eyebrow">Contact</p>
+  <h1>Talk to a real person.</h1>
+  <p class="section-lead">NSD.SG is built and looked after by one person in Singapore. Pick the door that fits.</p>
+  <div class="grid two">
+    <div class="card"><h3>Stuck, or a quick question</h3><p class="muted">WhatsApp is fastest. ${support.enabled ? html`Replies ${support.open ? 'within a few hours' : 'in the morning'}, ${support.hoursText}.` : 'Switched off right now; use email.'}</p>
+      ${support.enabled ? html`<p><a class="btn btn-primary" href="${whatsappLink('from the Contact page')}" target="_blank" rel="noopener">WhatsApp a real human</a></p>` : ''}
+      <p class="muted small">Tip: the green button on every page already knows which page you were on.</p></div>
+    <div class="card"><h3>Something longer, or an invoice</h3><p class="muted">Email <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies, usually the same day.</p></div>
+    <div class="card"><h3>An idea, or something that got in your way</h3><p class="muted">Post it on the <a href="/roadmap#suggest">roadmap</a> so others can vote. You need a free account; that keeps it honest.</p></div>
+    <div class="card"><h3>A site that breaks the rules</h3><p class="muted">Phishing, scams, stolen content: use <a href="/report">Report abuse</a>. No account needed. Reports are read the same day.</p></div>
+  </div>
+  <p class="muted small mt">We answer questions about NSD.SG and about getting a page online. Sales pitches, link requests and “SEO offers” are ignored and blocked.</p>
+</div></section>`.toString();
+}

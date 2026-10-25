@@ -12,6 +12,7 @@ import { contentTypeFor, cacheControlFor, extensionOf, HTML_EXTENSIONS } from '.
 import { hit, LIMITS } from '../lib/ratelimit.js';
 import { getSiteForServing, recordTraffic } from '../services/sites.js';
 import { shouldLog, logVisit } from '../services/visits.js';
+import { overBandwidth } from '../services/bandwidth.js';
 import { entitlementsFor } from '../services/plans.js';
 import { releaseDir, resolveWithin } from '../storage/releases.js';
 import { injectBranding } from './branding.js';
@@ -50,6 +51,7 @@ const PAGES = {
   notFoundSite: (label) => page('Site not found', `<h1>There is no site here yet.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> is not taken. Want it? <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/signup?name=${encodeURIComponent(label)}">Make it yours on NSD.SG</a>. It is free.</p>`),
   empty: (label) => page('Coming soon', `<h1>Coming soon.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> belongs to someone, but there is no page on it yet.</p>`),
   suspended: () => page('Site unavailable', `<h1>This site is unavailable.</h1><p>NSD.SG has switched it off. If it is yours, log in to NSD.SG to see why.</p>`),
+  bandwidth: (label) => page('Site paused for this month', `<h1>This site has used its monthly allowance.</h1><p><strong>${label}</strong> has served more data this month than its plan allows, so it is paused until the 1st. If it is yours, log in to NSD.SG and move to a plan with more room.</p>`),
   notFoundFile: () => page('Page not found', `<h1>Page not found.</h1><p>There is no page with that name on this site. Check the link and try again.</p>`),
   dormant: (label) => page('This page has moved on', `<h1>This page has moved on.</h1><p><strong>${esc(label)}.${esc(config.baseDomain)}</strong> was made with NSD.SG and its free period has ended. If it is yours, <a href="${esc(config.publicScheme)}://${esc(config.platformHosts[0])}/billing">log in to bring it back</a> in a minute.</p>`),
   methodNotAllowed: () => page('Not allowed', `<h1>Not allowed.</h1><p>Sites on NSD.SG only show pages; they cannot receive forms or data.</p>`),
@@ -97,6 +99,7 @@ export async function serveTenant(req, reply, label) {
   if (!site) return sendPage(reply, 404, PAGES.notFoundSite(label));
   if (shouldLog(site)) { try { logVisit(site, req, site.status === 'suspended' || site.owner_status !== 'active' ? 'suspended' : 'live'); } catch { /* never block serving */ } }
   if (site.status === 'suspended' || site.owner_status !== 'active') return sendPage(reply, 451, PAGES.suspended());
+  if (overBandwidth(site)) return sendPage(reply, 429, PAGES.bandwidth(label)); // one site cannot eat the whole account's transfer
   if (!site.current_release_id) return sendPage(reply, 200, PAGES.empty(label));
   if (isDormant({ plan_expires_at: site.plan_expires_at })) return sendPage(reply, 200, PAGES.dormant(label));
 

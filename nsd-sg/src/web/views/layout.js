@@ -11,6 +11,14 @@ export function whatsappLink(context = '', number = null) {
   const sc = supportConfig();
   const n = number ?? (sc.enabled ? sc.number : '');
   if (!n) return '';
+  // Taps go through /wa: the number never sits in the page source for scrapers, taps are rate-limited and counted.
+  return `/wa?c=${encodeURIComponent(context)}`;
+}
+/** The real WhatsApp URL, built only when /wa redirects. */
+export function whatsappTarget(context = '', number = null) {
+  const sc = supportConfig();
+  const n = number ?? (sc.enabled ? sc.number : '');
+  if (!n) return '';
   const text = `Hi NSD.SG, I have a question.${context ? ` (${context})` : ''}`;
   return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
 }
@@ -83,7 +91,7 @@ ${helpPanel({ context: title ? `on the ${title} page` : 'on the home page', tipK
 <div><div class="brand small">NSD<span>.SG</span></div><p>Make it with AI. Put it online with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
 <div><h4>Product</h4><a href="/#try">Try it</a><a href="/#who">Who it’s for</a><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">What’s new</a><a href="/faq">Questions</a></div>
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
-<div><h4>Trust</h4><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a>${supportConfig().enabled ? html`<a href="${whatsappLink('from the footer')}" target="_blank" rel="noopener">WhatsApp a real human</a>` : ''}</div>
+<div><h4>Trust</h4><a href="/contact">Contact</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a>${supportConfig().enabled ? html`<a href="${whatsappLink('from the footer')}" target="_blank" rel="noopener">WhatsApp a real human</a>` : ''}</div>
 </div>
 <p class="fine">© ${new Date().getFullYear()} <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> · Singapore. Pages on NSD.SG are made by their owners. See something wrong? Report it and we act quickly.</p>
 </div></footer>
@@ -109,7 +117,7 @@ ${raw(header({
   }))}
 ${hostingBar()}<main class="container app-main">${flashBox(flash)}${raw(body)}</main>
 ${helpPanel({ context: `${user.email}, on ${title || 'the dashboard'}`, tipKey: tipKeyFor({ active, path }), mode: active === 'billing' ? 'always' : 'smart' })}
-<footer class="site-footer slim"><div class="container"><span><a href="/">NSD.SG</a> · a <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> product</span><span><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
+<footer class="site-footer slim"><div class="container"><span><a href="/">NSD.SG</a> · a <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> product</span><span><a href="/contact">Contact</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/report">Report abuse</a></span></div></footer>
 <script src="/assets/app.js?v=${config.version}" defer></script>
 </body></html>`.toString();
 }

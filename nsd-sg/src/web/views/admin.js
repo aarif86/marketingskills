@@ -365,13 +365,13 @@ export function promoPage({ codes, plans, csrf }) {
 <p class="muted">A code moves the user onto the chosen plan with a fresh trial (the plan's <code>trial_days</code>). Beta = 3 sites, no badge, 30 days free, then S$6/mo via HitPay.</p>
 <form method="post" action="/admin/promo" class="card form">${hidden(csrf, { action: 'create' })}
   <div class="grid three tight">
-    <label>Code <input name="code" placeholder="ASATIZAH-2026" maxlength="32" required style="text-transform:uppercase"></label>
+    <label>Code <input name="code" placeholder="e.g. WELCOME2026" maxlength="32" required style="text-transform:uppercase"></label>
     <label>Plan <select name="plan_id">${plans.map((p) => html`<option value="${p.id}" ${p.id === 'beta' ? 'selected' : ''}>${p.name} (${p.id})</option>`)}</select></label>
     <label>Max uses <input name="max_uses" type="number" min="1" value="20"></label>
   </div>
   <div class="grid two tight">
     <label>Expires in days <input name="expires_days" type="number" min="0" value="60"><small>0 = never</small></label>
-    <label>Note <input name="note" placeholder="asatizah group / business team" maxlength="200"></label>
+    <label>Note <input name="note" placeholder="e.g. investor group, Oct 2026" maxlength="200"></label>
   </div>
   <button class="btn btn-primary btn-tiny">Create code</button></form>
 <div class="card"><table class="table"><thead><tr><th>Code</th><th>Plan</th><th>Used</th><th>Expires</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>

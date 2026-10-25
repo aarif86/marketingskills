@@ -328,7 +328,7 @@ document.querySelectorAll('[data-rm-more]').forEach(function (btn) {
     d.addEventListener('toggle', function () {
       if (!d.open) return;
       var q = d.querySelector('summary').textContent.trim();
-      go.href = go.getAttribute('data-wa-base') + encodeURIComponent(' I looked at: "' + q + '"');
+      go.href = go.getAttribute('data-wa-base') + encodeURIComponent(' I looked at: "' + q + '"'); // appended to the c= param
     });
   });
   if (wa.getAttribute('data-wa-mode') !== 'smart') return;

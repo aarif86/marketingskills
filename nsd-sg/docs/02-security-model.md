@@ -102,6 +102,21 @@ unaffected; Google sign-ups arrive verified. Why: one throwaway account with a p
 `*.nsd.sg` zone flagged by Safe Browsing, which takes every customer down until delisting. Admin can "Mark email
 verified" on a user page for stuck cases.
 
+## Platform-wide guard rails (0.13.16 audit)
+
+Checked on 25 Oct before opening to the public; what one account can and cannot do to everyone else:
+
+- **Code execution in tenant folders**: impossible by two layers. Upload allowlist (`src/lib/mime.js`: no php/cgi/htaccess, dotfiles never written, symlinks and nested archives rejected, path traversal blocked) and the generated `.htaccess` (`Options -ExecCGI`, `php_flag engine off`, `Require all denied` on script extensions, dotfiles never served).
+- **Session theft via a hosted page**: hosted pages live on `name.nsd.sg`; the session cookie is `__Host-nsd_session` (no Domain, Secure, Path=/), which a subdomain cannot set or read. PSL registration remains the belt-and-braces item (roadmap).
+- **Disk/inodes**: per-plan storage, per-file size, `MAX_ZIP_ENTRIES` 5000, `MAX_FILES_PER_UPLOAD` 200, releases pruned to the plan's count.
+- **Transfer**: `src/services/bandwidth.js`, enforced in `serveTenant`: over the plan's monthly bytes -> 429 "paused for this month" page, cached 60 s per site.
+- **Phishing**: try pages refuse `<input type="password">`; real sites need a confirmed email first (gate above); blocked words; abuse reports switch on visitor logging; evidence holds.
+- **Brute force / spam**: per-IP limiters on login, signup, reset, upload, try, abuse report, suggestions, MCP, WhatsApp taps; account lock after repeated failures; CSRF on every form.
+- **Open redirects**: `safeNext()` allows only same-origin paths. **Mail header injection**: subjects are fixed strings. **Outbound requests**: DNS lookups for domain checks and HEAD probes to our own hostnames only.
+- **Contact number scraping**: WhatsApp links go through `/wa` (number only in the redirect), rate-limited and counted in the audit log.
+
+Not code, still on the owner: register nsd.sg in Google Search Console (Safe Browsing alerts), keep an off-box backup, watch SMTP deliverability.
+
 ## Evidence grade (0.13.0)
 
 What an investigator gets from Admin → Users → *account* → "Download evidence pack", or from a pack stored on the server:
