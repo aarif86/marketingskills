@@ -285,40 +285,44 @@ export function connectPage({ tokens, fresh, csrf, sites }) {
   const live = tokens.filter((t) => !t.revoked_at);
   const example = 'kopi-stall'; // a made-up name on purpose: the reader's own site name would read as "overwrite my site"
   return html`<h1>Connect to Claude</h1>
-<p class="section-lead">Let Claude put pages online for you. You add NSD.SG to Claude once; after that you can say “publish this as ${example}” and get a live link back. No files to download, nothing to upload.</p>
-${fresh ? html`<div class="card token-fresh"><h2>Your new token</h2>
-  <p>This is the only time it is shown. Copy it now.</p>
-  <p class="token"><code>${fresh.token}</code></p>
-  <h3>Your connection address</h3>
+<p class="section-lead">Today you ask Claude for a page, download it, and upload it here. After this, you skip all that. You say to Claude “put this online as ${example}” and Claude gives you the live link. Three steps, once only.</p>
+${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
+  <p>This is the only time we show it. Copy the long address below now.</p>
   <p class="token"><code>${base}/mcp/${fresh.token}</code></p>
-  <p class="muted small">The address contains the token, so treat it like a password: paste it into Claude, do not post it anywhere. If it ever leaks, revoke it below and make a new one.</p>
+  <p class="muted small">Keep it to yourself, like a password. Anyone who has it can put pages on your account. If it ever gets out, press “Switch off” below and make a new one. Now go to <strong>step 2</strong>.</p>
 </div>` : ''}
 <div class="grid two">
-<div class="card"><h2>1. Make a token</h2>
-  <p class="muted">One per app you connect, so you can switch one off without touching the others.</p>
-  <form method="post" action="/connect/tokens" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="name" placeholder="e.g. Claude Desktop" maxlength="60"><button class="btn btn-primary" type="submit">Make a token</button></form>
-  ${live.length ? html`<table class="table small mt"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${live.map((t) => html`<tr><td>${t.name}</td><td class="muted">${formatDate(t.created_at)}</td><td class="muted">${t.last_used_at ? `${timeAgo(t.last_used_at)} · ${t.calls} call${t.calls === 1 ? '' : 's'}` : 'never'}</td><td><form method="post" action="/connect/tokens/${t.id}/revoke" class="inline" data-confirm="Revoke this token? Claude will stop working with it."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-danger" type="submit">Revoke</button></form></td></tr>`)}</tbody></table>` : html`<p class="muted small mt">No tokens yet.</p>`}
+<div class="card"><h2>Step 1 · Get a key</h2>
+  <p class="muted"><strong>Why?</strong> Claude needs a way to prove it is working for <em>you</em>, and only you. The key is like a house key you give to a helper. It opens your NSD.SG account, nothing else. You can take it back any time.</p>
+  <form method="post" action="/connect/tokens" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="name" placeholder="e.g. my laptop" maxlength="60"><button class="btn btn-primary" type="submit">Get a key</button></form>
+  <p class="muted small">Give it a name so you remember where you used it. One key per place is tidy: one for Claude on your laptop, another for Claude on your phone.</p>
+  ${live.length ? html`<table class="table small mt"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${live.map((t) => html`<tr><td>${t.name}</td><td class="muted">${formatDate(t.created_at)}</td><td class="muted">${t.last_used_at ? `${timeAgo(t.last_used_at)} · ${t.calls} call${t.calls === 1 ? '' : 's'}` : 'never'}</td><td><form method="post" action="/connect/tokens/${t.id}/revoke" class="inline" data-confirm="Switch off this key? Claude will stop working with it at once."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-danger" type="submit">Switch off</button></form></td></tr>`)}</tbody></table>` : ''}
 </div>
-<div class="card"><h2>2. Add NSD.SG to Claude</h2>
-  <h3>Claude on the web or Claude Desktop</h3>
+<div class="card"><h2>Step 2 · Give the key to Claude</h2>
+  <p class="muted">You do this once. After that, Claude remembers.</p>
+  <h3>If you use Claude on the web or the Claude app on your computer</h3>
   <ol class="plain-steps">
-    <li>Open <strong>Settings → Connectors</strong> (on the web: claude.ai/settings/connectors).</li>
+    <li>In Claude, open <strong>Settings</strong>, then <strong>Connectors</strong>. (On the web, go to claude.ai/settings/connectors.)</li>
     <li>Press <strong>Add custom connector</strong>.</li>
-    <li>Name: <code>NSD.SG</code>. URL: your connection address from step 1 (it starts with <code>${base}/mcp/</code>).</li>
-    <li>Leave the OAuth fields empty and press <strong>Add</strong>. Then switch NSD.SG on in the chat’s tools menu.</li>
+    <li>Name: type <code>NSD.SG</code>. URL: paste the long address from step 1.</li>
+    <li>Leave the other boxes empty. Press <strong>Add</strong>.</li>
+    <li>In a chat, open the tools menu (the small icon near the message box) and switch <strong>NSD.SG</strong> on.</li>
   </ol>
-  <h3>Claude Code</h3>
-  <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_TOKEN</code></p>
-  <h3>Then just ask</h3>
-  <p class="example">“Publish this page as <strong>${example}</strong> on NSD.SG.”</p>
-  <p class="muted small">Claude sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “update it” to change it, “list my sites” to see what you have. Free plan: one site with the small badge; Plus: up to five, no badge, your own domain name.</p>
+  <h3>If you use Claude Code (the one in the terminal)</h3>
+  <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
 </div>
 </div>
-<div class="card"><h2>What Claude can and cannot do with this</h2>
+<div class="card"><h2>Step 3 · Just ask</h2>
+  <p class="example">“Put this page online as <strong>${example}</strong>.”</p>
+  <p class="muted">Claude sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “change it” to update it, “show my sites” to see what you have, “remove ${example}” to delete it. Same rules as this dashboard: Free plan, one site with the small badge; Plus, up to five, no badge, your own domain name.</p>
+  <p class="muted small">If Claude writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” The first time, Claude may ask you to allow it. Say yes.</p>
+</div>
+<div class="card"><h2>Is this safe?</h2>
   <ul class="plain">
-    <li>Can: publish, update, list and delete <strong>your</strong> sites, within your plan’s limits. Same rules as this dashboard, including the name checks.</li>
-    <li>Cannot: touch anyone else’s site, change your plan, or pay for anything.</li>
-    <li>Limits per token: 60 requests an hour, 20 publishes an hour. Enough for a working session, not for a script gone wrong.</li>
+    <li>Claude can only put up, change, list and remove <strong>your</strong> sites, within your plan. Nothing else.</li>
+    <li>It cannot touch anyone else’s site, change your plan, or pay for anything.</li>
+    <li>Each key allows 60 actions an hour and 20 publishes an hour. Enough for a day of work, not enough for a runaway program.</li>
+    <li>Lost the key or gave it to the wrong app? Press <strong>Switch off</strong> next to it. It stops working at once.</li>
   </ul>
 </div>`.toString();
 }

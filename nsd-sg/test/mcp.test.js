@@ -32,7 +32,7 @@ test('new sign-ups get 30 days; the Connect page issues a token once', async () 
   const days = (Date.parse(row.plan_expires_at) - Date.now()) / 86400000;
   assert.ok(days > 29 && days <= 30.01, `30-day trial, got ${days}`);
   let page = await get('/connect', u.cookie);
-  assert.match(page.body, /Make a token/);
+  assert.match(page.body, /Get a key/); assert.match(page.body, /like a house key/);
   assert.match(page.body, /Add custom connector/);
   const made = await post('/connect/tokens', u.cookie, { name: 'Claude Desktop' }, '/connect');
   assert.equal(made.statusCode, 302);
