@@ -9,7 +9,7 @@ const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
-export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [] } }) {
+export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [], previews: [], previewTotal: 0 } }) {
   return html`
 <section class="hero"><div class="container">
   ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
@@ -31,7 +31,19 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null, live = {
 <section id="try" class="section try"><div class="container">
   <p class="eyebrow">Try it first · no account needed</p>
   <h2>Put your page online for 3 hours</h2>
-  <p class="section-lead">Your AI made you a page. Upload the file or paste the code, press the button, and you get a link you can send to anyone. Like it? Sign up and keep it at your own address.</p>
+  <p class="section-lead">A <strong>test page</strong> is your page, online at a real link, for 3 hours. No account, no email. Paste the code your AI gave you, press the button, send the link. Like it? Keep it at your own address with one click.</p>
+  <ol class="try-flow" aria-label="How a test page works">
+    <li><b>Paste</b> the code or drop the file</li><li><b>Get a link</b> in a few seconds</li><li><b>Send it</b> to anyone, on any phone</li><li><b>Gone in 3 hours</b>, or keep it with one click</li>
+  </ol>
+  <div class="try-uses">
+    <span class="try-uses-label">Good for</span>
+    <ul>
+      <li>💬 <strong>Feedback tonight.</strong> A draft proposal, menu or poster page to the client or the group chat.</li>
+      <li>📱 <strong>Seeing it on a real phone.</strong> Your AI shows it on a laptop; the link shows it everywhere.</li>
+      <li>🗓️ <strong>Things that live for an afternoon.</strong> A class exercise, a meeting agenda, a quick invite.</li>
+      <li>🤝 <strong>Showing a client in the meeting.</strong> Make it, paste it, hand over the phone.</li>
+    </ul>
+  </div>
   <form method="post" action="/try" enctype="multipart/form-data" target="_blank" class="form card try-form" data-try-form>
     <input type="hidden" name="_csrf" value="${csrf}">
     <div class="try-choices">
@@ -47,7 +59,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null, live = {
     </div>
     <div class="bar busy" hidden data-try-bar><span></span></div>
     <div class="drop-veil" aria-hidden="true"><span>Drop it to put it online</span></div>
-    <p class="muted small try-fine">Anyone with the link can see a test page. It is deleted after 3 hours. ${TRY_FREE_PER_PERSON} test pages free without an account. No email, nothing to install.</p>
+    <p class="muted small try-fine">Anyone with the link can see a test page, and test pages are listed on the <a href="/showcase">showcase</a> while they are live. <strong>Please do not put anything private on one:</strong> no NRIC or passport numbers, phone numbers, addresses, passwords, customer data or anything you would not post in public. It is deleted after 3 hours. ${TRY_FREE_PER_PERSON} test pages free without an account. No email, nothing to install.</p>
     <div class="try-samples">
       <p class="muted small"><strong>No page yet?</strong> Try one of ours. Press the button and it opens online in a new tab, like your own page would. Each is one plain .html file, the kind an AI gives you.</p>
       <div class="sample-row">
@@ -61,12 +73,15 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null, live = {
   </form>
 </div></section>
 
-${live.sites.length ? html`<section id="live" class="section live"><div class="container">
+${live.sites.length || (live.previews ?? []).length ? html`<section id="live" class="section live"><div class="container">
   <h2>Live right now <span class="muted">${live.total}</span></h2>
   <p class="section-lead">Real pages people put online with NSD.SG, each at its own address. Yours could be next to them in a minute. <a href="/showcase">See all ${live.total} →</a></p>
-  <div class="grid three">
+  ${live.sites.length ? html`<div class="grid three">
     ${live.sites.map((st) => html`<a class="card live-card" href="${config.publicScheme}://${st.subdomain}.${baseDomain}/" target="_blank" rel="noopener"><h3>${st.subdomain}.${baseDomain}</h3>${st.title && !/['’]s site$/.test(st.title) ? html`<p class="eg">${st.title}</p>` : ''}<span class="muted small">Open it →</span></a>`)}
-  </div>
+  </div>` : ''}
+  ${(live.previews ?? []).length ? html`<div class="live-tests"><h3>Being tried right now <span class="muted">${live.previewTotal}</span></h3>
+  <p class="muted small">Test pages from the <a href="#try">try box</a>, made in the last 3 hours by people like you. Each disappears at the time shown. They are public, so nothing private belongs on one. <a href="/report">Report</a> anything that should not be here.</p>
+  <ul class="showcase temp">${live.previews.map((p) => html`<li><a href="${p.url}" target="_blank" rel="noopener nofollow"><span class="sc-name">try.${baseDomain}/<i>${p.id}</i></span><span class="sc-title muted"><span class="pill pill-temp">test page</span> gone at ${p.gone}</span><span class="arrow">↗</span></a></li>`)}</ul></div>` : ''}
 </div></section>` : ''}
 
 <section id="who" class="section who"><div class="container">
@@ -278,8 +293,8 @@ export function showcasePage({ sites, baseDomain, previews = [] }) {
   <h1>${sites.length} site${sites.length === 1 ? '' : 's'} hosted right now</h1>
   <p class="section-lead">Every one of these was made with an AI tool and put online here. Free sites are listed automatically. Paid plans are off the list unless the owner switches it on.</p>
   ${sites.length ? html`<ul class="showcase">${sites.map((s) => html`<li><a href="https://${s.subdomain}.${baseDomain}" target="_blank" rel="noopener"><span class="sc-name">${s.subdomain}<i>.${baseDomain}</i></span><span class="sc-title muted">${s.title && s.title !== s.subdomain ? s.title : ''}</span><span class="arrow">↗</span></a></li>`)}</ul>` : html`<div class="card empty"><p>Nothing published yet — <a href="/signup">be the first</a>.</p></div>`}
-  ${previews.length ? html`<div class="sc-temp"><h2>Test pages right now <span class="muted">${previews.length}</span></h2>
-  <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown (Singapore time).</p>
+  ${previews.length ? html`<div class="sc-temp"><h2>Being tried right now <span class="muted">${previews.length}</span></h2>
+  <p class="section-lead">Made in the last 3 hours with the <a href="/#try">try box</a>, no account. Each one disappears at the time shown (Singapore time). Test pages are public: please keep anything private off them, and <a href="/report">report</a> anything that should not be here.</p>
   <ul class="showcase temp">${previews.map((p) => html`<li><a href="${p.url}" target="_blank" rel="noopener nofollow"><span class="sc-name">try.${baseDomain}/<i>${p.id}</i></span><span class="sc-title muted"><span class="pill pill-temp">test page</span> gone at ${p.gone}</span><span class="arrow">↗</span></a></li>`)}</ul></div>` : ''}
   <p class="muted small mt">Something here breaks our <a href="/terms">terms</a>? <a href="/report">Report it</a>.</p>
 </div></section>`.toString();

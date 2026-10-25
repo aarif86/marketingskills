@@ -170,8 +170,15 @@ test('live test pages show on the showcase as temporary; admin can remove one', 
   const ids = made.headers.location.split('/').pop();
   await get(`/try/${ids}/status`); // marks it reachable
   const sc = await get('/showcase');
-  assert.doesNotMatch(sc.body, /Test pages right now/, 'test pages are not shown on the public showcase');
-  assert.doesNotMatch(sc.body, new RegExp(ids));
+  assert.match(sc.body, /Being tried right now/);
+  assert.match(sc.body, new RegExp(`try\\.nsd\\.test/<i>${ids}</i>`));
+  assert.match(sc.body, /please keep anything private off them/);
+  const home = await get('/');
+  assert.match(home.body, /Being tried right now/, 'home strip lists test pages too');
+  assert.match(home.body, new RegExp(ids));
+  assert.match(home.body, /Please do not put anything private on one/, 'warning before posting');
+  assert.match(home.body, /class="try-flow"/);
+  assert.match(home.body, /Feedback tonight/);
   assert.ok(removePreview(ids));
   assert.equal(getPreview(ids), null);
   assert.doesNotMatch((await get('/showcase')).body, new RegExp(ids));

@@ -42,7 +42,7 @@ export async function registerMarketingRoutes(app) {
 
   // The "New" pill in the hero shows the changelog entry the admin pinned (settings home.pill), else the latest one.
   const heroPill = () => { const pin = getSetting('home.pill', 'latest'); const all = listChangelog(200); return (pin !== 'latest' && all.find((e) => e.id === pin)) || all[0] || null; };
-  const liveStrip = () => { const sites = listShowcaseSites(); return { total: sites.length, sites: sites.slice(0, 3) }; };
+  const liveStrip = () => { const sites = listShowcaseSites(); const previews = listShowcasePreviews(); return { total: sites.length, sites: sites.slice(0, 3), previews: previews.slice(0, 3), previewTotal: previews.length }; };
   app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), latest: heroPill() ?? null }) }));
 
   // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
@@ -171,7 +171,7 @@ export async function registerMarketingRoutes(app) {
       for (const t of temps) fs.rmSync(t, { force: true });
     }
   });
-  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), baseDomain: config.baseDomain }) }));
+  app.get('/showcase', async (req, reply) => render(req, reply, { title: 'Showcase', description: `Every site currently hosted on ${config.baseDomain}.`, body: showcasePage({ sites: listShowcaseSites(), previews: listShowcasePreviews(), baseDomain: config.baseDomain }) }));
   app.get('/badge', async (req, reply) => {
     // The real badge markup minus its guard <script> (platform CSP forbids inline scripts; the demo does not need it).
     const badgeHtml = brandingMarkup().replace(/<script>[\s\S]*<\/script>/, '').replace('position:fixed !important', 'position:absolute !important');
