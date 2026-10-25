@@ -734,3 +734,27 @@ test('builder files: _redirects gives same-site redirects, a single-page-app fal
   // availability messages say why
   assert.match((await get('/api/availability?name=mylogin')).json().reason, /word we block/);
 });
+
+test('testimonials: admin adds a quote and it shows on the home page; hide removes it; yearly Plus is offered only when a free period is ending', async () => {
+  assert.doesNotMatch((await get('/')).body, /id="voices"/, 'nothing renders without quotes');
+  let r = await post('/admin/health/testimonials', admin.cookie, { quote: 'Pasted my proposal and sent the link in two minutes. Client thought I hired someone.', name: 'Siti', role: 'tuition teacher', url: 'siti.nsd.test' });
+  assert.equal(r.statusCode, 302, r.body);
+  const home = (await get('/')).body;
+  assert.match(home, /id="voices"/);
+  assert.match(home, /Client thought I hired someone/);
+  assert.match(home, /href="https:\/\/siti\.nsd\.test"/, 'bare site names get https');
+  const id = getDb().prepare("SELECT id FROM testimonials WHERE name = 'Siti'").get().id;
+  await post(`/admin/health/testimonials/${id}`, admin.cookie, { action: 'toggle' });
+  assert.doesNotMatch((await get('/')).body, /id="voices"/, 'hidden quote, section gone');
+  assert.match((await get('/admin/health', admin.cookie)).body, /What people say/);
+  // yearly Plus: hidden from the pricing cards, named on the Plus card, offered on the Plan page near expiry
+  const pricing = (await get('/pricing')).body;
+  assert.doesNotMatch(pricing, /<h3>Plus yearly<\/h3>/);
+  assert.match(pricing, /Or pay yearly: S\$90, two months free/);
+  assert.doesNotMatch((await get('/billing', bob.cookie)).body, /Plus yearly/, 'fresh free account: no yearly offer yet');
+  getDb().prepare("UPDATE users SET plan_expires_at = datetime('now', '+5 days') WHERE email = 'bob@example.com'").run();
+  const bill = (await get('/billing', bob.cookie)).body;
+  assert.match(bill, /Plus yearly/);
+  assert.match(bill, /S\$90\/year/);
+  assert.match(bill, /two months free/);
+});

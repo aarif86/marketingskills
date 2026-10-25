@@ -9,6 +9,7 @@ import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePa
 import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../services/visits.js';
 import { setSetting, getSetting } from '../../services/settings.js';
 import { listChangelog } from '../../services/roadmap.js';
+import { listTestimonials, addTestimonial, toggleTestimonial, removeTestimonial } from '../../services/testimonials.js';
 import { supportConfig } from '../help.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
@@ -535,7 +536,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), proofMin: getSetting('home.proof_min', '10'), changelog: listChangelog(60), capacity,
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), proofMin: getSetting('home.proof_min', '10'), changelog: listChangelog(60), testimonials: listTestimonials(), capacity,
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
@@ -569,6 +570,21 @@ export async function registerAdminRoutes(app) {
     audit({ req, action: 'try.removed', targetType: 'preview', targetId: id, severity: 'warn', details: { ok } });
     flash(reply, ok ? 'ok' : 'error', ok ? `Test page ${id} removed.` : 'No such test page.');
     return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/testimonials', opts, async (req, reply) => {
+    const b = req.body ?? {};
+    const r = addTestimonial({ quote: b.quote, name: b.name, role: b.role, url: b.url });
+    if (r.ok) audit({ req, action: 'admin.testimonial.add', targetType: 'testimonial', targetId: r.id, details: { name: String(b.name ?? '').slice(0, 80) } });
+    flash(reply, r.ok ? 'success' : 'error', r.ok ? 'Added. It is on the home page now.' : r.reason);
+    return reply.redirect('/admin/health#voices');
+  });
+  app.post('/admin/health/testimonials/:id', opts, async (req, reply) => {
+    const id = String(req.params.id); const action = String(req.body?.action ?? '');
+    const ok = action === 'delete' ? removeTestimonial(id) : action === 'toggle' ? toggleTestimonial(id) : false;
+    if (ok) audit({ req, action: `admin.testimonial.${action}`, targetType: 'testimonial', targetId: id });
+    flash(reply, ok ? 'success' : 'error', ok ? (action === 'delete' ? 'Removed.' : 'Updated.') : 'No such quote.');
+    return reply.redirect('/admin/health#voices');
   });
 
   app.post('/admin/health/home-pill', opts, async (req, reply) => {

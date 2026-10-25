@@ -97,13 +97,13 @@ export function identify(payload) {
   };
 }
 
-/** End of the paid period: last charge + 1 calendar month; never earlier than a few days from now. */
-export function paidUntil(lastPaidAt, status = 'canceled') {
+/** End of the paid period: last charge + 1 calendar month (12 for a yearly plan); never earlier than a few days from now. */
+export function paidUntil(lastPaidAt, status = 'canceled', interval = 'month') {
   const floor = new Date(Date.now() + (status === 'failed' ? 3 : 1) * 86400000);
   const base = lastPaidAt ? new Date(lastPaidAt) : null;
   if (!base || Number.isNaN(base.getTime())) return floor.toISOString();
   const end = new Date(base);
-  end.setUTCMonth(end.getUTCMonth() + 1);
+  end.setUTCMonth(end.getUTCMonth() + (interval === 'year' ? 12 : 1));
   return (end > floor ? end : floor).toISOString();
 }
 
@@ -167,7 +167,7 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       // Market practice: the plan stays until the end of the period already paid for (last charge + 1 month).
       // A failed renewal (nothing paid) gets 3 days to sort the card out. Never shorten an expiry an admin already
       // pushed further out (manual extensions, founding accounts).
-      const grace = paidUntil(sub.last_paid_at, status);
+      const grace = paidUntil(sub.last_paid_at, status, getPlan(sub.plan_id)?.features?.interval ?? 'month');
       db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ? AND (plan_expires_at IS NULL OR plan_expires_at < ?)').run(grace, now, sub.user_id, grace);
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'subscription_canceled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, status, graceUntil: grace }));

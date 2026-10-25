@@ -299,6 +299,19 @@ ${h.hosting.unready?.length ? html`<table class="table small mt"><thead><tr><th>
   <p class="muted small">Right now it is ${h.support?.open ? 'inside' : 'outside'} the hours (${h.support?.hoursText ?? ''}).</p>
   <button class="btn btn-tiny btn-primary" type="submit">Save</button>
 </form></div>
+<div class="card" id="voices"><h2>What people say <span class="muted">${(h.testimonials ?? []).length}</span></h2>
+<p class="muted small">Real quotes only, with the person’s permission. The newest three that are shown appear on the home page under “Live right now”. Nothing renders until there is one.</p>
+<form method="post" action="/admin/health/testimonials" class="form">${hidden(h.csrf)}
+  <label>Quote <textarea name="quote" rows="2" maxlength="400" required placeholder="What they said, in their words"></textarea></label>
+  <div class="grid three tight">
+    <label>Name <input name="name" maxlength="80" required placeholder="Siti"></label>
+    <label>Who they are <input name="role" maxlength="80" placeholder="tuition teacher, Tampines"></label>
+    <label>Their site (optional) <input name="url" maxlength="200" placeholder="siti.nsd.sg"></label>
+  </div>
+  <button class="btn btn-tiny btn-primary" type="submit">Add</button>
+</form>
+${(h.testimonials ?? []).length ? html`<table class="table small"><tbody>${h.testimonials.map((t) => html`<tr><td>“${t.quote}”<div class="muted small">${t.name}${t.role ? ` · ${t.role}` : ''}${t.url ? html` · <a href="${t.url}" target="_blank" rel="noopener">site</a>` : ''}</div></td><td>${t.shown ? pill('shown') : pill('hidden')}</td><td class="actions"><form method="post" action="/admin/health/testimonials/${t.id}" class="inline">${hidden(h.csrf, { action: 'toggle' })}<button class="btn btn-tiny btn-ghost">${t.shown ? 'Hide' : 'Show'}</button></form> <form method="post" action="/admin/health/testimonials/${t.id}" class="inline" data-confirm="Remove this quote?">${hidden(h.csrf, { action: 'delete' })}<button class="btn btn-tiny btn-danger">Remove</button></form></td></tr>`)}</tbody></table>` : ''}
+</div>
 <div class="card"><h2>Stored evidence packs <span class="muted">${(h.packs ?? []).length}</span></h2>
 <p class="muted small">Packs kept on the server, including for accounts that were deleted permanently. Each has a SHA-256 manifest and a chain-of-custody note. Kept 90 days, or until legal hold is lifted.</p>
 ${(h.packs ?? []).length ? html`<table class="table small"><thead><tr><th>Account</th><th>Stored</th><th>Why</th><th>SHA-256</th><th>Until</th><th></th></tr></thead><tbody>${h.packs.map((p) => html`<tr><td>${p.email || p.user_id}</td><td class="muted">${formatDate(p.generated_at)}</td><td class="muted">${p.reason || ''}</td><td><code title="${p.sha256}">${(p.sha256 || '').slice(0, 12)}…</code></td><td class="muted">${p.legal_hold ? 'legal hold' : formatDate(p.keep_until)}</td><td><a class="btn btn-tiny btn-ghost" href="/admin/evidence/packs/${p.user_id}/${p.ts}.zip">Download</a></td></tr>`)}</tbody></table>` : html`<p class="muted">None stored.</p>`}

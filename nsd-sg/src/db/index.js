@@ -83,6 +83,20 @@ export const DEFAULT_PLANS = [
     features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true, showcase: 'opt_in', export_zip: true },
   },
   {
+    // Plus, paid once a year (two months free). Hidden from the pricing cards; offered on the Plan page when a
+    // free period is ending. HitPay plan id comes from HITPAY_PLAN_PLUS_YEAR. Monthly figure is for comparisons only.
+    id: 'plus-year',
+    name: 'Plus yearly',
+    description: 'Everything in Plus, paid once a year. Two months free.',
+    price_cents_month: 750,
+    trial_days: null,
+    is_public: 0,
+    is_default: 0,
+    sort_order: 21,
+    limits: { max_sites: 5, max_storage_bytes: 1024 ** 3, max_file_bytes: 50 * 1024 * 1024, max_releases: 20, max_bandwidth_bytes_month: 50 * 1024 ** 3 },
+    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true, showcase: 'opt_in', export_zip: true, interval: 'year', price_cents_total: 9000 },
+  },
+  {
     id: 'beta',
     name: 'Beta',
     description: 'For invited beta testers: 3 sites, no badge, your own domain. Free for 30 days, then S$6/month.',

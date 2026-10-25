@@ -355,6 +355,8 @@ test('paidUntil: end of paid month, with a floor for failed renewals and unknown
   const d25 = new Date(Date.now() - 25 * 86400000);
   const end = new Date(d25); end.setUTCMonth(end.getUTCMonth() + 1);
   assert.equal(paidUntil(d25.toISOString()), end.toISOString());
+  const yearEnd = new Date(d25); yearEnd.setUTCMonth(yearEnd.getUTCMonth() + 12);
+  assert.equal(paidUntil(d25.toISOString(), 'canceled', 'year'), yearEnd.toISOString(), 'a yearly plan keeps its paid year');
   const stale = new Date(Date.now() - 60 * 86400000).toISOString();
   const floorCancel = new Date(paidUntil(stale)).getTime();
   assert.ok(floorCancel > Date.now() + 0.9 * 86400000 && floorCancel < Date.now() + 1.1 * 86400000, 'stale paid date -> ~1 day floor');

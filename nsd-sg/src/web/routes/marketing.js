@@ -16,6 +16,7 @@ import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
 import { getSetting } from '../../services/settings.js';
+import { listTestimonials } from '../../services/testimonials.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -52,7 +53,7 @@ export async function registerMarketingRoutes(app) {
     return { live, week };
   };
   const liveStrip = () => { const sites = listShowcaseSites(); const previews = listShowcasePreviews(); return { total: sites.length, sites: sites.slice(0, 3), previews: previews.slice(0, 3), previewTotal: previews.length }; };
-  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), proof: heroProof(), latest: heroPill() ?? null }) }));
+  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), proof: heroProof(), voices: listTestimonials({ shownOnly: true, limit: 3 }), latest: heroPill() ?? null }) }));
 
   // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
   app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {

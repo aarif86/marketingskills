@@ -279,3 +279,6 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 
 /* Hero proof line */
 .hero-proof{display:flex;justify-content:center;gap:10px 22px;flex-wrap:wrap;margin:18px auto 0;font-size:.9rem;color:var(--muted)}.hero-proof b{color:var(--text);font-weight:700}.hero-proof span+span::before{content:"·";margin-right:22px;color:var(--line-2)}
+
+/* What people say */
+.voice{margin:0;display:flex;flex-direction:column;gap:12px}.voice blockquote{margin:0;font-size:1.02rem;line-height:1.55;color:var(--text)}.voice figcaption{font-size:.9rem;color:var(--text-2)}.voice figcaption a{color:var(--accent2);text-decoration:none}

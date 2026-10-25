@@ -2,14 +2,14 @@
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { whatsappLink } from './layout.js';
-import { showcaseMode } from '../../services/plans.js';
+import { showcaseMode, getPlan } from '../../services/plans.js';
 import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
-export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [], previews: [], previewTotal: 0 }, proof = null }) {
+export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [], previews: [], previewTotal: 0 }, proof = null, voices = [] }) {
   return html`
 <section class="hero"><div class="container">
   ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
@@ -83,6 +83,13 @@ ${live.sites.length || (live.previews ?? []).length ? html`<section id="live" cl
   ${(live.previews ?? []).length ? html`<div class="live-tests"><h3>Being tried right now <span class="muted">${live.previewTotal}</span></h3>
   <p class="muted small">Test pages from the <a href="#try">try box</a>, made in the last 3 hours by people like you. Each disappears at the time shown. They are public, so nothing private belongs on one. <a href="/report">Report</a> anything that should not be here.</p>
   <ul class="showcase temp">${live.previews.map((p) => html`<li><a href="${p.url}" target="_blank" rel="noopener nofollow"><span class="sc-name">try.${baseDomain}/<i>${p.id}</i></span><span class="sc-title muted"><span class="pill pill-temp">test page</span> gone at ${p.gone}</span><span class="arrow">↗</span></a></li>`)}</ul></div>` : ''}
+</div></section>` : ''}
+
+${voices.length ? html`<section id="voices" class="section voices"><div class="container">
+  <h2>What people say</h2>
+  <div class="grid three">
+    ${voices.map((v) => html`<figure class="card voice"><blockquote>“${v.quote}”</blockquote><figcaption><strong>${v.name}</strong>${v.role ? html`<span class="muted"> · ${v.role}</span>` : ''}${v.url ? html` <a href="${v.url}" target="_blank" rel="noopener nofollow">↗</a>` : ''}</figcaption></figure>`)}
+  </div>
 </div></section>` : ''}
 
 <section id="who" class="section who"><div class="container">
@@ -190,6 +197,7 @@ function jsonLd({ baseDomain, plans }) {
 
 // One list of what a plan gives, used on the home page and the pricing page. Every address is on nsd.sg; a
 // customer who owns a .sg or .com name can connect it from Settings (we check the records and switch it on).
+const yearlyFor = (p) => { const y = getPlan(`${p.id}-year`); return y && y.features?.interval === 'year' ? y : null; };
 function planBullets(p) {
   const paid = p.price_cents_month > 0;
   const items = [
@@ -204,6 +212,7 @@ function planBullets(p) {
     p.features.custom_domains ? 'Own a .sg or .com name? Connect it from Settings and we switch it on' : null,
     p.features.priority_support ? html`Help <strong>first in line</strong> on WhatsApp and email` : 'Help on WhatsApp and email',
     paid ? 'No expiry while you subscribe, and 30 days of grace if a payment fails' : p.trial_days ? `Free for ${period(p.trial_days)}, then ask for more time or upgrade` : null,
+    paid && yearlyFor(p) ? `Or pay yearly: S$${(yearlyFor(p).features.price_cents_total / 100).toFixed(0)}, two months free` : null,
   ].filter(Boolean);
   return html`<ul>${items.map((i) => html`<li>${i}</li>`)}</ul>`;
 }
