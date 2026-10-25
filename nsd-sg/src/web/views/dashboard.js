@@ -305,6 +305,7 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
     <li>Press <strong>Add custom connector</strong>.</li>
     <li>Name: <code>NSD.SG</code>. URL: paste the long address from step 1.</li>
     <li>Under <strong>Authentication</strong> choose <strong>No sign-in</strong> (it usually says “Detected” already). Your key is inside the address, so you need nothing else. Leave <strong>Request headers</strong> empty. Press <strong>Add</strong>.</li>
+    <li>Claude then shows <strong>Tool permissions</strong> for the five NSD.SG tools. Press the tick (always allow) on <strong>list sites</strong> and <strong>get site</strong>, which only read. Leave <strong>publish</strong>, <strong>update</strong> and <strong>delete site</strong> on <strong>Needs approval</strong>, so Claude asks before it changes anything. You can change this later under Your connectors.</li>
     <li>In a chat, open the tools menu near the message box and switch <strong>NSD.SG</strong> on.</li>
   </ol>
   <p class="muted small">Prefer the key out of the address? Use <code>${base}/mcp</code> as the URL, then press <strong>Add header</strong>: name <code>Authorization</code>, value <code>Bearer</code> followed by a space and the part of your address after <code>/mcp/</code>. Claude stores it hidden. Same result either way.</p></details>
@@ -312,23 +313,26 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
     <li>Open <strong>Settings</strong>, then <strong>Connectors</strong>. Under Advanced, switch on <strong>Developer mode</strong>.</li>
     <li>Press <strong>Create</strong>. Name: <code>NSD.SG</code>. URL: paste the long address. Authentication: <strong>None</strong>. Save.</li>
     <li>In a chat, choose NSD.SG under the tools or connectors menu.</li>
-  </ol></details>
+  </ol>
+  <p class="muted small">ChatGPT asks for permission the first time each tool runs. Say yes for the one it names; it remembers.</p></details>
   <details class="how"><summary>Claude Code, Codex or Gemini CLI (the ones in the terminal)</summary>
     <p class="muted small">Replace YOUR_KEY with the long address’s last part.</p>
     <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
     <p><code>codex mcp add nsd --url ${base}/mcp/YOUR_KEY</code></p>
     <p><code>gemini mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
+    <p class="muted small">Each of these asks in the terminal before a tool runs the first time. Allow it for the session; keep asking for <code>nsd_delete_site</code>.</p>
   </details>
   <details class="how"><summary>Cursor, VS Code, Windsurf and others</summary>
     <p class="muted small">Add this to the app’s MCP settings file (Cursor: <code>.cursor/mcp.json</code>):</p>
     <p><code>{ "mcpServers": { "nsd": { "url": "${base}/mcp/YOUR_KEY" } } }</code></p>
+    <p class="muted small">These apps show the five tools with a permission switch each. Allow the read ones (list, get); leave publish, update and delete on ask.</p>
   </details>
 </div>
 </div>
 <div class="card"><h2>Step 3 · Just ask</h2>
   <p class="example">“Put this page online as <strong>${example}</strong>.”</p>
   <p class="muted">Your AI sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “change it” to update it, “show my sites” to see what you have, “remove ${example}” to delete it. Same rules as this dashboard: Free plan, one site with the small badge; Plus, up to five, no badge, your own domain name.</p>
-  <p class="muted small">If the AI writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” The first time, it may ask you to allow it. Say yes.</p>
+  <p class="muted small">If the AI writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” When it asks “allow NSD.SG to publish?”, say yes. That question is the safety catch, not a fault: it means nothing goes online without you nodding.</p>
 </div>
 <div class="card"><h2>Is this safe?</h2>
   <ul class="plain">
