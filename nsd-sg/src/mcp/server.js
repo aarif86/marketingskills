@@ -2,6 +2,7 @@
 //   POST https://nsd.sg/mcp/<token>   (or POST /mcp with Authorization: Bearer <token>)
 // Stateless JSON-RPC: initialize, ping, tools/list, tools/call. No server-initiated streams (GET answers 405).
 import fs from 'node:fs';
+import { contentTypeFor } from '../lib/mime.js';
 import { config, publicUrlForSubdomain, platformUrl } from '../config.js';
 import { publishGate } from '../web/gate.js';
 import { audit, watchdog } from '../lib/audit.js';
@@ -27,14 +28,14 @@ export const TOOLS = [
     inputSchema: { type: 'object', required: ['name'], properties: {
       name: { type: 'string', description: 'The site name: letters, numbers, hyphens. Becomes <name>.nsd.sg. Use an existing site name to update it.' },
       html: { type: 'string', description: 'Full HTML of the home page (index.html). Use this for a single page.' },
-      files: { type: 'array', description: 'Text files to publish, e.g. [{path:"index.html", content:"..."}, {path:"style.css", content:"..."}]. Max 40 files, 8 MB total.', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' } } } },
+      files: { type: 'array', description: 'Files to publish, e.g. [{path:"index.html", content:"..."}, {path:"style.css", content:"..."}]. Text files as plain text; images, fonts and PDFs as {path, content: <base64>, encoding: "base64"}. Max 40 files, 8 MB total.', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' }, encoding: { type: 'string', enum: ['utf8', 'base64'], description: 'base64 for images, fonts, PDFs and other binary files' } } } },
       title: { type: 'string', description: 'Optional label shown only in the owner\'s dashboard.' },
     } } },
   { name: 'nsd_update', description: 'Replace ALL files of an existing site with the given HTML or files. Older versions are kept and can be restored from the dashboard.',
     inputSchema: { type: 'object', required: ['site_id'], properties: {
       site_id: { type: 'string', description: 'The site id from nsd_list_sites.' },
       html: { type: 'string', description: 'Full HTML of the new home page.' },
-      files: { type: 'array', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' } } } },
+      files: { type: 'array', items: { type: 'object', required: ['path', 'content'], properties: { path: { type: 'string' }, content: { type: 'string' }, encoding: { type: 'string', enum: ['utf8', 'base64'], description: 'base64 for images, fonts, PDFs and other binary files' } } } },
     } } },
   { name: 'nsd_list_sites', description: 'List the caller\'s sites: id, name, live URL, status, plan and days of free period left.', inputSchema: { type: 'object', properties: {} } },
   { name: 'nsd_get_site', description: 'One site: URL, status, files, storage used and the plan\'s limits.', inputSchema: { type: 'object', required: ['site_id'], properties: { site_id: { type: 'string' } } } },
@@ -58,7 +59,7 @@ function siteSummary(site, ent) {
 function collectFiles(args, { needPage = true } = {}) {
   const out = [];
   if (typeof args.html === 'string' && args.html.trim()) out.push({ path: 'index.html', content: args.html });
-  if (Array.isArray(args.files)) for (const f of args.files) if (f && typeof f.path === 'string' && typeof f.content === 'string') out.push({ path: f.path, content: f.content });
+  if (Array.isArray(args.files)) for (const f of args.files) if (f && typeof f.path === 'string' && typeof f.content === 'string') out.push({ path: f.path, content: f.content, encoding: f.encoding === 'base64' ? 'base64' : 'utf8' });
   if (!out.length) throw new ToolError('Nothing to publish. Send `html` (the whole page) or `files` (a list of {path, content}).');
   if (out.length > MAX_FILES) throw new ToolError(`Too many files: ${out.length}. Send up to ${MAX_FILES} per call, or upload a ZIP from the dashboard at ${platformUrl('/dashboard')}.`);
   let total = 0;
@@ -66,9 +67,20 @@ function collectFiles(args, { needPage = true } = {}) {
   for (const f of out) {
     const r = sanitizeRelativePath(f.path);
     if (!r.ok) throw new ToolError(`"${f.path}": ${r.reason}`);
-    const size = Buffer.byteLength(f.content, 'utf8');
+    const type = contentTypeFor(r.path) ?? '';
+    const textType = /^text\/|json|xml|javascript|svg|manifest/.test(type);
+    let content;
+    if (f.encoding === 'base64') {
+      const clean = f.content.replace(/^data:[^,]*,/, '').replace(/\s+/g, '');
+      if (!/^[A-Za-z0-9+/=]*$/.test(clean) || clean.length % 4 === 1) throw new ToolError(`"${f.path}": content is not valid base64.`);
+      content = Buffer.from(clean, 'base64');
+    } else {
+      if (!textType) throw new ToolError(`"${f.path}" is a binary file (${type || 'unknown type'}). Send it with encoding: "base64" and the file's base64 as content, or upload it from the dashboard at ${platformUrl('/dashboard')}. Text files (html, css, js, json, svg) can be sent as plain text.`);
+      content = f.content;
+    }
+    const size = Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content, 'utf8');
     total += size;
-    list.push({ relPath: r.path, content: f.content, size });
+    list.push({ relPath: r.path, content, size });
   }
   if (total > MAX_TOTAL) throw new ToolError(`These files add up to ${formatBytes(total)}; the limit per call is ${formatBytes(MAX_TOTAL)}. Upload a ZIP from the dashboard for bigger sites.`);
   if (needPage && !list.some((f) => /\.html?$/i.test(f.relPath))) throw new ToolError('No web page in the files. Include index.html (the home page).');
@@ -120,7 +132,8 @@ async function runTool(name, args, ctx) {
         if (!r.ok) {
           if (/allows \d+ site/.test(r.reason)) throw new ToolError(`${r.reason} You already have ${listSitesForUser(user.id).map((s) => s.subdomain + '.' + config.baseDomain).join(', ')}. Publish to one of those names to update it, or get up to 5 sites on Plus (S$9/month) at ${upgradeUrl()}`);
           if (/expired/i.test(r.reason)) throw new ToolError(`${r.reason} ${upgradeUrl()}`);
-          throw new ToolError(`${r.reason} Try another name.`);
+          const guess = String(args.name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+          throw new ToolError(`${r.reason}${guess && guess !== sub && normalizeSubdomain(guess) ? ` Try "${guess}".` : ' Try another name.'}`);
         }
         site = r.site; created = true;
         audit({ req, actor: user, action: 'site.create', targetType: 'site', targetId: site.id, details: { subdomain: sub, via: 'mcp' } });

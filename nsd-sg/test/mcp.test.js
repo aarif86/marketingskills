@@ -164,3 +164,32 @@ test('publish to a new address leads with the padlock warning as plain text; the
   else assert.match(res.result.structuredContent.message, /^Published\. Live at /);
   getDb().prepare('UPDATE users SET plan_id = ? WHERE id = ?').run(prevPlan, uid);
 });
+
+test('connector: binary files arrive intact as base64, text-encoded binaries are refused, bad names get a suggestion', async () => {
+  const { getDb: db } = await import('../src/db/index.js');
+  const uid = db().prepare('SELECT id FROM users WHERE email = ?').get('mia@example.com').id;
+  const prevPlan = db().prepare('SELECT plan_id FROM users WHERE id = ?').get(uid).plan_id;
+  db().prepare("UPDATE users SET plan_id = 'plus' WHERE id = ?").run(uid);
+  const made = await post('/connect/tokens', u.cookie, { name: 'binary test' }, '/connect');
+  const nc = String(made.headers['set-cookie']).match(/nsd_newtoken=([^;]+)/)[1];
+  const token = (await get('/connect', `${u.cookie}; nsd_newtoken=${nc}`)).body.match(/(nsd_[A-Za-z0-9_-]{43})/)[1];
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  // text-encoded png refused
+  let r = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'bin-site', files: [{ path: 'index.html', content: '<!doctype html><html><body><img src="logo.png"></body></html>' }, { path: 'logo.png', content: png }] } }, { token })).json();
+  assert.equal(r.result.isError, true); assert.match(r.result.content[0].text, /binary file .*encoding: "base64"/);
+  // base64 accepted and served byte-for-byte
+  r = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'bin-site', files: [{ path: 'index.html', content: '<!doctype html><html><body><img src="logo.png"></body></html>' }, { path: 'logo.png', content: png, encoding: 'base64' }] } }, { token })).json();
+  assert.ok(!r.result.isError, JSON.stringify(r.result));
+  const served = await app.inject({ method: 'GET', url: '/logo.png', headers: { host: 'bin-site.nsd.test' } });
+  assert.equal(served.statusCode, 200); assert.match(served.headers['content-type'], /image\/png/);
+  assert.equal(served.rawPayload.toString('base64'), png, 'bytes intact');
+  // data: URL prefix tolerated; bad base64 refused
+  r = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'bin-site', files: [{ path: 'dot.png', content: 'data:image/png;base64,' + png, encoding: 'base64' }] } }, { token })).json();
+  assert.ok(!r.result.isError, JSON.stringify(r.result));
+  r = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'bin-site', files: [{ path: 'bad.png', content: '***not base64***', encoding: 'base64' }] } }, { token })).json();
+  assert.equal(r.result.isError, true); assert.match(r.result.content[0].text, /not valid base64/);
+  // name suggestion
+  r = (await rpc('tools/call', { name: 'nsd_publish', arguments: { name: 'ABC_Test Site', html: '<!doctype html><html><body>x</body></html>' } }, { token })).json();
+  assert.equal(r.result.isError, true); assert.match(r.result.content[0].text, /Try "abc-test-site"/);
+  db().prepare('UPDATE users SET plan_id = ? WHERE id = ?').run(prevPlan, uid);
+});

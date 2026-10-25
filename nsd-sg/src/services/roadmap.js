@@ -143,6 +143,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-22', '0.13.22', 'Images through the connector', `- Fixed: an image sent through the AI connector was saved as text and showed up broken. Binary files (images, fonts, PDFs) are now sent as base64 and land as real files; sending one as plain text is refused with a clear hint.
+- Changed: a site name with capitals, spaces or underscores gets a suggested fix in the error, e.g. “Try abc-test-site”.`, 'fix', '2026-10-25T15:00:00Z'],
   ['cl-0-13-21', '0.13.21', 'Who is on the showcase', `- Changed: every plan now has a showcase rule. Free sites are listed. Sites on a promo, gift or beta plan are listed unless the owner hides them (one tick on the site’s Settings). Paid plans stay hidden unless the owner shows them. Admin can change the rule for any plan without a deploy. Choices people already made are kept.`, 'improved', '2026-10-25T14:00:00Z'],
   ['cl-0-13-20', '0.13.20', 'Your AI now warns you about the padlock wait', `- Changed: when a page goes to a brand-new address through a connector, the result opens with a plain sentence the AI repeats: the secure padlock takes 5 to 15 minutes the first time, wait and reload. The Connect page and its help tips say the same.`, 'improved', '2026-10-25T13:30:00Z'],
   ['cl-0-13-19', '0.13.19', 'What to answer when your AI asks for permission', `- Changed: the Connect your AI page now explains the permission screen each tool shows after adding NSD.SG: allow the read-only tools, keep publish, update and delete on “ask me first”.`, 'improved', '2026-10-25T13:00:00Z'],
