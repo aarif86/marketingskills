@@ -292,11 +292,11 @@ export async function registerDashboardRoutes(app) {
     return reply.redirect('/dashboard');
   });
 
-  // ---- Connect to Claude (API tokens for the MCP endpoint) ----
+  // ---- Connect your AI (API tokens for the MCP endpoint) ----
   app.get('/connect', { preHandler: requireUser }, async (req, reply) => {
     const fresh = req.cookies?.nsd_newtoken ? JSON.parse(Buffer.from(req.cookies.nsd_newtoken, 'base64url').toString('utf8')) : null;
     if (fresh) reply.clearCookie('nsd_newtoken', { path: '/connect' });
-    return render(req, reply, { title: 'Connect to Claude', active: 'connect', body: V.connectPage({ tokens: listTokens(req.user.id), fresh, csrf: csrfTokenFor(req), sites: listSitesForUser(req.user.id) }) });
+    return render(req, reply, { title: 'Connect your AI', active: 'connect', body: V.connectPage({ tokens: listTokens(req.user.id), fresh, csrf: csrfTokenFor(req), sites: listSitesForUser(req.user.id) }) });
   });
   app.post('/connect/tokens', { preHandler: [requireUser, limiter('siteCreate', (r) => r.user?.id ?? r.ip)] }, async (req, reply) => {
     const r = createToken({ userId: req.user.id, name: req.body?.name });

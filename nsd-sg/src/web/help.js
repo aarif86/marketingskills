@@ -30,8 +30,9 @@ export const TIPS = {
     ['Card payment: when am I charged?', 'Upgrading from Free charges today. Keeping your current plan charges on the day your free period ends.'],
   ],
   connect: [
-    ['Claude says the connector failed', 'Copy the full URL including the token. In Claude web or Desktop add it under Settings → Connectors → Add custom connector.'],
-    ['Can Claude delete my sites?', 'Only the ones on your account, and only through the tools listed. Revoke the token here any time.'],
+    ['My AI says the connector failed', 'Copy the whole long address from step 1, including the part after /mcp/. Paste it as the URL with no other fields filled in.'],
+    ['Does it work with ChatGPT or Gemini, not only Claude?', 'Yes. Any AI tool that supports connectors (MCP) works: Claude, ChatGPT, Codex, Gemini CLI, Cursor and more. Steps for each are on the page.'],
+    ['Can the AI delete my sites?', 'Only the ones on your account, and only through the tools listed. Press Switch off next to the key any time.'],
     ['Publishing says "quota"', 'Your plan’s site limit or storage is full. The message carries a link to the Plan page.'],
   ],
   domains: [

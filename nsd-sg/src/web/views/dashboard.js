@@ -284,8 +284,8 @@ export function connectPage({ tokens, fresh, csrf, sites }) {
   const base = `${config.publicScheme}://${config.platformHosts[0]}`;
   const live = tokens.filter((t) => !t.revoked_at);
   const example = 'kopi-stall'; // a made-up name on purpose: the reader's own site name would read as "overwrite my site"
-  return html`<h1>Connect to Claude</h1>
-<p class="section-lead">Today you ask Claude for a page, download it, and upload it here. After this, you skip all that. You say to Claude “put this online as ${example}” and Claude gives you the live link. Three steps, once only.</p>
+  return html`<h1>Connect your AI</h1>
+<p class="section-lead">Works with Claude, ChatGPT, Codex, Gemini, Cursor and any other AI tool that can use connectors. Today you ask your AI for a page, download it, and upload it here. After this, you skip all that. You say “put this online as ${example}” and your AI gives you the live link. Three steps, once only.</p>
 ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
   <p>This is the only time we show it. Copy the long address below now.</p>
   <p class="token"><code>${base}/mcp/${fresh.token}</code></p>
@@ -293,36 +293,48 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
 </div>` : ''}
 <div class="grid two">
 <div class="card"><h2>Step 1 · Get a key</h2>
-  <p class="muted"><strong>Why?</strong> Claude needs a way to prove it is working for <em>you</em>, and only you. The key is like a house key you give to a helper. It opens your NSD.SG account, nothing else. You can take it back any time.</p>
-  <form method="post" action="/connect/tokens" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="name" placeholder="e.g. my laptop" maxlength="60"><button class="btn btn-primary" type="submit">Get a key</button></form>
-  <p class="muted small">Give it a name so you remember where you used it. One key per place is tidy: one for Claude on your laptop, another for Claude on your phone.</p>
-  ${live.length ? html`<table class="table small mt"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${live.map((t) => html`<tr><td>${t.name}</td><td class="muted">${formatDate(t.created_at)}</td><td class="muted">${t.last_used_at ? `${timeAgo(t.last_used_at)} · ${t.calls} call${t.calls === 1 ? '' : 's'}` : 'never'}</td><td><form method="post" action="/connect/tokens/${t.id}/revoke" class="inline" data-confirm="Switch off this key? Claude will stop working with it at once."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-danger" type="submit">Switch off</button></form></td></tr>`)}</tbody></table>` : ''}
+  <p class="muted"><strong>Why?</strong> Your AI needs a way to prove it is working for <em>you</em>, and only you. The key is like a house key you give to a helper. It opens your NSD.SG account, nothing else. You can take it back any time.</p>
+  <form method="post" action="/connect/tokens" class="form-inline"><input type="hidden" name="_csrf" value="${csrf}"><input name="name" placeholder="e.g. Claude on my laptop" maxlength="60"><button class="btn btn-primary" type="submit">Get a key</button></form>
+  <p class="muted small">Give it a name so you remember where you used it. One key per app is tidy: one for Claude, another for ChatGPT, so you can switch one off without touching the other.</p>
+  ${live.length ? html`<table class="table small mt"><thead><tr><th>Name</th><th>Made</th><th>Last used</th><th></th></tr></thead><tbody>${live.map((t) => html`<tr><td>${t.name}</td><td class="muted">${formatDate(t.created_at)}</td><td class="muted">${t.last_used_at ? `${timeAgo(t.last_used_at)} · ${t.calls} call${t.calls === 1 ? '' : 's'}` : 'never'}</td><td><form method="post" action="/connect/tokens/${t.id}/revoke" class="inline" data-confirm="Switch off this key? The AI using it will stop working with NSD.SG at once."><input type="hidden" name="_csrf" value="${csrf}"><button class="btn btn-tiny btn-danger" type="submit">Switch off</button></form></td></tr>`)}</tbody></table>` : ''}
 </div>
-<div class="card"><h2>Step 2 · Give the key to Claude</h2>
-  <p class="muted">You do this once. After that, Claude remembers.</p>
-  <h3>If you use Claude on the web or the Claude app on your computer</h3>
-  <ol class="plain-steps">
-    <li>In Claude, open <strong>Settings</strong>, then <strong>Connectors</strong>. (On the web, go to claude.ai/settings/connectors.)</li>
+<div class="card"><h2>Step 2 · Give the key to your AI</h2>
+  <p class="muted">Once only. Pick the one you use. Menus move around, so if yours looks different, search its settings for “connectors” or “MCP”.</p>
+  <details class="how" open><summary>Claude (web or the desktop app)</summary><ol class="plain-steps">
+    <li>Open <strong>Settings</strong>, then <strong>Connectors</strong> (on the web: claude.ai/settings/connectors).</li>
     <li>Press <strong>Add custom connector</strong>.</li>
-    <li>Name: type <code>NSD.SG</code>. URL: paste the long address from step 1.</li>
-    <li>Leave the other boxes empty. Press <strong>Add</strong>.</li>
-    <li>In a chat, open the tools menu (the small icon near the message box) and switch <strong>NSD.SG</strong> on.</li>
-  </ol>
-  <h3>If you use Claude Code (the one in the terminal)</h3>
-  <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
+    <li>Name: <code>NSD.SG</code>. URL: paste the long address from step 1. Leave the other boxes empty. Press <strong>Add</strong>.</li>
+    <li>In a chat, open the tools menu near the message box and switch <strong>NSD.SG</strong> on.</li>
+  </ol></details>
+  <details class="how"><summary>ChatGPT</summary><ol class="plain-steps">
+    <li>Open <strong>Settings</strong>, then <strong>Connectors</strong>. Under Advanced, switch on <strong>Developer mode</strong>.</li>
+    <li>Press <strong>Create</strong>. Name: <code>NSD.SG</code>. URL: paste the long address. Authentication: <strong>None</strong>. Save.</li>
+    <li>In a chat, choose NSD.SG under the tools or connectors menu.</li>
+  </ol></details>
+  <details class="how"><summary>Claude Code, Codex or Gemini CLI (the ones in the terminal)</summary>
+    <p class="muted small">Replace YOUR_KEY with the long address’s last part.</p>
+    <p><code>claude mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
+    <p><code>codex mcp add nsd --url ${base}/mcp/YOUR_KEY</code></p>
+    <p><code>gemini mcp add --transport http nsd ${base}/mcp/YOUR_KEY</code></p>
+  </details>
+  <details class="how"><summary>Cursor, VS Code, Windsurf and others</summary>
+    <p class="muted small">Add this to the app’s MCP settings file (Cursor: <code>.cursor/mcp.json</code>):</p>
+    <p><code>{ "mcpServers": { "nsd": { "url": "${base}/mcp/YOUR_KEY" } } }</code></p>
+  </details>
 </div>
 </div>
 <div class="card"><h2>Step 3 · Just ask</h2>
   <p class="example">“Put this page online as <strong>${example}</strong>.”</p>
-  <p class="muted">Claude sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “change it” to update it, “show my sites” to see what you have, “remove ${example}” to delete it. Same rules as this dashboard: Free plan, one site with the small badge; Plus, up to five, no badge, your own domain name.</p>
-  <p class="muted small">If Claude writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” The first time, Claude may ask you to allow it. Say yes.</p>
+  <p class="muted">Your AI sends the page to NSD.SG and answers with the live link, <code>${example}.${config.baseDomain}</code>. Say “change it” to update it, “show my sites” to see what you have, “remove ${example}” to delete it. Same rules as this dashboard: Free plan, one site with the small badge; Plus, up to five, no badge, your own domain name.</p>
+  <p class="muted small">If the AI writes the page but does not put it online, say: “use the NSD.SG connector to publish it.” The first time, it may ask you to allow it. Say yes.</p>
 </div>
 <div class="card"><h2>Is this safe?</h2>
   <ul class="plain">
-    <li>Claude can only put up, change, list and remove <strong>your</strong> sites, within your plan. Nothing else.</li>
+    <li>Your AI can only put up, change, list and remove <strong>your</strong> sites, within your plan. Nothing else.</li>
     <li>It cannot touch anyone else’s site, change your plan, or pay for anything.</li>
     <li>Each key allows 60 actions an hour and 20 publishes an hour. Enough for a day of work, not enough for a runaway program.</li>
     <li>Lost the key or gave it to the wrong app? Press <strong>Switch off</strong> next to it. It stops working at once.</li>
   </ul>
+  <p class="muted small">For the technically minded: this is an MCP server (Model Context Protocol, the open standard for connecting AI tools), streamable HTTP, token in the URL or as a Bearer header, tools: nsd_publish, nsd_update, nsd_list_sites, nsd_get_site, nsd_delete_site.</p>
 </div>`.toString();
 }

@@ -96,7 +96,7 @@ export function appLayout({ title, body, user, flash, csrf, active = '', path = 
     ['/dashboard', 'Sites', 'sites'],
     ['/account', 'Account', 'account'],
     ['/billing', 'Plan & payment', 'billing'],
-    ['/connect', 'Connect to Claude', 'connect'],
+    ['/connect', 'Connect your AI', 'connect'],
     ['/changelog', 'What’s new', 'changelog'],
     ['/roadmap#suggest', 'Feedback', 'feedback'],
   ];

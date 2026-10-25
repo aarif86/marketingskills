@@ -242,3 +242,4 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
   .wa-panel{width:calc(100vw - 28px)}
 }
 .bar-track{height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:8px 0}.bar-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .6s var(--spring)}.bar-fill.warn{background:#e0a100}.bar-fill.alert{background:#e5484d}
+.how{border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 14px;margin:8px 0}.how summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:10px}.how summary::-webkit-details-marker{display:none}.how summary::after{content:"+";color:var(--muted)}.how[open] summary::after{content:"–"}.how ol,.how p{margin-top:10px}
