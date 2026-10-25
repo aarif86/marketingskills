@@ -146,6 +146,7 @@ export const config = Object.freeze({
     publicHtml: path.resolve(env('PUBLIC_HTML', tenantRoot ? path.dirname(path.resolve(tenantRoot)) : path.join(__dirname, '..', 'data', 'public_html'))),
     username: env('HOSTINGER_USERNAME', ''),
     apiToken: env('HOSTINGER_API_TOKEN', ''),
+    subdomainLimit: Number(env('HOSTINGER_SUBDOMAIN_LIMIT', '100')) || 100, // the plan's ceiling; Hostinger does not publish it, ask support and set it here
     apiBase: env('HOSTINGER_API_BASE', 'https://developers.hostinger.com'),
     // Self-aware maintenance banner: Statuspage summary feed + the server we sit on (hPanel > Hosting > Plan details).
     statusUrl: env('HOSTINGER_STATUS_URL', 'https://statuspage.hostinger.com/api/v2/summary.json'),

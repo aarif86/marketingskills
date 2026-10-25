@@ -393,6 +393,19 @@ export async function checkApi() {
   }
 }
 
+/** How full the subdomain allowance is. Live count from Hostinger (5 s budget), plus our own site count as a floor. */
+export async function capacityInfo({ localSites = 0 } = {}) {
+  const limit = config.hostinger.subdomainLimit;
+  let count = null; let source = 'nsd.sg records'; let error = '';
+  if (isEnabled() && config.hostinger.apiToken) {
+    try { const list = await Promise.race([listHostingSubdomains(), new Promise((_, rej) => setTimeout(() => rej(new Error('Hostinger API slow')), 5000))]); count = list.length; source = 'Hostinger API'; }
+    catch (e) { error = String(e.message).slice(0, 120); }
+  }
+  if (count === null) count = localSites + 1; // + the try host
+  const pct = Math.round((count / limit) * 100);
+  return { count, limit, pct, source, error, level: pct >= 90 ? 'alert' : pct >= 70 ? 'warn' : 'ok' };
+}
+
 /** Remove orphan tenant directories that no live site owns (safety net after crashes). */
 export function listOrphanDirs() {
   if (!isEnabled() || !fs.existsSync(tenantRoot())) return [];

@@ -260,6 +260,11 @@ ${h.disk.freeBytes && h.disk.freeBytes < 10 * 1024 ** 3 ? html`<div class="flash
 <div class="card"><h2>Top bandwidth (7d)</h2><table class="table small"><tbody>${h.top.map((t) => html`<tr><td><a href="/admin/sites/${t.id}">${t.subdomain}</a></td><td>${t.requests.toLocaleString()} req</td><td>${formatBytes(t.bytes)}</td></tr>`)}</tbody></table></div>
 <div class="card"><h2>Largest sites</h2><table class="table small"><tbody>${h.bigSites.map((s) => html`<tr><td><a href="/admin/sites/${s.id}">${s.subdomain}</a></td><td>${formatBytes(s.total_storage_bytes)}</td></tr>`)}</tbody></table></div>
 </div>
+${h.capacity ? html`<div class="card"><h2>Capacity ${pill(h.capacity.level === 'ok' ? 'ok' : h.capacity.level)}</h2>
+<p><strong>${h.capacity.count}</strong> of <strong>${h.capacity.limit}</strong> subdomains used (${h.capacity.pct}%) · counted by ${h.capacity.source}${h.capacity.error ? html` · <span class="warn">${h.capacity.error}</span>` : ''}</p>
+<div class="bar-track"><div class="bar-fill ${h.capacity.level}" style="width:${Math.min(100, h.capacity.pct)}%"></div></div>
+<p class="muted small">Every site is one subdomain, plus try.${h.baseDomain}. The ceiling is <code>HOSTINGER_SUBDOMAIN_LIMIT</code> in .env (default 100; Hostinger does not publish it, so confirm with their support). At 70% plan the move to Agency or a VPS; at 90% stop promotions.${h.capacity.level !== 'ok' ? html` <strong>${h.capacity.level === 'alert' ? 'Over 90%: pause the promo codes.' : 'Over 70%: time to plan the move.'}</strong>` : ''}</p>
+</div>` : ''}
 ${h.hosting ? html`<div class="card"><h2>Hostinger publisher</h2>
 <p>Tenant sites are served by LiteSpeed from <code>${h.hosting.tenantRoot}/&lt;name&gt;</code>; this app rebuilds each folder on every change. API token: <strong>${h.hosting.apiToken ? 'set' : 'MISSING — subdomains will not be created'}</strong> · account <code>${h.hosting.username || '?'}</code>.</p>
 <p>${h.hosting.byState.map((r) => html`<span class="badge">${r.hosting_state}: ${r.n}</span> `)}</p>

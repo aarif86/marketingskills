@@ -120,7 +120,7 @@ const SEED_ROADMAP = [
   ['rm-gift-plans', 'Gift plans that charge only when the free period ends', 'A promo code can unlock a plan for months. Keep it by card and the first charge lands on the day the free period ends, not today. Admin can make gift plans that stay on the showcase.', 'shipped', 'billing', 7],
   ['rm-abuse-tools', 'Blocked words, evidence holds and share cards', 'Admin-managed blocked words, 90-day evidence copies of removed sites, and proper link previews on WhatsApp and Telegram.', 'shipped', 'admin', 14],
   ['rm-domain-buy', 'Buy a domain inside NSD.SG', 'Search, pay and connect a name without leaving the site. Needs a registrar arrangement first.', 'planned', 'billing', 15],
-  ['rm-capacity', 'Capacity gauge and waitlist mode', 'Admin sees how close the hosting is to its limits; sign-ups switch to a waitlist automatically near the ceiling.', 'planned', 'admin', 12],
+  ['rm-capacity', 'Capacity gauge and waitlist mode', 'The gauge is live in admin (amber at 70%, red at 90%). Next: sign-ups switch to a waitlist automatically near the ceiling.', 'in_progress', 'admin', 2],
   ['rm-email-gate', 'Confirm your email before the first publish', 'A small gate that keeps throwaway accounts from putting pages online.', 'planned', 'admin', 10],
   ['rm-vs-pages', 'Honest comparisons with Vercel and shared hosting', 'Two pages that show what a one-page site really costs elsewhere.', 'planned', 'design', 14],
   ['rm-try-it', 'Try it before you sign up', 'Paste the code on the home page, no account, and get a link that works for 3 hours. Sign up to keep it at your own address.', 'shipped', 'platform', 9],
@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-8', '0.13.8', 'Capacity gauge', `- Admin: System health shows how many subdomains are in use against the hosting plan's ceiling, with a bar that turns amber at 70% and red at 90%. The ceiling is a setting, because the provider does not publish it.`, 'new', '2026-10-25T03:00:00Z'],
   ['cl-0-13-7', '0.13.7', 'No false alarms from routine patches', `- Fixed: the hosting-status bar treated the provider's routine security updates as outages and told visitors "some pages may not load". Only incidents that actually affect service show the bar now.`, 'fix', '2026-10-25T02:00:00Z'],
   ['cl-0-13-6', '0.13.6', 'Pasting a page no longer trips the hosting firewall', `- Fixed: pasting a page with scripts in it (including our sample pages) could be answered with “Forbidden” by the hosting provider’s firewall before it reached NSD.SG. The browser now sends the pasted code encoded, so the firewall has nothing to object to. Uploading the file was never affected.`, 'fix', '2026-10-21T07:00:00Z'],
   ['cl-0-13-5', '0.13.5', 'Help that shows up when you need it; the badge moves out of the way', `- Changed: the badge on free sites now sits bottom-left and folds to a small chip after a few seconds, so it never covers a site's own buttons.

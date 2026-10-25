@@ -565,3 +565,13 @@ test('badge sits bottom-left, folds to a chip, and the demo page says so', async
   assert.match(m, /setTimeout\(close,4000\)/); assert.match(m, /mouseenter/);
   assert.match((await get('/badge')).body, /bottom-left corner/);
 });
+
+test('capacity gauge: counts sites against the configured ceiling and shows on System health', async () => {
+  const { capacityInfo } = await import('../src/publish/hostinger.js');
+  const c = await capacityInfo({ localSites: 69 });
+  assert.equal(c.limit, 100); assert.equal(c.count, 70); assert.equal(c.level, 'warn');
+  assert.equal((await capacityInfo({ localSites: 3 })).level, 'ok'); assert.equal((await capacityInfo({ localSites: 95 })).level, 'alert');
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
+  const page = await get('/admin/health', cookiesFrom(login));
+  assert.match(page.body, /<h2>Capacity/); assert.match(page.body, /of <strong>100<\/strong> subdomains used/); assert.match(page.body, /bar-fill ok/);
+});

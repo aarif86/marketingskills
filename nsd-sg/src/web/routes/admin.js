@@ -2,7 +2,7 @@ import fs from 'node:fs';
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
 import { config, publicUrlForSubdomain } from '../../config.js';
-import { isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
+import { capacityInfo, isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePack, listStoredPacks, storedPackZip, setLegalHold, evidenceStats } from '../../services/evidence.js';
 import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../services/visits.js';
@@ -512,6 +512,7 @@ export async function registerAdminRoutes(app) {
   app.get('/admin/health', opts, async (req, reply) => {
     flushTraffic();
     const tryHost = await tryHostStatus();
+    const capacity = await capacityInfo({ localSites: q("SELECT COUNT(*) n FROM sites WHERE status != 'deleted'").n });
     const disk = diskUsage();
     const mem = process.memoryUsage();
     const top = all("SELECT s.subdomain, s.id, SUM(t.bytes) bytes, SUM(t.requests) requests FROM site_traffic_daily t JOIN sites s ON s.id = t.site_id WHERE t.day >= date('now','-7 days') GROUP BY s.id ORDER BY bytes DESC LIMIT 10");
@@ -519,7 +520,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(),
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), capacity,
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),

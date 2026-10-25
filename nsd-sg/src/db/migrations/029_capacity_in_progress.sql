@@ -1,0 +1,1 @@
+UPDATE roadmap_items SET status = 'in_progress', sort_order = 2, body = 'The gauge is live in admin (amber at 70%, red at 90%). Next: sign-ups switch to a waitlist automatically near the ceiling.' WHERE id = 'rm-capacity' AND status = 'planned';
