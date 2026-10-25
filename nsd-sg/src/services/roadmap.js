@@ -140,6 +140,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-9', '0.13.9', 'Security update of the web server library', `- Changed: the web server library (Fastify) and a helper it uses were updated to versions with the October 2026 security fixes. No change to how anything works.`, 'fix', '2026-10-25T04:00:00Z'],
   ['cl-0-13-8', '0.13.8', 'Capacity gauge', `- Admin: System health shows how many subdomains are in use against the hosting plan's ceiling, with a bar that turns amber at 70% and red at 90%. The ceiling is a setting, because the provider does not publish it.`, 'new', '2026-10-25T03:00:00Z'],
   ['cl-0-13-7', '0.13.7', 'No false alarms from routine patches', `- Fixed: the hosting-status bar treated the provider's routine security updates as outages and told visitors "some pages may not load". Only incidents that actually affect service show the bar now.`, 'fix', '2026-10-25T02:00:00Z'],
   ['cl-0-13-6', '0.13.6', 'Pasting a page no longer trips the hosting firewall', `- Fixed: pasting a page with scripts in it (including our sample pages) could be answered with “Forbidden” by the hosting provider’s firewall before it reached NSD.SG. The browser now sends the pasted code encoded, so the firewall has nothing to object to. Uploading the file was never affected.`, 'fix', '2026-10-21T07:00:00Z'],
