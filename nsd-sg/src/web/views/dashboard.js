@@ -283,7 +283,7 @@ export { publicUrlForSubdomain };
 export function connectPage({ tokens, fresh, csrf, sites }) {
   const base = `${config.publicScheme}://${config.platformHosts[0]}`;
   const live = tokens.filter((t) => !t.revoked_at);
-  const example = sites[0]?.subdomain ?? 'my-site';
+  const example = 'kopi-stall'; // a made-up name on purpose: the reader's own site name would read as "overwrite my site"
   return html`<h1>Connect to Claude</h1>
 <p class="section-lead">Let Claude put pages online for you. You add NSD.SG to Claude once; after that you can say “publish this as ${example}” and get a live link back. No files to download, nothing to upload.</p>
 ${fresh ? html`<div class="card token-fresh"><h2>Your new token</h2>
