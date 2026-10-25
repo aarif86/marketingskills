@@ -46,6 +46,9 @@ export function noticesFrom(summary, now = Date.now()) {
   }
   for (const i of summary?.incidents ?? []) {
     if (i.status === 'resolved' || i.status === 'postmortem') continue;
+    // Routine security patches and "no impact" notices are not outages: showing "some pages may not load" for them
+    // alarms visitors for nothing. Only incidents that actually degrade service earn the banner.
+    if (i.impact === 'none' || /security update|security patch/i.test(String(i.name))) continue;
     const text = `${i.name} ${(i.incident_updates ?? []).map((u) => u.body).join(' ')}`;
     if (!relevant(text) && !['major', 'critical'].includes(i.impact)) continue;
     out.push({ level: 'warn', text: `Our hosting provider is dealing with a problem right now (“${String(i.name).slice(0, 80)}”). Some pages may not load. Nothing is lost.`, url: i.shortlink, id: i.id });

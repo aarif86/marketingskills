@@ -37,3 +37,15 @@ test('maintenance on the Singapore servers becomes a plain-words bar on every pa
   assert.doesNotMatch((await get('/')).body, /host-bar/);
   assert.match((await get('/')).body, /class="hero-new"/, 'latest release pill on the home page');
 });
+
+test('routine security updates and no-impact incidents do not raise the banner; a real Singapore incident still does', () => {
+  const summary = { scheduled_maintenances: [], incidents: [
+    { name: 'Node.js Security Update', status: 'monitoring', impact: 'minor', incident_updates: [{ body: 'Rolling out to Node.js hosting in Singapore.' }], shortlink: 'https://stspg.io/a' },
+    { name: 'PHP Security Update for Web, Agency and cPanel Hosting', status: 'identified', impact: 'minor', incident_updates: [{ body: 'Singapore servers included.' }], shortlink: 'https://stspg.io/b' },
+    { name: 'Informational: Singapore datacentre tour', status: 'investigating', impact: 'none', incident_updates: [{ body: 'sg-nme-srv175' }], shortlink: 'https://stspg.io/c' },
+    { name: 'Degraded performance on Singapore web hosting', status: 'investigating', impact: 'minor', incident_updates: [{ body: 'sg-nme-srv175 affected.' }], shortlink: 'https://stspg.io/d' },
+  ] };
+  const n = noticesFrom(summary);
+  assert.equal(n.length, 1);
+  assert.match(n[0].text, /Degraded performance on Singapore web hosting/);
+});
