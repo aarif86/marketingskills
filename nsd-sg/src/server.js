@@ -10,6 +10,7 @@ import multipart from '@fastify/multipart';
 import { config } from './config.js';
 import { getDb } from './db/index.js';
 import { tenantFromHost } from './lib/subdomain.js';
+import { recordPageView, flushPageViews } from './services/pageviews.js';
 import { customHostLookup } from './services/domains.js';
 import { lifecycleSweep } from './services/lifecycle.js';
 import { refresh as refreshStatus } from './services/status.js';
@@ -94,6 +95,16 @@ export async function buildApp({ logger = true } = {}) {
     await loadSession(req);
   });
 
+  // Public page views for the platform's own pages (never tenant sites, never the logged-in app, never bots).
+  const PRIVATE_RE = /^\/(dashboard|admin|sites|billing|account|connect|internal|assets|healthz|mcp|_v|wa)(\/|$)/;
+  app.addHook('onResponse', async (req, reply) => {
+    if (req.isTenant || req.method !== 'GET' || reply.statusCode !== 200) return;
+    if (!/text\/html/.test(String(reply.getHeader('content-type') ?? ''))) return;
+    const p = String(req.raw.url ?? '/').split('?')[0];
+    if (PRIVATE_RE.test(p)) return;
+    recordPageView({ path: p, ua: req.headers['user-agent'], referer: req.headers.referer, selfHosts: config.platformHosts });
+  });
+
   app.addHook('preHandler', async (req, reply) => {
     if (req.isTenant) return;
     if (req.isMultipart?.()) return; // multipart handlers verify CSRF after parsing fields
@@ -143,7 +154,7 @@ export async function buildApp({ logger = true } = {}) {
 
   // ---- Maintenance timers ----
   const timers = [];
-  timers.push(setInterval(() => { try { flushTraffic(); } catch (e) { app.log.error(e); } }, 15_000).unref());
+  timers.push(setInterval(() => { try { flushTraffic(); flushPageViews(); } catch (e) { app.log.error(e); } }, 15_000).unref());
   timers.push(setInterval(() => {
     try {
       const n = purgeExpiredSessions();
@@ -163,6 +174,7 @@ export async function buildApp({ logger = true } = {}) {
   app.addHook('onClose', async () => {
     timers.forEach(clearInterval);
     flushTraffic();
+    flushPageViews();
   });
 
   await ensureBootstrapAdmin(app.log);

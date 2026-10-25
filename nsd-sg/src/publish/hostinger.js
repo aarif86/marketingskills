@@ -22,6 +22,7 @@ import { extensionOf, HTML_EXTENSIONS, FINGERPRINT_RE_SOURCE, CACHE } from '../l
 import { REDIRECTS_FILE, parseRedirects, htaccessRules } from '../lib/redirects.js';
 import { injectBranding } from '../serve/branding.js';
 import { injectSocial } from '../serve/social.js';
+import { injectBeacon } from '../serve/beacon.js';
 import { readListing, listingPage } from '../serve/listing.js';
 import { platformUrl, publicUrlForSubdomain } from '../config.js';
 import { entitlementsFor } from '../services/plans.js';
@@ -205,6 +206,7 @@ function materialise(srcRoot, dstRoot, { badge, social = null }) {
           if (buf.length <= MAX_HTML_INJECT_BYTES) {
             if (badge) buf = injectBranding(buf);
             if (social) buf = injectSocial(buf, { ...social, url: `${social.base}/${ent.name === 'index.html' ? rel : `${rel}${ent.name}`}` });
+            if (social) buf = injectBeacon(buf, { label: social.label, origin: platformUrl('').replace(/\/$/, '') });
           }
           fs.writeFileSync(d, buf, { mode: 0o644 });
         } else {
@@ -281,7 +283,7 @@ export function syncSite(siteId) {
       const src = releaseDir(site.id, site.current_release_id);
       if (!fs.existsSync(src)) throw new PublishError(`release directory missing: ${site.current_release_id}`);
       const badge = !brandingRemovedFor(site, owner);
-      const social = { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain: !badge };
+      const social = { base: publicUrlForSubdomain(label), siteName: `${label}.${config.baseDomain}`, image: platformUrl('/assets/social-site.png'), plain: !badge, label };
       files = materialise(src, build, { badge, social });
       writeListings(build, { host: social.siteName, badge, social });
       const has404 = fs.existsSync(path.join(build, '404.html'));

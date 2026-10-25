@@ -84,6 +84,8 @@ test('deploying a ZIP materialises files with the badge injected; dotfiles dropp
   const idx = read('carol', 'index.html');
   assert.match(idx, /data-nsd="badge"/, 'badge injected');
   assert.match(idx, /MutationObserver/, 'guard script present');
+  assert.match(idx, /data-nsd="v"/, 'visit beacon injected');
+  assert.match(idx, /\/_v\/carol/, 'beacon points at this site');
   assert.match(read('carol', 'about.html'), /data-nsd="badge"/);
   assert.equal(read('carol', 'style.css'), 'body{color:red}');
   assert.ok(exists('carol', 'img/pixel.png'));

@@ -7,7 +7,8 @@ const pill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 const stat = (label, value, sub = '') => html`<div class="stat"><div class="stat-value">${value}</div><div class="stat-label">${label}</div>${sub ? html`<div class="muted small">${sub}</div>` : ''}</div>`;
 const hidden = (csrf, extra = {}) => html`<input type="hidden" name="_csrf" value="${csrf}">${Object.entries(extra).map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}`;
 
-export function overview({ stats, alerts, recentUsers, recentDeploys, extensions, upgrades, leads = [], csrf }) {
+export function overview({ stats, alerts, recentUsers, recentDeploys, extensions, upgrades, leads = [], views = null, csrf }) {
+  const maxDay = views ? Math.max(1, ...views.perDay.map((d) => d.n)) : 1;
   return html`<div class="page-head"><h1>Overview</h1><div class="actions"><a class="btn btn-ghost btn-sm" href="/admin/health">System health</a><a class="btn btn-ghost btn-sm" href="/admin/audit">Audit log</a><a class="btn btn-ghost btn-sm" href="/admin/abuse">Abuse reports</a></div></div>
 <div class="stats">
   ${stat('Users', stats.users, `${stats.usersActive} active · +${stats.usersNew7d} this week`)}
@@ -20,6 +21,17 @@ export function overview({ stats, alerts, recentUsers, recentDeploys, extensions
   ${stat('Open abuse', stats.openAbuse)}
   ${stat('Plans expiring ≤14d', stats.expiringSoon, `${stats.expired} already expired`)}
 </div>
+${views ? html`<div class="card week"><h2>This week on nsd.sg</h2>
+<p class="muted small">Visits to the public pages, counted here with no cookies. Bots and link previews are left out. Days are UTC.</p>
+<div class="week-grid">
+  <div>
+    <div class="spark" aria-label="Visits per day, last 14 days">${views.perDay.map((d) => html`<i style="height:${Math.max(3, Math.round((d.n / maxDay) * 100))}%" title="${d.day}: ${d.n}"></i>`)}</div>
+    <p class="muted small">Today <b>${views.today}</b> · yesterday <b>${views.yesterday}</b> · last 7 days <b>${views.week}</b>${views.prevWeek ? html` (<span>${views.week >= views.prevWeek ? '+' : ''}${Math.round(((views.week - views.prevWeek) / views.prevWeek) * 100)}%</span> vs the week before)` : ''} · ${views.phoneShare}% on phones${views.busiestHourSgt !== null ? html` · busiest hour ${views.busiestHourSgt}:00 SGT` : ''}</p>
+    <p class="muted small">Chain, last 7 days: <b>${views.week}</b> visits → <b>${stats.tryPages7d}</b> test pages → <b>${stats.usersNew7d}</b> sign-ups → <b>${stats.published7d}</b> published.</p>
+  </div>
+  <div><h4>Where from (7 d)</h4>${views.referrers.length ? html`<ul class="plain small">${views.referrers.map((r) => html`<li>${r.host} <span class="muted">${r.n}</span></li>`)}</ul>` : html`<p class="muted small">Only direct visits so far (typed, or from WhatsApp, which sends no referrer).</p>`}</div>
+  <div><h4>Top pages (7 d)</h4>${views.pages.length ? html`<ul class="plain small">${views.pages.map((r) => html`<li>${r.path} <span class="muted">${r.n}</span></li>`)}</ul>` : html`<p class="muted small">Nothing yet.</p>`}</div>
+</div></div>` : ''}
 <div class="card funnel"><h2>The Sunday funnel</h2>
 <p class="muted small">Three numbers that say whether nsd.sg is working as a front door. Subscriptions are a bonus.</p>
 <div class="stats three">

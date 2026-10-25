@@ -285,3 +285,8 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 
 /* Admin funnel + lead form */
 .stats.three{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.funnel{margin-bottom:20px}.lead-form{display:inline-flex;gap:6px;align-items:center}.lead-form input{max-width:220px;margin:0;padding:6px 10px;font-size:.85rem}
+
+/* Admin: this week */
+.week{margin-bottom:20px}.week-grid{display:grid;gap:18px}@media(min-width:900px){.week-grid{grid-template-columns:1.6fr 1fr 1fr}}
+.spark{display:flex;align-items:flex-end;gap:4px;height:72px;padding:0 0 6px;border-bottom:1px solid var(--line)}.spark i{flex:1;display:block;background:var(--accent);border-radius:3px 3px 0 0;opacity:.85}.spark i:last-child{background:var(--accent2);opacity:1}
+.week h4{margin:0 0 6px;font-size:.85rem;color:var(--text-2)}.week ul.plain li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}

@@ -5,6 +5,9 @@ import { getDb } from '../../db/index.js';
 import { tenantFromHost } from '../../lib/subdomain.js';
 import { diskUsage } from '../../storage/releases.js';
 import { listPlans } from '../../services/plans.js';
+import { isBot, PIXEL } from '../../services/pageviews.js';
+import { recordTraffic } from '../../services/sites.js';
+import { hit, LIMITS } from '../../lib/ratelimit.js';
 import { FAQ_QA, period } from '../views/marketing.js';
 
 export async function registerSystemRoutes(app) {
@@ -34,6 +37,20 @@ export async function registerSystemRoutes(app) {
   });
 
   const site = () => `${config.publicScheme}://${config.platformHosts[0]}`;
+  // Visit beacon from hosted pages (see serve/beacon.js). Always answers the pixel; counts only known live sites.
+  const LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+  let siteStmt;
+  app.get('/_v/:label', async (req, reply) => {
+    reply.type('image/gif').header('Cache-Control', 'no-store, private').header('X-Robots-Tag', 'noindex');
+    const label = String(req.params.label ?? '').toLowerCase();
+    const rl = hit(`beacon:${req.ip}`, LIMITS.beacon.limit, LIMITS.beacon.windowMs);
+    if (!rl.ok || !LABEL_RE.test(label) || isBot(req.headers['user-agent'])) return reply.send(PIXEL);
+    siteStmt ??= getDb().prepare("SELECT id FROM sites WHERE subdomain = ? AND status = 'live'");
+    const site = siteStmt.get(label);
+    if (site) recordTraffic(site.id, 0);
+    return reply.send(PIXEL);
+  });
+
   app.get('/robots.txt', async (_req, reply) => reply.type('text/plain').send(`User-agent: *\nDisallow: /dashboard\nDisallow: /admin\nDisallow: /account\nDisallow: /internal\n\nSitemap: ${site()}/sitemap.xml\n`));
 
   const PUBLIC_PAGES = ['/', '/pricing', '/faq', '/showcase', '/roadmap', '/changelog', '/contact', '/terms', '/privacy', '/report'];

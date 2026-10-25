@@ -791,3 +791,38 @@ test('admin funnel: a user can be marked as a lead for NasarDigital and shows on
   await post(`/admin/users/${bobId}/action`, admin.cookie, { action: 'agency_lead', value: 'off' });
   assert.match((await get(`/admin/users/${bobId}`, admin.cookie)).body, /Lead for NasarDigital/);
 });
+
+test('page views: public pages are counted without cookies, bots and link previews are not, and the Overview shows the week', async () => {
+  const { flushPageViews, pageViewStats } = await import('../src/services/pageviews.js');
+  const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1';
+  flushPageViews();
+  const homeBefore = getDb().prepare("SELECT COALESCE(SUM(n),0) n FROM page_views WHERE path = '/'").get().n;
+  await app.inject({ method: 'GET', url: '/', headers: { host: 'nsd.test', 'user-agent': ua, referer: 'https://chat.whatsapp.com/abc' } });
+  await app.inject({ method: 'GET', url: '/pricing', headers: { host: 'nsd.test', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/120', referer: 'https://nsd.test/' } });
+  await app.inject({ method: 'GET', url: '/', headers: { host: 'nsd.test', 'user-agent': 'WhatsApp/2.23.20 A' } });
+  await app.inject({ method: 'GET', url: '/', headers: { host: 'nsd.test', 'user-agent': 'facebookexternalhit/1.1' } });
+  await app.inject({ method: 'GET', url: '/dashboard', headers: { host: 'nsd.test', cookie: alice.cookie, 'user-agent': ua } });
+  flushPageViews();
+  const v = pageViewStats({ days: 14 });
+  assert.ok(v.week >= 2, `counted real visits: ${v.week}`);
+  assert.ok(v.referrers.some((r) => r.host === 'chat.whatsapp.com'), 'referrer kept');
+  assert.ok(!v.referrers.some((r) => r.host === 'nsd.test'), 'own host is not a referrer');
+  assert.ok(v.pages.some((p) => p.path === '/pricing'));
+  assert.ok(!v.pages.some((p) => p.path === '/dashboard'), 'logged-in pages are never counted');
+  const homeAfter = getDb().prepare("SELECT COALESCE(SUM(n),0) n FROM page_views WHERE path = '/'").get().n;
+  assert.equal(homeAfter - homeBefore, 1, 'one real visit counted; the WhatsApp preview and the Facebook crawler left out');
+  const ov = (await get('/admin', admin.cookie)).body;
+  assert.match(ov, /This week on nsd\.sg/);
+  assert.match(ov, /chat\.whatsapp\.com/);
+  assert.match(ov, /Chain, last 7 days/);
+  // the per-site visit beacon counts a view for a live site and always answers a pixel
+  const { flushTraffic } = await import('../src/services/sites.js');
+  const before = getDb().prepare("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE site_id = ?").get(alice.siteId).n;
+  const b = await app.inject({ method: 'GET', url: '/_v/alice?p=%2F&r=', headers: { host: 'nsd.test', 'user-agent': ua } });
+  assert.equal(b.statusCode, 200); assert.match(b.headers['content-type'], /image\/gif/);
+  await app.inject({ method: 'GET', url: '/_v/alice', headers: { host: 'nsd.test', 'user-agent': 'Googlebot/2.1' } });
+  await app.inject({ method: 'GET', url: '/_v/nobody-here', headers: { host: 'nsd.test', 'user-agent': ua } });
+  flushTraffic();
+  const after = getDb().prepare("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE site_id = ?").get(alice.siteId).n;
+  assert.equal(after - before, 1, 'one real view counted, the bot and the unknown site not');
+});

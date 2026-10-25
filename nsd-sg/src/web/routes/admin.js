@@ -10,6 +10,7 @@ import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../serv
 import { setSetting, getSetting } from '../../services/settings.js';
 import { listChangelog } from '../../services/roadmap.js';
 import { listTestimonials, addTestimonial, toggleTestimonial, removeTestimonial } from '../../services/testimonials.js';
+import { pageViewStats } from '../../services/pageviews.js';
 import { supportConfig } from '../help.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
@@ -59,6 +60,8 @@ export async function registerAdminRoutes(app) {
       waMemberTaps30d: q("SELECT COUNT(*) n FROM audit_log WHERE action = 'support.whatsapp_tap' AND at > datetime('now','-30 days') AND details LIKE '%member, %'").n,
       leads: q('SELECT COUNT(*) n FROM users WHERE agency_lead_at IS NOT NULL').n,
       leads30d: q("SELECT COUNT(*) n FROM users WHERE agency_lead_at > datetime('now','-30 days')").n,
+      tryPages7d: q("SELECT COUNT(*) n FROM previews WHERE created_at > datetime('now','-7 days')").n,
+      published7d: q("SELECT COUNT(*) n FROM users u WHERE u.created_at > datetime('now','-7 days') AND u.role != 'admin' AND EXISTS (SELECT 1 FROM releases r JOIN sites s ON s.id = r.site_id WHERE s.user_id = u.id)").n,
       requests7d: q("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       bytes7d: q("SELECT COALESCE(SUM(bytes),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       openAbuse: q("SELECT COUNT(*) n FROM abuse_reports WHERE status IN ('open','reviewing')").n,
@@ -72,7 +75,7 @@ export async function registerAdminRoutes(app) {
     const leads = all("SELECT u.id, u.email, u.name, u.plan_id, u.agency_lead_at, u.agency_lead_note, (SELECT subdomain FROM sites s WHERE s.user_id = u.id AND s.status != 'deleted' ORDER BY s.created_at LIMIT 1) subdomain FROM users u WHERE u.agency_lead_at IS NOT NULL ORDER BY u.agency_lead_at DESC LIMIT 12");
     const recentDeploys = all('SELECT r.*, s.subdomain FROM releases r JOIN sites s ON s.id = r.site_id ORDER BY r.created_at DESC LIMIT 8');
     const upgrades = all("SELECT e.*, u.email FROM plan_events e JOIN users u ON u.id = e.user_id WHERE e.type = 'upgrade_requested' AND e.created_at > datetime('now','-30 days') ORDER BY e.created_at DESC LIMIT 10");
-    return render(req, reply, { title: 'Overview', active: 'overview', body: V.overview({ stats, alerts, recentUsers, recentDeploys, extensions: pendingExtensionRequests(), upgrades, leads, csrf: csrfTokenFor(req) }) });
+    return render(req, reply, { title: 'Overview', active: 'overview', body: V.overview({ stats, alerts, recentUsers, recentDeploys, extensions: pendingExtensionRequests(), upgrades, leads, views: pageViewStats({ days: 14 }), csrf: csrfTokenFor(req) }) });
   });
 
   // ---- users ----

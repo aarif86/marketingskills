@@ -128,7 +128,7 @@ ${!isReady && ready.reason !== 'error' ? html`<p class="notice">${slow ? html`<s
 </div>
 
 <div class="grid two">
-<section class="card"><h2>Visits (last 30 days)</h2><p><strong>${reqs.toLocaleString()}</strong> page and file loads · <strong>${formatBytes(monthBytes)}</strong> sent this month of ${formatBytes(ent.limits.max_bandwidth_bytes_month)} allowed</p>
+<section class="card"><h2>Visits (last 30 days)</h2><p><strong>${reqs.toLocaleString()}</strong> page views · <strong>${formatBytes(monthBytes)}</strong> sent this month of ${formatBytes(ent.limits.max_bandwidth_bytes_month)} allowed</p>
   ${traffic.length ? html`<div class="spark">${traffic.map((t) => html`<i style="height:${Math.max(4, Math.min(100, (t.requests / Math.max(1, Math.max(...traffic.map((x) => x.requests)))) * 100))}%" title="${t.day}: ${t.requests} requests"></i>`)}</div>` : html`<p class="muted small">No visits recorded yet.</p>`}
 </section>
 <section class="card"><h2>Branding</h2>

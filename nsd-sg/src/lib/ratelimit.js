@@ -50,6 +50,7 @@ export const LIMITS = {
   mcpPublish: { limit: 20, windowMs: 60 * 60_000 },
   platformGeneral: { limit: 600, windowMs: 60_000 },
   tenantGeneral: { limit: 1200, windowMs: 60_000 },
+  beacon: { limit: 600, windowMs: 60_000 },
 };
 
 // Fastify preHandler factory.
