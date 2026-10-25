@@ -345,3 +345,15 @@ document.querySelectorAll('[data-rm-more]').forEach(function (btn) {
     passed.observe(tryBox);
   }
 })();
+
+// Copy buttons: data-copy="#id" copies that element's text; the button says "Copied" for a moment.
+document.querySelectorAll('[data-copy]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var el = document.querySelector(b.getAttribute('data-copy'));
+    if (!el) return;
+    var text = el.textContent.trim();
+    var done = function () { var label = b.querySelector('span'); var old = label ? label.textContent : ''; b.classList.add('done'); if (label) label.textContent = 'Copied'; setTimeout(function () { b.classList.remove('done'); if (label) label.textContent = old; }, 1800); };
+    var fallback = function () { var r = document.createRange(); r.selectNodeContents(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand('copy'); done(); } catch (e) { /* leave the text selected for a manual copy */ } };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done).catch(fallback); else fallback();
+  });
+});

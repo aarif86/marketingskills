@@ -39,7 +39,7 @@ test('new sign-ups get 30 days; the Connect page issues a token once', async () 
   const c = String(made.headers['set-cookie']).match(/nsd_newtoken=([^;]+)/)[1];
   page = await get('/connect', `${u.cookie}; nsd_newtoken=${c}`);
   u.token = page.body.match(/(nsd_[A-Za-z0-9_-]{43})/)[1];
-  assert.match(page.body, new RegExp(`/mcp/${u.token}`));
+  assert.match(page.body, new RegExp(`/mcp/${u.token}`)); assert.match(page.body, /data-copy="#fresh-key"/);
   assert.doesNotMatch((await get('/connect', u.cookie)).body, /nsd_[A-Za-z0-9_-]{43}/, 'shown once only');
   assert.match((await get('/connect', u.cookie)).body, /Claude Desktop/);
 });

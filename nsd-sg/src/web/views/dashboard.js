@@ -288,7 +288,7 @@ export function connectPage({ tokens, fresh, csrf, sites }) {
 <p class="section-lead">Works with Claude, ChatGPT, Codex, Gemini, Cursor and any other AI tool that can use connectors. Today you ask your AI for a page, download it, and upload it here. After this, you skip all that. You say “put this online as ${example}” and your AI gives you the live link. Three steps, once only.</p>
 ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
   <p>This is the only time we show it. Copy the long address below now.</p>
-  <p class="token"><code>${base}/mcp/${fresh.token}</code></p>
+  <div class="copy-row"><p class="token"><code id="fresh-key">${base}/mcp/${fresh.token}</code></p><button class="btn btn-primary copy-btn" type="button" data-copy="#fresh-key" aria-label="Copy the address"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy</span></button></div>
   <p class="muted small">Keep it to yourself, like a password. Anyone who has it can put pages on your account. If it ever gets out, press “Switch off” below and make a new one. Now go to <strong>step 2</strong>.</p>
 </div>` : ''}
 <div class="grid two">
