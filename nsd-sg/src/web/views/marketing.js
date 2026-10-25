@@ -65,7 +65,7 @@ ${live.sites.length ? html`<section id="live" class="section live"><div class="c
   <h2>Live right now <span class="muted">${live.total}</span></h2>
   <p class="section-lead">Real pages people put online with NSD.SG, each at its own address. Yours could be next to them in a minute. <a href="/showcase">See all ${live.total} →</a></p>
   <div class="grid three">
-    ${live.sites.map((st) => html`<a class="card live-card" href="${config.publicScheme}://${st.subdomain}.${baseDomain}/" target="_blank" rel="noopener"><h3>${st.title || st.subdomain}</h3><p class="eg">${st.subdomain}.${baseDomain}</p><span class="muted small">Open it →</span></a>`)}
+    ${live.sites.map((st) => html`<a class="card live-card" href="${config.publicScheme}://${st.subdomain}.${baseDomain}/" target="_blank" rel="noopener"><h3>${st.subdomain}.${baseDomain}</h3>${st.title && !/['’]s site$/.test(st.title) ? html`<p class="eg">${st.title}</p>` : ''}<span class="muted small">Open it →</span></a>`)}
   </div>
 </div></section>` : ''}
 
