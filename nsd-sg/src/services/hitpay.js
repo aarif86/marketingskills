@@ -147,7 +147,10 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
     db.prepare("UPDATE subscriptions SET status = 'active', last_event = ?, updated_at = ?, last_payment_id = COALESCE(NULLIF(?, ''), last_payment_id), last_paid_at = CASE WHEN ? != '' OR last_paid_at IS NULL THEN ? ELSE last_paid_at END WHERE id = ?")
       .run(eventType || status, now, paymentId, paymentId, now, sub.id);
     abandonOtherPending(sub.user_id, sub.id);
-    return { ok: true, activated: sub.status !== 'active' };
+    // Switching plans (monthly -> yearly, Beta -> Plus): the old subscription is cancelled at HitPay so nobody pays twice.
+    const replaced = sub.status !== 'active' ? otherActive(sub.user_id, sub.id) : [];
+    if (replaced.length) replaceOthers(sub.user_id, sub.id, replaced, log);
+    return { ok: true, activated: sub.status !== 'active', replaced: replaced.map((r) => r.id) };
   }
   // HitPay says 'scheduled' for every recurring billing that has not charged yet, including checkouts the customer
   // never finished. Only a future start date plus a confirming event (customer returned, or a webhook) means
@@ -163,7 +166,11 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
     return { ok: true, scheduled: true };
   }
   if (DEAD.has(status)) {
-    if (sub.status === 'active') {
+    if (sub.status === 'active' && otherActive(sub.user_id, sub.id).length) {
+      // Replaced by a newer plan that is already paying: just close this one, the user's plan is untouched.
+      db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
+        .run(newId(), sub.user_id, 'subscription_replaced', sub.plan_id, null, JSON.stringify({ subscription: sub.id, status }));
+    } else if (sub.status === 'active') {
       // Market practice: the plan stays until the end of the period already paid for (last charge + 1 month).
       // A failed renewal (nothing paid) gets 3 days to sort the card out. Never shorten an expiry an admin already
       // pushed further out (manual extensions, founding accounts).
@@ -186,6 +193,14 @@ export function abandonSubscription(id, why = 'dismissed') {
 }
 
 /** A user has one live checkout at a time: once any subscription is decided, older unpaid attempts are noise. */
+function otherActive(userId, keepId) {
+  return getDb().prepare("SELECT id, plan_id FROM subscriptions WHERE user_id = ? AND id != ? AND status IN ('active', 'scheduled')").all(userId, keepId);
+}
+/** Cancel the subscriptions a newer one replaces (fire-and-forget; failures are logged and retried by the admin "repair"). */
+export function replaceOthers(userId, keepId, others, log = console) {
+  return Promise.all(others.map((o) => cancelSubscription(o.id).catch((e) => log.error?.({ err: e, subscription: o.id }, 'could not cancel replaced subscription'))));
+}
+
 function abandonOtherPending(userId, keepId) {
   getDb().prepare("UPDATE subscriptions SET status = 'abandoned', last_event = 'superseded', updated_at = ? WHERE user_id = ? AND id != ? AND status = 'pending'").run(nowIso(), userId, keepId);
 }

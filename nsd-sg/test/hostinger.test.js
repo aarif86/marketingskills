@@ -633,3 +633,33 @@ test('_redirects is compiled into the docroot .htaccess (and not published as a 
   assert.match(ht, /max-age=31536000, immutable/);
   assert.ok(!exists('kimapp', '_redirects'), 'rules file not copied to the docroot');
 });
+
+test('switching plans: when a new subscription activates, the old active one is cancelled at HitPay and the user is never double charged or shortened', async () => {
+  const hitpay = await import('../src/services/hitpay.js');
+  const { config } = await import('../src/config.js');
+  config.hitpay.apiKey = 'test-key';
+  const { createUser } = await import('../src/services/users.js');
+  const u = await createUser({ email: 'switch@example.com', password: 'correct-horse-battery', name: 'Switch' });
+  const db = getDb();
+  const mk = (id, plan) => db.prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, created_at, updated_at) VALUES (?, ?, ?, 'pending', ?, ?, ?)").run(id, u.id, plan, `ref-${id}`, new Date().toISOString(), new Date().toISOString());
+  mk('sub_month', 'beta'); mk('sub_year', 'plus-year');
+  hitpay.applyEvent({ subscriptionId: 'sub_month', reference: 'ref-sub_month', status: 'active', email: u.email, eventType: 'charge.created', paymentId: 'pay1' });
+  assert.equal(db.prepare('SELECT plan_id FROM users WHERE id = ?').get(u.id).plan_id, 'beta');
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => { calls.push({ url: String(url), method: opts?.method }); return new Response('{}', { status: 200 }); };
+  try {
+    const r = hitpay.applyEvent({ subscriptionId: 'sub_year', reference: 'ref-sub_year', status: 'active', email: u.email, eventType: 'charge.created', paymentId: 'pay2' });
+    assert.deepEqual(r.replaced, ['sub_month'], 'the monthly one is marked for cancellation');
+    await new Promise((res) => setTimeout(res, 50));
+    assert.ok(calls.some((c) => c.method === 'DELETE' && c.url.includes('sub_month')), 'HitPay asked to cancel the old one');
+  } finally { globalThis.fetch = realFetch; }
+  const user = db.prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(u.id);
+  assert.equal(user.plan_id, 'plus-year');
+  assert.equal(user.plan_expires_at, null, 'the new yearly plan was not shortened by the old cancellation');
+  assert.equal(db.prepare("SELECT status FROM subscriptions WHERE id = 'sub_month'").get().status, 'canceled');
+  assert.equal(db.prepare("SELECT status FROM subscriptions WHERE id = 'sub_year'").get().status, 'active');
+  assert.ok(db.prepare("SELECT 1 FROM plan_events WHERE user_id = ? AND type = 'subscription_replaced'").get(u.id));
+  assert.ok(!db.prepare("SELECT 1 FROM plan_events WHERE user_id = ? AND type = 'subscription_canceled'").get(u.id), 'no grace-period event for a replaced plan');
+  config.hitpay.apiKey = '';
+});

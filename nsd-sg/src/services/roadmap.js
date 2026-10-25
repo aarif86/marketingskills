@@ -144,7 +144,8 @@ const SEED_ROADMAP = [
 ];
 const SEED_CHANGELOG = [
   ['cl-0-13-32', '0.13.32', 'Yearly Plus and real voices', `- New: Plus can be paid once a year, S$90 instead of S$108. The offer appears on your Plan page when a free period is ending or has ended, the moment it matters.
-- New: “What people say” on the home page, real quotes from real users, added one by one by a person. It stays invisible until there is at least one.`, 'new', '2026-10-26T02:00:00Z'],
+- New: “What people say” on the home page, real quotes from real users, added one by one by a person. It stays invisible until there is at least one.
+- Changed: anyone paying monthly can switch to yearly from the Plan page, and switching plans cancels the old subscription the moment the new one starts. No double charge, ever.`, 'new', '2026-10-26T02:00:00Z'],
   ['cl-0-13-31', '0.13.31', 'Lead with the problem, show the proof, nudge the silent', `- Changed: the home page opens with the problem (the link your AI gives you is random letters, a file, or a page in someone else’s branding) before the promise.
 - New: a proof line in the hero, “N sites live · M put online this week”, that appears once enough sites are live (admin sets the number on the Health page).
 - New: a single day-after email to anyone who signed up, picked an address and never published: three ways to get a page up and a WhatsApp link. Sent once, between 24 and 72 hours after sign-up, never to older accounts.
