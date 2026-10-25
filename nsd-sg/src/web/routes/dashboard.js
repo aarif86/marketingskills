@@ -14,7 +14,7 @@ import { watchdog } from '../../lib/audit.js';
 import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite, checkSiteReady, knownReady,
 } from '../../services/sites.js';
-import { getPlan, entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
+import { showcaseMode, getPlan, entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser } from '../../services/users.js';
 import { storePack } from '../../services/evidence.js';
@@ -278,8 +278,8 @@ export async function registerDashboardRoutes(app) {
   app.post('/sites/:id/settings', { preHandler: requireUser }, async (req, reply) => {
     const site = loadSite(req, reply); if (!site) return;
     const ent = entitlementsFor(req.user);
-    const canHide = ent.features.hide_from_showcase ?? ent.features.branding_removable;
-    updateSiteSettings(site.id, { title: req.body?.title, allow_framing: req.body?.allow_framing === '1', listed: canHide ? req.body?.listed === '1' : undefined });
+    const canChoose = showcaseMode(ent.features) !== 'always';
+    updateSiteSettings(site.id, { title: req.body?.title, allow_framing: req.body?.allow_framing === '1', listed: canChoose ? req.body?.listed === '1' : undefined });
     audit({ req, action: 'site.settings', targetType: 'site', targetId: site.id });
     flash(reply, 'success', 'Settings saved.');
     return reply.redirect(`/sites/${site.id}/settings`);

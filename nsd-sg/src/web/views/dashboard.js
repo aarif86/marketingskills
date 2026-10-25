@@ -1,5 +1,6 @@
 import { html, formatBytes, formatDate, timeAgo } from '../../lib/html.js';
 import { config, publicUrlForSubdomain } from '../../config.js';
+import { showcaseMode } from '../../services/plans.js';
 
 const statusPill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 
@@ -143,7 +144,9 @@ export function siteSettings({ site, csrf, ent, domains = [] }) {
   <label>Web address <div class="domain-input"><input value="${site.subdomain}" disabled><span>.${config.baseDomain}</span></div><small>An address cannot be renamed. Make a new site if you want a different name.</small></label>
   <label>Name for your own reference <input name="title" value="${site.title}" maxlength="100"></label>
   <label class="check"><input type="checkbox" name="allow_framing" value="1" ${site.allow_framing ? 'checked' : ''}> Let other websites show this site inside their own page <small>(off unless you need it; keeping it off protects your visitors)</small></label>
-  ${(ent.features.hide_from_showcase ?? ent.features.branding_removable) ? html`<label class="check"><input type="checkbox" name="listed" value="1" ${site.listed_choice === 1 ? 'checked' : ''}> Show this site on the public <a href="/showcase">showcase</a> <small>(off by default on your plan; tick to be listed)</small></label>` : html`<p class="muted small">Live sites on the free plan appear on the public <a href="/showcase">showcase</a>. On Plus your site is off the list unless you switch it on.</p>`}
+  ${(() => { const mode = showcaseMode(ent.features); const on = mode === 'opt_in' ? site.listed_choice === 1 : site.listed_choice !== 0;
+    return mode === 'always' ? html`<p class="muted small">Live sites on the free plan appear on the public <a href="/showcase">showcase</a>.</p>`
+      : html`<label class="check"><input type="checkbox" name="listed" value="1" ${on ? 'checked' : ''}> Show this site on the public <a href="/showcase">showcase</a> <small>${mode === 'opt_in' ? '(off by default on a paid plan; tick to be listed)' : '(on by default; untick to hide it)'}</small></label>`; })()}
   <button class="btn btn-primary" type="submit">Save</button>
 </form>
 ${ent.features.custom_domains ? html`<div class="card" id="domains"><h2>Your own domain name</h2>
@@ -212,7 +215,7 @@ function planCompare(freePlan, ent, promo, csrf) {
     ['Storage', mb(f.max_storage_bytes ?? 0), mb(m.max_storage_bytes)],
     ['Versions kept', f.max_releases ?? 1, m.max_releases],
     ['NSD.SG badge', 'shown', ent.brandingRemoved ? 'removed' : 'shown'],
-    ['Hide from showcase', 'no', ent.features?.hide_from_showcase ? 'yes' : 'no'],
+    ['Showcase', 'listed', { always: 'listed', opt_out: 'listed, you can hide it', opt_in: 'hidden, you can show it' }[showcaseMode(ent.features)]],
     ['Free period', `${freePlan.trial_days ?? 0} days`, ent.plan.trial_days ? `${ent.plan.trial_days} days, then S$${(ent.plan.price_cents_month / 100).toFixed(0)}/month` : 'none'],
   ];
   return html`<div class="promo-box"><h3>Your code <code>${promo.code}</code> unlocked ${ent.plan.name}</h3>

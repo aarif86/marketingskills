@@ -12,6 +12,14 @@ export const HARD_LIMITS = {
   max_bandwidth_bytes_month: 1024 ** 3,
 };
 
+/** How a plan's sites meet the public showcase: 'always' (listed, no choice: Free), 'opt_out' (listed unless the
+ *  owner hides it: promo, gift and beta plans), 'opt_in' (hidden unless the owner shows it: paid plans). */
+export function showcaseMode(features = {}) {
+  if (features.showcase === 'always' || features.showcase === 'opt_out' || features.showcase === 'opt_in') return features.showcase;
+  return (features.hide_from_showcase ?? features.branding_removable) ? 'opt_in' : 'always';
+}
+export const SHOWCASE_LABEL = { always: 'listed, no choice', opt_out: 'listed unless the owner hides it', opt_in: 'hidden unless the owner shows it' };
+
 export function listPlans({ publicOnly = false } = {}) {
   const db = getDb();
   const rows = db

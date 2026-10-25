@@ -2,7 +2,7 @@
 import { getDb, loadBlockedWords } from '../db/index.js';
 import { newId, nowIso } from '../lib/ids.js';
 import { normalizeSubdomain, validateSubdomainSyntax } from '../lib/subdomain.js';
-import { entitlementsFor } from './plans.js';
+import { showcaseMode, entitlementsFor } from './plans.js';
 import { deleteSiteStorage } from '../storage/releases.js';
 import { holdSite } from './evidence.js';
 import { probeUrl } from '../lib/probe.js';
@@ -193,8 +193,10 @@ export function listShowcaseSites(limit = 500) {
     ORDER BY s.last_deployed_at DESC LIMIT ?`).all(limit);
   return rows.filter((r) => {
     const ent = entitlementsFor({ plan_id: r.plan_id, plan_expires_at: r.plan_expires_at, overrides_json: r.overrides_json });
-    const canHide = (ent.features.hide_from_showcase ?? ent.features.branding_removable) && !ent.expired;
-    return canHide ? r.listed_choice === 1 : r.listed !== 0;
+    const mode = ent.expired ? 'always' : showcaseMode(ent.features); // an expired paid plan is listed like Free
+    if (mode === 'always') return r.listed !== 0;
+    if (mode === 'opt_in') return r.listed_choice === 1;
+    return r.listed_choice !== 0; // opt_out: listed until the owner unticks
   }).map(({ subdomain, title, last_deployed_at }) => ({ subdomain, title, last_deployed_at }));
 }
 

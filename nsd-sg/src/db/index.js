@@ -80,7 +80,7 @@ export const DEFAULT_PLANS = [
     is_default: 0,
     sort_order: 20,
     limits: { max_sites: 5, max_storage_bytes: 1024 ** 3, max_file_bytes: 50 * 1024 * 1024, max_releases: 10, max_bandwidth_bytes_month: 50 * 1024 ** 3 },
-    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true },
+    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true, showcase: 'opt_in' },
   },
   {
     id: 'beta',
@@ -92,7 +92,7 @@ export const DEFAULT_PLANS = [
     is_default: 0,
     sort_order: 25,
     limits: { max_sites: 3, max_storage_bytes: 500 * 1024 * 1024, max_file_bytes: 30 * 1024 * 1024, max_releases: 5, max_bandwidth_bytes_month: 20 * 1024 ** 3 },
-    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true },
+    features: { branding_removable: true, custom_domains: true, version_history: true, analytics: true, priority_support: true, hide_from_showcase: true, showcase: 'opt_out' },
   },
   {
     id: 'community',
@@ -104,7 +104,7 @@ export const DEFAULT_PLANS = [
     is_default: 0,
     sort_order: 30,
     limits: { max_sites: 3, max_storage_bytes: 500 * 1024 * 1024, max_file_bytes: 30 * 1024 * 1024, max_releases: 5, max_bandwidth_bytes_month: 20 * 1024 ** 3 },
-    features: { branding_removable: false, custom_domains: false, version_history: true, analytics: true, priority_support: false, hide_from_showcase: true },
+    features: { branding_removable: false, custom_domains: false, version_history: true, analytics: true, priority_support: false, hide_from_showcase: true, showcase: 'opt_out' },
   },
 ];
 

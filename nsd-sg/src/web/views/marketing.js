@@ -2,6 +2,7 @@
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { whatsappLink } from './layout.js';
+import { showcaseMode } from '../../services/plans.js';
 import { expiresLabel, TRY_FREE_PER_PERSON } from '../../services/tryit.js';
 
 const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/mo`);
@@ -116,7 +117,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
         <li>Last ${p.limits.max_releases} copies kept</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
         ${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}
-        <li>${p.features.hide_from_showcase ? 'Off the public showcase unless you want to be on it' : html`Listed on the public <a href="/showcase">showcase</a>`}</li>
+        <li>${{ always: html`Listed on the public <a href="/showcase">showcase</a>`, opt_out: html`On the public <a href="/showcase">showcase</a>, unless you hide it`, opt_in: 'Off the public showcase unless you want to be on it' }[showcaseMode(p.features)]}</li>
         ${p.trial_days ? html`<li>Free for ${period(p.trial_days)}, then ask for more time or upgrade</li>` : ''}
       </ul>
       <a class="btn ${p.id === 'plus' ? 'btn-primary' : 'btn-ghost'}" href="/signup?plan=${p.id}">${p.price_cents_month ? 'Choose ' + p.name : 'Start free'}</a>

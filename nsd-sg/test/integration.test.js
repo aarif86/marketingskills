@@ -369,7 +369,7 @@ test('showcase: free sites listed, paid sites hidden until the owner opts in', a
   r = await post('/admin/plans', admin.cookie, { id: 'plus-gift', name: 'Plus (gift)', description: 'gift', price_sgd: '9', trial_days: '120', max_sites: '5', max_storage_mb: '1024', max_file_mb: '50', max_releases: '10', max_bandwidth_gb: '50', branding_removable: '1', custom_domains: '1' });
   assert.equal(r.statusCode, 302);
   const plansPage = await get('/admin/plans?edit=plus-gift', admin.cookie);
-  assert.match(plansPage.body, /name="hide_from_showcase" value="1" >/);
+  assert.match(plansPage.body, /<option value="always" selected>/);
   await post(`/sites/${siteId}/settings`, cookie, { title: 'Listy', listed: '1' }); // a fresh gift user is listed by default; undo the opt-out above
   await post(`/admin/users/${listyRow.id}/action`, admin.cookie, { action: 'plan', plan_id: 'plus-gift' });
   assert.ok(names().includes('listy'), 'gift plan listed even though the badge is removed');
@@ -613,4 +613,37 @@ test('guard rails: a site over its monthly transfer is paused at the edge; test 
   const c = cookiesFrom(await app.inject({ method: 'POST', url: '/login', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ _csrf: csrfFrom((await get('/login')).body), email: 'alice@example.com', password: 'correct-horse-battery' }).toString() }));
   assert.match((await get('/billing', c)).body, /placeholder="e.g\. YOURCODE"/);
   assert.match((await get('/admin/promo', admin.cookie)).body, /placeholder="e.g\. WELCOME2026"/);
+});
+
+test('showcase modes: a beta (promo) site is listed by default and can be hidden; Free has no choice; Plus stays opt-in', async () => {
+  const { listShowcaseSites } = await import('../src/services/sites.js');
+  const { showcaseMode, getPlan } = await import('../src/services/plans.js');
+  assert.equal(showcaseMode(getPlan('free').features), 'always');
+  assert.equal(showcaseMode(getPlan('beta').features), 'opt_out');
+  assert.equal(showcaseMode(getPlan('plus').features), 'opt_in');
+  const names = () => listShowcaseSites().map((s) => s.subdomain);
+  resetLimit('signup:127.0.0.1');
+  const su = await app.inject({ method: 'POST', url: '/signup', headers: { ...P, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfFrom((await get('/signup')).body), email: 'betty@example.com', name: 'Betty', password: 'correct-horse-battery', subdomain: 'bettysite', agree: '1' }).toString() });
+  const cookie = cookiesFrom(su);
+  const siteId = (await get('/dashboard', cookie)).body.match(/href="\/sites\/([A-Z0-9]{26})"/)[1];
+  const betty = getDb().prepare('SELECT id FROM users WHERE email = ?').get('betty@example.com');
+  getDb().prepare("UPDATE users SET email_verified_at = datetime('now') WHERE id = ?").run(betty.id);
+  await upload(cookie, siteId, [{ name: 'index.html', data: '<h1>betty</h1>' }], 'replace');
+  assert.ok(names().includes('bettysite'), 'free: listed');
+  assert.doesNotMatch((await get(`/sites/${siteId}/settings`, cookie)).body, /name="listed"/, 'free: no choice');
+  await post(`/admin/users/${betty.id}/action`, admin.cookie, { action: 'plan', plan_id: 'beta' });
+  assert.ok(names().includes('bettysite'), 'beta: listed by default');
+  let settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /name="listed" value="1" checked/); assert.match(settings.body, /untick to hide it/);
+  await post(`/sites/${siteId}/settings`, cookie, { title: 'Betty' }); // untick
+  assert.ok(!names().includes('bettysite'), 'beta: hidden after untick');
+  await post(`/sites/${siteId}/settings`, cookie, { title: 'Betty', listed: '1' });
+  assert.ok(names().includes('bettysite'), 'beta: shown again');
+  await post(`/admin/users/${betty.id}/action`, admin.cookie, { action: 'plan', plan_id: 'plus' });
+  settings = await get(`/sites/${siteId}/settings`, cookie);
+  assert.match(settings.body, /tick to be listed/);
+  assert.ok(names().includes('bettysite'), 'plus: her earlier explicit choice (shown) is kept');
+  const health = await get('/admin/plans?edit=beta', admin.cookie);
+  assert.match(health.body, /<option value="opt_out" selected>/);
 });
