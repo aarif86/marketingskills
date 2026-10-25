@@ -273,6 +273,21 @@ test('HitPay webhook: bad signature rejected; good charge activates a paid plan 
   assert.ok(paid, 'last_paid_at recorded on activation');
   const expectEnd = new Date(paid); expectEnd.setUTCMonth(expectEnd.getUTCMonth() + 1);
   assert.equal(u.plan_expires_at, expectEnd.toISOString(), 'expiry = last charge + 1 month');
+  // paying members are told what happened, every time
+  const { outbox } = await import('../src/lib/mailer.js');
+  const fayMail = outbox.filter((m) => m.to === 'fay@example.com');
+  assert.ok(fayMail.some((m) => /You are on Plus\. Thank you\./.test(m.subject)), 'welcome mail on activation');
+  assert.ok(fayMail.some((m) => /subscription is cancelled/.test(m.subject) && /stays active until/.test(m.text)), 'cancellation mail with the paid-until date');
+  // a failed renewal: 3-day grace, an urgent email, an alert for admin
+  db().prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, last_paid_at) VALUES ('rb_2', ?, 'plus', 'active', ?, ?)").run(fay.id, `${fay.id}:plus:def`, new Date().toISOString());
+  db().prepare('UPDATE users SET plan_expires_at = NULL WHERE id = ?').run(fay.id);
+  const failed = JSON.stringify({ recurring_billing_id: 'rb_2', status: 'failed' });
+  const sig3 = crypto.createHmac('sha256', 'test-salt').update(failed).digest('hex');
+  await app.inject({ method: 'POST', url: '/billing/hitpay/webhook', headers: { host: H, 'content-type': 'application/json', 'hitpay-signature': sig3, 'hitpay-event-type': 'charge.failed' }, body: failed });
+  assert.ok(outbox.some((m) => m.to === 'fay@example.com' && /Action needed/.test(m.subject) && /declined/.test(m.text)), 'failed-payment mail');
+  assert.ok(db().prepare("SELECT 1 FROM audit_log WHERE action = 'hitpay.payment_failed' AND severity = 'alert' AND target_id = ?").get(fay.id), 'admin alert');
+  const g = db().prepare('SELECT plan_expires_at FROM users WHERE id = ?').get(fay.id).plan_expires_at;
+  assert.ok(g && Date.parse(g) > Date.now() && Date.parse(g) - Date.now() <= 32 * 86400000, 'plan runs to the end of the paid month, then pauses');
   // A cancel must never pull an admin-extended expiry closer.
   db().prepare("UPDATE subscriptions SET status = 'active' WHERE id = 'rb_1'").run();
   db().prepare("UPDATE users SET plan_expires_at = '2027-04-01T00:00:00.000Z' WHERE id = ?").run(fay.id);
@@ -662,4 +677,59 @@ test('switching plans: when a new subscription activates, the old active one is 
   assert.ok(db.prepare("SELECT 1 FROM plan_events WHERE user_id = ? AND type = 'subscription_replaced'").get(u.id));
   assert.ok(!db.prepare("SELECT 1 FROM plan_events WHERE user_id = ? AND type = 'subscription_canceled'").get(u.id), 'no grace-period event for a replaced plan');
   config.hitpay.apiKey = '';
+});
+
+test('switching while paying: the new plan is scheduled for the end of the paid period, the old subscription stops now, and the member is told', async () => {
+  const hitpay = await import('../src/services/hitpay.js');
+  const { outbox } = await import('../src/lib/mailer.js');
+  const { config } = await import('../src/config.js');
+  config.hitpay.apiKey = 'test-key';
+  const { createUser } = await import('../src/services/users.js');
+  const u = await createUser({ email: 'sw2@example.com', password: 'correct-horse-battery', name: 'Sw' });
+  const db = getDb();
+  const paidAt = new Date(Date.now() - 10 * 86400000).toISOString();
+  db.prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, last_paid_at) VALUES ('m1', ?, 'plus', 'active', 'r-m1', ?)").run(u.id, paidAt);
+  db.prepare("UPDATE users SET plan_id = 'plus', plan_expires_at = NULL WHERE id = ?").run(u.id);
+  const startsAt = hitpay.paidUntil(paidAt, 'canceled', 'month');
+  db.prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, starts_at) VALUES ('y1', ?, 'plus-year', 'pending', 'r-y1', ?)").run(u.id, startsAt);
+  const realFetch = globalThis.fetch; const calls = [];
+  globalThis.fetch = async (url, opts) => { calls.push({ url: String(url), method: opts?.method }); return new Response('{}', { status: 200 }); };
+  try {
+    const r = hitpay.applyEvent({ subscriptionId: 'y1', reference: 'r-y1', status: 'scheduled', email: u.email, eventType: 'return', confirmed: true });
+    assert.ok(r.scheduled); assert.deepEqual(r.replaced, ['m1']);
+    await new Promise((res) => setTimeout(res, 50));
+    assert.ok(calls.some((c) => c.method === 'DELETE' && c.url.includes('m1')), 'monthly cancelled at HitPay now');
+  } finally { globalThis.fetch = realFetch; config.hitpay.apiKey = ''; }
+  const user = db.prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(u.id);
+  assert.equal(user.plan_id, 'plus', 'still on the paid plan until the switch day');
+  assert.equal(user.plan_expires_at, startsAt, 'paid plan runs to the day the yearly starts');
+  assert.equal(db.prepare("SELECT status FROM subscriptions WHERE id = 'm1'").get().status, 'canceled');
+  assert.equal(db.prepare("SELECT status FROM subscriptions WHERE id = 'y1'").get().status, 'scheduled');
+  const mail = outbox.filter((m) => m.to === 'sw2@example.com');
+  assert.ok(mail.some((m) => /Switching to Plus yearly/.test(m.subject) && /no double charge/.test(m.text)), 'switch mail');
+  // the day comes: the yearly charges, the plan flips with no expiry
+  hitpay.applyEvent({ subscriptionId: 'y1', reference: 'r-y1', status: 'succeeded', email: u.email, eventType: 'charge.created', paymentId: 'p-y1' });
+  const after = db.prepare('SELECT plan_id, plan_expires_at FROM users WHERE id = ?').get(u.id);
+  assert.equal(after.plan_id, 'plus-year'); assert.equal(after.plan_expires_at, null);
+  assert.ok(outbox.some((m) => m.to === 'sw2@example.com' && /You are on Plus yearly/.test(m.subject)));
+});
+
+test('lifecycle speaks to paying members as members: a cancelled Plus says "your Plus plan", a yearly member gets a renewal heads-up', async () => {
+  const { lifecycleSweep, renewalSweep } = await import('../src/services/lifecycle.js');
+  const { outbox } = await import('../src/lib/mailer.js');
+  const { createUser } = await import('../src/services/users.js');
+  const db = getDb();
+  const c = await createUser({ email: 'cancelled@example.com', password: 'correct-horse-battery', name: 'C' });
+  db.prepare("UPDATE users SET plan_id = 'plus', plan_expires_at = ? WHERE id = ?").run(new Date(Date.now() + 5 * 86400000).toISOString(), c.id);
+  await lifecycleSweep();
+  const m = outbox.filter((x) => x.to === 'cancelled@example.com');
+  assert.ok(m.some((x) => /Your Plus plan on NSD\.SG ends in 7 days/.test(x.subject)), 'paid wording');
+  assert.ok(m.every((x) => !/free period/.test(x.subject + x.text)), 'never called a free period');
+  const y = await createUser({ email: 'yearly@example.com', password: 'correct-horse-battery', name: 'Y' });
+  const paidAt = new Date(Date.now() - (365 - 5) * 86400000); paidAt.setUTCMonth(paidAt.getUTCMonth()); // ~5 days before the yearly due date
+  db.prepare("INSERT INTO subscriptions (id, user_id, plan_id, status, reference, last_paid_at) VALUES ('yr1', ?, 'plus-year', 'active', 'r-yr1', ?)").run(y.id, paidAt.toISOString());
+  db.prepare("UPDATE users SET plan_id = 'plus-year', plan_expires_at = NULL WHERE id = ?").run(y.id);
+  assert.equal(await renewalSweep(), 1);
+  assert.ok(outbox.some((x) => x.to === 'yearly@example.com' && /renews on/.test(x.subject) && /S\$90/.test(x.text)));
+  assert.equal(await renewalSweep(), 0, 'once per due date');
 });

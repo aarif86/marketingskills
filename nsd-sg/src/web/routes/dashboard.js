@@ -459,7 +459,10 @@ export async function registerDashboardRoutes(app) {
     if (hitpay.enabled() && hitpay.planConfigured(planId)) {
       try {
         const keeping = planId === req.user.plan_id && req.user.plan_expires_at && Date.parse(req.user.plan_expires_at) > Date.now();
-        const { url } = await hitpay.startSubscription({ user: req.user, planId, returnUrl: `${config.publicScheme}://${config.platformHosts[0]}/billing/hitpay/return`, startsAt: keeping ? req.user.plan_expires_at : null });
+        // Already paying for another plan: the new one starts the day the current paid period ends (nothing lost, nothing double).
+        const current = hitpay.listSubscriptionsForUser(req.user.id).find((s) => s.status === 'active' && s.last_paid_at && s.plan_id !== planId);
+        const switchAt = !keeping && current ? hitpay.paidUntil(current.last_paid_at, 'canceled', getPlan(current.plan_id)?.features?.interval ?? 'month') : null;
+        const { url } = await hitpay.startSubscription({ user: req.user, planId, returnUrl: `${config.publicScheme}://${config.platformHosts[0]}/billing/hitpay/return`, startsAt: keeping ? req.user.plan_expires_at : switchAt });
         return reply.redirect(url); // HitPay hosted checkout; the webhook / return handler activates the plan
       } catch (e) {
         req.log.error({ err: e }, 'hitpay start failed');

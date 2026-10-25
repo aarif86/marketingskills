@@ -4,7 +4,8 @@ import { getDb } from '../../db/index.js';
 import { newId } from '../../lib/ids.js';
 import { limiter } from '../../lib/ratelimit.js';
 import { audit } from '../../lib/audit.js';
-import { listPlans } from '../../services/plans.js';
+import { listPlans, getPlan } from '../../services/plans.js';
+import { liveSubscriptionFor } from '../../services/hitpay.js';
 import { normalizeSubdomain } from '../../lib/subdomain.js';
 import { appLayout, marketingLayout, html, whatsappTarget } from '../views/layout.js';
 import { supportConfig } from '../help.js';
@@ -192,7 +193,13 @@ export async function registerMarketingRoutes(app) {
 
   // WhatsApp hand-off: the number lives only here. Rate-limited per IP; every tap is counted in the audit log.
   app.get('/wa', { preHandler: limiter('waClick') }, async (req, reply) => {
-    const ctx = String(req.query?.c ?? '').slice(0, 200);
+    let ctx = String(req.query?.c ?? '').slice(0, 200);
+    // Paying members are first in line: say so in the opening message so the person answering sees it at once.
+    if (req.user) {
+      const plan = getPlan(req.user.plan_id);
+      const paying = (plan && plan.price_cents_month > 0 && !req.user.plan_expires_at) || !!liveSubscriptionFor(req.user.id);
+      if (paying) ctx = `${ctx ? `${ctx} · ` : ''}${plan?.name ?? 'Plus'} member, ${req.user.email}`;
+    }
     const target = whatsappTarget(ctx);
     if (!target) return reply.code(404).send('WhatsApp help is switched off.');
     audit({ req, action: 'support.whatsapp_tap', targetType: 'support', targetId: 'whatsapp', details: { ctx } });

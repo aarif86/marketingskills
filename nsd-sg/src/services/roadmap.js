@@ -143,6 +143,11 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-33', '0.13.33', 'Paying members, looked after properly', `- New: an email for every money moment: payment received (what you have, next charge, how to cancel), card saved for later, a scheduled switch, a cancellation with the paid-until date, a failed card with three days to fix it, a refund on its way, and a heads-up seven days before a yearly renewal.
+- Changed: switching plans while paying (say, Plus monthly to Plus yearly) starts the new plan on the day your current paid period ends. The old subscription stops charging now. Nothing lost, nothing double.
+- Changed: reminders to a member whose paid plan is ending say “your Plus plan”, not “your free period”, and point to resubscribing.
+- Changed: when a paying member presses “WhatsApp a real human”, the opening message says so, so they are first in line.
+- Admin: a failed payment shows as an alert on the Overview.`, 'improved', '2026-10-26T03:00:00Z'],
   ['cl-0-13-32', '0.13.32', 'Yearly Plus and real voices', `- New: Plus can be paid once a year, S$90 instead of S$108. The offer appears on your Plan page when a free period is ending or has ended, the moment it matters.
 - New: “What people say” on the home page, real quotes from real users, added one by one by a person. It stays invisible until there is at least one.
 - Changed: anyone paying monthly can switch to yearly from the Plan page, and switching plans cancels the old subscription the moment the new one starts. No double charge, ever.`, 'new', '2026-10-26T02:00:00Z'],

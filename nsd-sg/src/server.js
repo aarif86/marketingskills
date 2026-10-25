@@ -152,7 +152,7 @@ export async function buildApp({ logger = true } = {}) {
       const ev = purgeEvidence() + purgeVisits();
       if (n || t || p || ev) app.log.info({ sessions: n, temp: t, previews: p, evidence: ev }, 'maintenance');
       refreshStatus().catch(() => {});
-      lifecycleSweep().then((r) => { if (r.reminded || r.dormant || r.warned || r.deleted || r.nudged) app.log.info(r, 'plan lifecycle'); }).catch((e) => app.log.error(e));
+      lifecycleSweep().then((r) => { if (r.reminded || r.dormant || r.warned || r.deleted || r.nudged || r.renewals) app.log.info(r, 'plan lifecycle'); }).catch((e) => app.log.error(e));
     } catch (e) { app.log.error(e); }
   }, 10 * 60_000).unref());
   if (hostingEnabled()) {

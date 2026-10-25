@@ -4,7 +4,9 @@
 // redirects the user back to /billing/hitpay/return, where we also verify the status by API in case the webhook
 // is slow. Activation = assignPlan(paid: true) which never expires; cancellation = 30-day grace then free.
 import crypto from 'node:crypto';
-import { config } from '../config.js';
+import { config, platformUrl } from '../config.js';
+import { sendMail } from '../lib/mailer.js';
+import { audit } from '../lib/audit.js';
 import { getDb } from '../db/index.js';
 import { newId, nowIso } from '../lib/ids.js';
 import { assignPlan, getPlan } from './plans.js';
@@ -150,6 +152,7 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
     // Switching plans (monthly -> yearly, Beta -> Plus): the old subscription is cancelled at HitPay so nobody pays twice.
     const replaced = sub.status !== 'active' ? otherActive(sub.user_id, sub.id) : [];
     if (replaced.length) replaceOthers(sub.user_id, sub.id, replaced, log);
+    if (sub.status !== 'active') notify(sub.user_id, 'activated', { planId: sub.plan_id, replaced: replaced.length > 0 }, log);
     return { ok: true, activated: sub.status !== 'active', replaced: replaced.map((r) => r.id) };
   }
   // HitPay says 'scheduled' for every recurring billing that has not charged yet, including checkouts the customer
@@ -163,7 +166,18 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
     }
     db.prepare("UPDATE subscriptions SET status = 'scheduled', last_event = ?, updated_at = ? WHERE id = ?").run(eventType || status, now, sub.id);
     abandonOtherPending(sub.user_id, sub.id);
-    return { ok: true, scheduled: true };
+    let switched = [];
+    if (sub.status !== 'scheduled') {
+      // A switch (monthly -> yearly, Beta -> Plus) is scheduled for the day the current paid period ends: the old
+      // subscription stops charging now, the plan it paid for runs to that day, nothing is lost, nothing is double.
+      switched = otherActive(sub.user_id, sub.id);
+      if (switched.length) {
+        db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ? AND plan_expires_at IS NULL').run(sub.starts_at, now, sub.user_id);
+        replaceOthers(sub.user_id, sub.id, switched, log);
+      }
+      notify(sub.user_id, switched.length ? 'switch_scheduled' : 'card_saved', { planId: sub.plan_id, startsAt: sub.starts_at, fromPlanId: switched[0]?.plan_id }, log);
+    }
+    return { ok: true, scheduled: true, replaced: switched.map((r) => r.id) };
   }
   if (DEAD.has(status)) {
     if (sub.status === 'active' && otherActive(sub.user_id, sub.id).length) {
@@ -178,6 +192,12 @@ export function applyEvent({ subscriptionId, reference, status, email, eventType
       db.prepare('UPDATE users SET plan_expires_at = ?, updated_at = ? WHERE id = ? AND (plan_expires_at IS NULL OR plan_expires_at < ?)').run(grace, now, sub.user_id, grace);
       db.prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, ?, ?, ?, NULL)')
         .run(newId(), sub.user_id, 'subscription_canceled', sub.plan_id, sub.plan_id, JSON.stringify({ subscription: sub.id, status, graceUntil: grace }));
+      if (status === 'failed') {
+        notify(sub.user_id, 'payment_failed', { planId: sub.plan_id, graceUntil: grace }, log);
+        audit({ action: 'hitpay.payment_failed', targetType: 'user', targetId: sub.user_id, severity: 'alert', details: { subscription: sub.id, plan: sub.plan_id, graceUntil: grace } });
+      } else notify(sub.user_id, 'canceled', { planId: sub.plan_id, graceUntil: grace }, log);
+    } else if (sub.status === 'scheduled') {
+      notify(sub.user_id, 'scheduled_canceled', { planId: sub.plan_id }, log);
     }
     db.prepare("UPDATE subscriptions SET status = ?, last_event = ?, updated_at = ? WHERE id = ?").run(status === 'failed' ? 'failed' : 'canceled', eventType || status, now, sub.id);
     abandonOtherPending(sub.user_id, sub.id);
@@ -193,6 +213,30 @@ export function abandonSubscription(id, why = 'dismissed') {
 }
 
 /** A user has one live checkout at a time: once any subscription is decided, older unpaid attempts are noise. */
+// ---- emails to paying members (HitPay sends the receipts; these say what changed and what to do) ----
+const money = (plan) => (plan ? `S$${((plan.features?.price_cents_total ?? plan.price_cents_month) / 100).toFixed(0)} ${plan.features?.interval === 'year' ? 'a year' : 'a month'}` : '');
+const day = (iso) => (iso ? new Date(iso).toLocaleDateString('en-SG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Singapore' }) : 'the end of your current period');
+const footer = `\n\nYou are a paying member, so you are first in line: reply to this email, or press “WhatsApp a real human” on any page.\n\nNSD.SG`;
+const BILLING_MAIL = {
+  activated: (u, plan, x) => ({ subject: `You are on ${plan?.name ?? 'Plus'}. Thank you.`, text: `Hi ${u.name || ''},\n\nYour payment went through and ${plan?.name ?? 'your plan'} is active now: ${money(plan)} by card, renewed automatically. The next charge is on ${day(x.next)}.${x.replaced ? ' Your previous subscription has been cancelled; nothing else will be charged.' : ''}\n\nCancel any time from your Plan page: ${platformUrl('/billing')}. The plan stays until the end of what you have already paid for.${footer}` }),
+  card_saved: (u, plan, x) => ({ subject: `Card saved. ${plan?.name ?? 'Your plan'} starts on ${day(x.startsAt)}.`, text: `Hi ${u.name || ''},\n\nNothing was charged today. Your card is saved and ${plan?.name ?? 'your plan'} starts on ${day(x.startsAt)}, when your free period ends. The first charge is ${money(plan)}.\n\nChanged your mind? Cancel before then from your Plan page: ${platformUrl('/billing')}${footer}` }),
+  switch_scheduled: (u, plan, x) => ({ subject: `Switching to ${plan?.name ?? 'your new plan'} on ${day(x.startsAt)}`, text: `Hi ${u.name || ''},\n\nYour current plan runs until ${day(x.startsAt)}. On that day ${plan?.name ?? 'your new plan'} starts and your card is charged ${money(plan)}.\n\nYour old subscription has been cancelled now, so there is no double charge. Nothing more to pay today.\n\nChanged your mind? Cancel the switch from your Plan page: ${platformUrl('/billing')}${footer}` }),
+  canceled: (u, plan, x) => ({ subject: `Your ${plan?.name ?? ''} subscription is cancelled`, text: `Hi ${u.name || ''},\n\nNo further charges. ${plan?.name ?? 'Your plan'} stays active until ${day(x.graceUntil)}, the end of what you paid for. After that your sites stay online but publishing pauses.\n\nCome back any time: choose a plan again on your Plan page and everything continues. ${platformUrl('/billing')}\n\nIf you did not do this, reply now.${footer}` }),
+  scheduled_canceled: (u, plan) => ({ subject: `Your card will not be charged`, text: `Hi ${u.name || ''},\n\nThe ${plan?.name ?? 'plan'} that was due to start has been cancelled. Your card will not be charged.${u.plan_expires_at ? ` Your current plan runs until ${day(u.plan_expires_at)} as before.` : ''}${footer}` }),
+  payment_failed: (u, plan, x) => ({ subject: `Action needed: your ${plan?.name ?? ''} payment did not go through`, text: `Hi ${u.name || ''},\n\nYour card was declined for this period’s ${money(plan)}. Nothing changes for now: ${plan?.name ?? 'your plan'} stays active until ${day(x.graceUntil)}.\n\nTo fix it, open your Plan page and choose ${plan?.name ?? 'the plan'} again with a working card: ${platformUrl('/billing')}\n\nIf nothing is done by then, your sites stay online but publishing pauses until a payment lands.${footer}` }),
+  refunded: (u, plan, x) => ({ subject: `Refund${x.amount ? ` of S$${Number(x.amount).toFixed(2)}` : ''} on its way`, text: `Hi ${u.name || ''},\n\nA refund${x.amount ? ` of S$${Number(x.amount).toFixed(2)}` : ''} has been issued to your card. Banks take 5 to 10 working days to show it. Your plan is unchanged unless we have told you otherwise.${footer}` }),
+};
+function notify(userId, kind, extra = {}, log = console) {
+  try {
+    const u = getDb().prepare('SELECT id, email, name, plan_expires_at FROM users WHERE id = ?').get(userId);
+    if (!u?.email) return;
+    const plan = extra.planId ? getPlan(extra.planId) : null;
+    const next = paidUntil(nowIso(), 'canceled', plan?.features?.interval ?? 'month');
+    const m = BILLING_MAIL[kind]?.(u, plan, { ...extra, next });
+    if (m) sendMail({ to: u.email, ...m }).catch((e) => log.error?.({ err: e, kind }, 'billing mail failed'));
+  } catch (e) { log.error?.({ err: e, kind }, 'billing mail failed'); }
+}
+
 function otherActive(userId, keepId) {
   return getDb().prepare("SELECT id, plan_id FROM subscriptions WHERE user_id = ? AND id != ? AND status IN ('active', 'scheduled')").all(userId, keepId);
 }
@@ -277,5 +321,6 @@ export async function refundLastPayment(id, amount = null) {
   if (amount) body.amount = amount;
   const r = await api('POST', '/v1/refund', body);
   getDb().prepare("UPDATE subscriptions SET last_event = 'refunded', updated_at = ? WHERE id = ?").run(nowIso(), id);
+  notify(sub.user_id, 'refunded', { planId: sub.plan_id, amount: amount ?? r?.amount ?? null });
   return r;
 }

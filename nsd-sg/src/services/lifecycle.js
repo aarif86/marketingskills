@@ -8,9 +8,9 @@ import { config, publicUrlForSubdomain, platformUrl } from '../config.js';
 import { getDb } from '../db/index.js';
 import { nowIso } from '../lib/ids.js';
 import { sendMail } from '../lib/mailer.js';
-import { entitlementsFor, extendPlan } from './plans.js';
+import { entitlementsFor, extendPlan, getPlan } from './plans.js';
 import { listSitesForUser, deleteSite } from './sites.js';
-import { liveSubscriptionFor } from './hitpay.js';
+import { liveSubscriptionFor, paidUntil } from './hitpay.js';
 
 export const DOMAIN_GRACE_DAYS = 30;
 export const DORMANT_AFTER_DAYS = 60;
@@ -50,19 +50,24 @@ function markSent(userId, kind, ref) {
   getDb().prepare('INSERT OR IGNORE INTO plan_notices (user_id, kind, ref) VALUES (?, ?, ?)').run(userId, kind, ref);
 }
 
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+const period = (o) => (o.paid ? `your ${o.planName} plan` : 'your free period');
+const keepLines = (o) => (o.paid
+  ? `Keep going: choose a plan again on your Plan page and everything continues. ${platformUrl('/billing')}`
+  : `Two ways to keep going, both take a minute:\n- Ask for more time (free): ${platformUrl('/billing')}\n- Move to Plus (no badge, five sites, help first in line): ${platformUrl('/pricing')}`);
 const MAIL = {
-  expiring_7: (u, when) => ({ subject: `Your free period on NSD.SG ends in 7 days`, text: `Hi ${u.name || ''},\n\nYour free period ends on ${when}. Your site stays online after that, but you will not be able to change it.\n\nTwo ways to keep going, both take a minute:\n- Ask for more time (free): ${platformUrl('/billing')}\n- Move to Plus (your own domain name, no badge): ${platformUrl('/pricing')}\n\nNSD.SG` }),
-  expiring_1: (u, when) => ({ subject: `Your free period on NSD.SG ends tomorrow`, text: `Hi ${u.name || ''},\n\nTomorrow (${when}) your free period ends. Your site stays online; changes pause.\n\nAsk for more time or upgrade here: ${platformUrl('/billing')}\n\nNSD.SG` }),
-  expired: (u, when) => ({ subject: `Your NSD.SG free period has ended`, text: `Hi ${u.name || ''},\n\nYour free period ended on ${when}. Your site is still online, but publishing is paused.\n\nTo pick up where you left off: ${platformUrl('/billing')}\n\nWhat happens if you do nothing: after ${DORMANT_AFTER_DAYS} days your site shows a "this page has moved on" notice, and after ${DELETE_AFTER_DAYS} days it is removed. Your address is yours until then.\n\nNSD.SG` }),
-  dormant: (u) => ({ subject: `Your NSD.SG site now shows a holding page`, text: `Hi ${u.name || ''},\n\nIt has been ${DORMANT_AFTER_DAYS} days since your free period ended, so visitors to your site now see a short holding page instead of your content. Nothing is deleted.\n\nBring it back in one minute: ${platformUrl('/billing')}\n\nIf you do nothing, the site is removed after ${DELETE_AFTER_DAYS} days in total.\n\nNSD.SG` }),
-  delete_warning: (u) => ({ subject: `Your NSD.SG site will be removed in 7 days`, text: `Hi ${u.name || ''},\n\nYour free period ended ${DELETE_WARN_DAYS} days ago. In 7 days your site and its files are removed and the address becomes available to others.\n\nTo keep it: ${platformUrl('/billing')}\n\nNSD.SG` }),
-  deleted: (u, when, names) => ({ subject: `Your NSD.SG site has been removed`, text: `Hi ${u.name || ''},\n\nAs mentioned, ${names} ${names.includes(',') ? 'have' : 'has'} been removed after ${DELETE_AFTER_DAYS} days past the end of your free period. Your account still works, and you can make a new site any time: ${platformUrl('/dashboard')}\n\nNSD.SG` }),
+  expiring_7: (u, when, _x, o = {}) => ({ subject: `${cap(period(o))} on NSD.SG ends in 7 days`, text: `Hi ${u.name || ''},\n\n${cap(period(o))} ends on ${when}. Your site stays online after that, but you will not be able to change it.\n\n${keepLines(o)}\n\nNSD.SG` }),
+  expiring_1: (u, when, _x, o = {}) => ({ subject: `${cap(period(o))} on NSD.SG ends tomorrow`, text: `Hi ${u.name || ''},\n\nTomorrow (${when}) ${period(o)} ends. Your site stays online; changes pause.\n\n${keepLines(o)}\n\nNSD.SG` }),
+  expired: (u, when, _x, o = {}) => ({ subject: `${cap(period(o))} on NSD.SG has ended`, text: `Hi ${u.name || ''},\n\n${cap(period(o))} ended on ${when}. Your site is still online, but publishing is paused.\n\n${keepLines(o)}\n\nWhat happens if you do nothing: after ${DORMANT_AFTER_DAYS} days your site shows a "this page has moved on" notice, and after ${DELETE_AFTER_DAYS} days it is removed. Your address is yours until then.\n\nNSD.SG` }),
+  dormant: (u, _w, _x, o = {}) => ({ subject: `Your NSD.SG site now shows a holding page`, text: `Hi ${u.name || ''},\n\nIt has been ${DORMANT_AFTER_DAYS} days since ${period(o)} ended, so visitors to your site now see a short holding page instead of your content. Nothing is deleted.\n\nBring it back in one minute: ${platformUrl('/billing')}\n\nIf you do nothing, the site is removed after ${DELETE_AFTER_DAYS} days in total.\n\nNSD.SG` }),
+  delete_warning: (u, _w, _x, o = {}) => ({ subject: `Your NSD.SG site will be removed in 7 days`, text: `Hi ${u.name || ''},\n\n${cap(period(o))} ended ${DELETE_WARN_DAYS} days ago. In 7 days your site and its files are removed and the address becomes available to others.\n\nTo keep it, choose a plan or ask for more time now: ${platformUrl('/billing')}\n\nNSD.SG` }),
+  deleted: (u, when, names, o = {}) => ({ subject: `Your NSD.SG site has been removed`, text: `Hi ${u.name || ''},\n\nAs mentioned, ${names} ${String(names).includes(',') ? 'have' : 'has'} been removed after ${DELETE_AFTER_DAYS} days past the end of ${period(o)}. Your account is still here, and a copy of your files is kept for 90 more days: reply to this email if you want it.\n\nNSD.SG` }),
 };
 
 /** Idempotent daily-ish sweep. Safe to run every 10 minutes; each notice goes out once per expiry date. */
 export async function lifecycleSweep({ now = Date.now() } = {}) {
   const db = getDb();
-  const out = { reminded: 0, dormant: 0, warned: 0, deleted: 0, nudged: 0 };
+  const out = { reminded: 0, dormant: 0, warned: 0, deleted: 0, nudged: 0, renewals: 0 };
   const users = db.prepare("SELECT * FROM users WHERE status = 'active' AND plan_expires_at IS NOT NULL").all();
   for (const u of users) {
     if (liveSubscriptionFor(u.id, u.plan_id)) continue; // card saved, HitPay charges on the expiry date: nothing to remind
@@ -70,10 +75,12 @@ export async function lifecycleSweep({ now = Date.now() } = {}) {
     const when = ref.slice(0, 10);
     const left = (Date.parse(ref) - now) / DAY;
     const gone = -left;
+    const plan = getPlan(u.plan_id);
+    const o = { paid: !!plan && plan.price_cents_month > 0, planName: plan?.name ?? 'Plus' };
     const send = async (kind, extra) => {
       if (alreadySent(u.id, kind, ref)) return false;
       markSent(u.id, kind, ref);
-      const m = MAIL[kind](u, when, extra);
+      const m = MAIL[kind](u, when, extra, o);
       await sendMail({ to: u.email, ...m }).catch(() => {});
       return true;
     };
@@ -93,6 +100,7 @@ export async function lifecycleSweep({ now = Date.now() } = {}) {
     }
   }
   out.nudged = await nudgeSweep({ now });
+  out.renewals = await renewalSweep({ now });
   return out;
 }
 
@@ -112,6 +120,25 @@ export async function nudgeSweep({ now = Date.now() } = {}) {
     const where = site ? `${site.subdomain}.${config.baseDomain}` : 'your address';
     const text = `Hi ${u.name || ''},\n\nYesterday you picked ${where} on NSD.SG. There is nothing on it yet, and it takes about a minute to change that.\n\nThree ways:\n1. Paste the code your AI gave you: ${platformUrl('/dashboard')}\n2. No page yet? Use one of ours (a proposal, a quiz, a one-page shop): ${platformUrl('/#try')}\n3. Let your AI do it for you: ${platformUrl('/connect')}\n\nStuck on anything at all? Reply to this email or WhatsApp a real human from any page: ${platformUrl('/contact')}\n\nNSD.SG`;
     await sendMail({ to: u.email, subject: `${where} is waiting for its first page`, text }).catch(() => {});
+    sent += 1;
+  }
+  return sent;
+}
+
+// Yearly members get a heads-up 7 days before the automatic renewal. Monthly renewals are routine; HitPay receipts cover them.
+export async function renewalSweep({ now = Date.now() } = {}) {
+  const db = getDb();
+  let sent = 0;
+  const subs = db.prepare("SELECT s.*, u.email, u.name FROM subscriptions s JOIN users u ON u.id = s.user_id WHERE s.status = 'active' AND s.last_paid_at IS NOT NULL AND u.status = 'active'").all();
+  for (const s of subs) {
+    const plan = getPlan(s.plan_id);
+    if (plan?.features?.interval !== 'year') continue;
+    const due = paidUntil(s.last_paid_at, 'canceled', 'year');
+    const left = (Date.parse(due) - now) / DAY;
+    if (left < 0 || left > 7 || alreadySent(s.user_id, 'renewal_7', due)) continue;
+    markSent(s.user_id, 'renewal_7', due);
+    const amount = `S$${((plan.features?.price_cents_total ?? plan.price_cents_month * 12) / 100).toFixed(0)}`;
+    await sendMail({ to: s.email, subject: `Your ${plan.name} renews on ${due.slice(0, 10)}`, text: `Hi ${s.name || ''},\n\nA quick heads-up: your ${plan.name} renews automatically on ${due.slice(0, 10)} and your card will be charged ${amount} for the next year.\n\nNothing to do if you want to keep going. To stop, cancel before then from your Plan page: ${platformUrl('/billing')}. Your plan stays until the end of the year you have paid for.\n\nYou are a paying member, so you are first in line: reply to this email or WhatsApp a real human from any page.\n\nNSD.SG` }).catch(() => {});
     sent += 1;
   }
   return sent;

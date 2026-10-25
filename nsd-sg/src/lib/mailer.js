@@ -107,7 +107,11 @@ function smtpSession(socketFactory, { host, port, user, pass, from, to, subject,
   });
 }
 
+// Last 100 messages handed to sendMail (delivered or logged), newest last. Tests and the admin page read it.
+export const outbox = [];
+
 export async function sendMail({ to, subject, text, html }) {
+  outbox.push({ to, subject, text, at: new Date().toISOString() }); if (outbox.length > 100) outbox.shift();
   const { host, port, user, pass, from } = config.smtp;
   if (!host) {
     // Console fallback: safe default for dev and for the first deploy before SMTP is configured.
