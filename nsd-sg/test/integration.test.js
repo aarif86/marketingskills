@@ -50,6 +50,8 @@ test('marketing pages render', async () => {
   assert.match(r.body, /id="connect"/);
   assert.match(r.body, /Claude, ChatGPT, Codex, Gemini, Cursor/);
   assert.match(r.body, /href="\/#connect">Connect your AI/);
+  assert.match(r.body, /<details class="nav-more">/, 'secondary pages live under More');
+  assert.match(r.body, /nav-more-menu"><a href="\/roadmap"/);
   assert.match(r.body, /application\/ld\+json/);
   assert.match(r.body, /"@type":"FAQPage"/);
   assert.match(r.body, /property="og:title"/);

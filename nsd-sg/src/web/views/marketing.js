@@ -28,7 +28,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   </div>
 </div></section>
 
-<section id="try" class="section try"><div class="container narrow">
+<section id="try" class="section try"><div class="container">
   <p class="eyebrow">Try it first · no account needed</p>
   <h2>Put your page online for 3 hours</h2>
   <p class="section-lead">Your AI made you a page. Upload the file or paste the code, press the button, and you get a link you can send to anyone. Like it? Sign up and keep it at your own address.</p>
@@ -148,7 +148,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   </div>
 </div></section>
 
-<section id="faq-teaser" class="section alt"><div class="container narrow">
+<section id="faq-teaser" class="section alt"><div class="container">
   <h2>Questions people ask</h2>
   <details><summary>I only have one page. Is that enough?</summary><p>Yes. Paste it and it becomes your home page. You can add more pages later, each with its own name, like <code>/proposal</code>.</p></details>
   <details><summary>What is “the code”?</summary><p>When an AI makes you a page, it writes it in a language called HTML. That is the code. You never need to read it. Just copy all of it and paste it here.</p></details>

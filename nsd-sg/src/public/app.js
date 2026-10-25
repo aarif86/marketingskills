@@ -66,6 +66,11 @@
   }
 
   // ---- highlight the nav link for the section on screen (home page only) ----
+  // "More" menu in the header: close it when the visitor clicks elsewhere or presses Escape.
+  document.querySelectorAll('details.nav-more').forEach(function (d) {
+    document.addEventListener('click', function (e) { if (d.open && !d.contains(e.target)) d.open = false; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && d.open) { d.open = false; d.querySelector('summary').focus(); } });
+  });
   var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a[href^="/#"]'));
   if (navLinks.length && (location.pathname === '/' || location.pathname === '') && 'IntersectionObserver' in window) {
     var byId = {};

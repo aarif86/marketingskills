@@ -143,6 +143,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-26', '0.13.26', 'A menu that reads like a story, and a roomier Try it box', `- Changed: the top menu now follows the visitor's path: How it works, Who it's for, Connect your AI, Showcase, Pricing, FAQ. Roadmap, What's new and Contact sit under “More”, so nothing is cut off on any screen. The phone menu lists everything.
+- Changed: the Try it box on the home page is as wide as the rest of the page instead of a narrow column.`, 'improved', '2026-10-25T20:00:00Z'],
   ['cl-0-13-25', '0.13.25', 'Sample pages open with one tap', `- Fixed: “Try this one” on the home page did nothing on phones and only filled the paste box on computers. The three sample buttons now read “Put this one online” and open the sample in a new tab straight away, like your own page would. No download, no paste.`, 'fix', '2026-10-25T19:00:00Z'],
   ['cl-0-13-24', '0.13.24', 'Connect your AI, now on the front page', `- New: the home page has a “Connect your AI” section: Claude, ChatGPT, Codex, Gemini, Cursor and any AI tool with connectors can put your page online when you say so. Three steps, an example conversation, and a Connect my AI button. Also in the top menu, the feature list and the FAQ.
 - New: nsd.sg/llms.txt, a plain-text summary for AI assistants that are asked “what is nsd.sg?”, plus a sitemap and link-preview (Open Graph) tags on every public page, and structured data (software listing and FAQ) on the home page.

@@ -49,15 +49,19 @@ const brand = html`<a class="brand" href="/">NSD<span>.SG</span></a>`;
 
 // One header for all three shells: brand · desktop links · CTAs · hamburger. The drawer repeats links + CTAs
 // for phones (app.js toggles .open; every link still works without JS).
-function header({ links, ctas, extra = '', cls = '' }) {
-  const linkHtml = links.map(([href, label, active, extraCls]) => html`<a href="${href}" class="${[active ? 'active' : '', extraCls ?? ''].filter(Boolean).join(' ')}">${label}</a>`);
+function header({ links, ctas, extra = '', cls = '', more = [], phoneFirst = [] }) {
+  const link = ([href, label, active, extraCls]) => html`<a href="${href}" class="${[active ? 'active' : '', extraCls ?? ''].filter(Boolean).join(' ')}">${label}</a>`;
+  const linkHtml = links.map(link);
+  // Secondary pages sit under one "More" menu on desktop (a <details>, so it works without JS); the phone drawer lists everything.
+  const moreHtml = more.length ? html`<details class="nav-more"><summary class="${more.some((m) => m[2]) ? 'active' : ''}">More<span class="caret" aria-hidden="true"></span></summary><div class="nav-more-menu">${more.map(link)}</div></details>` : '';
+  const drawerHtml = [...phoneFirst, ...links, ...more].map(link);
   return html`<header class="site-header ${cls}"><div class="container nav">${brand}${raw(extra)}
-<nav class="nav-links" aria-label="Primary">${linkHtml}</nav>
+<nav class="nav-links" aria-label="Primary">${linkHtml}</nav>${moreHtml}
 <div class="nav-cta">${raw(ctas)}</div>
 <button class="hamburger" type="button" aria-label="Open menu" aria-expanded="false" data-drawer-open><span></span><span></span><span></span></button>
 </div></header>
 <div class="drawer" data-drawer aria-hidden="true"><button class="drawer-close" type="button" aria-label="Close menu" data-drawer-close>×</button>
-<nav class="drawer-links" aria-label="Menu">${linkHtml}</nav><div class="drawer-cta">${raw(ctas)}</div></div>`;
+<nav class="drawer-links" aria-label="Menu">${drawerHtml}</nav><div class="drawer-cta">${raw(ctas)}</div></div>`;
 }
 
 function flashBox(flash) {
@@ -83,7 +87,11 @@ function head(title, { description = '' } = {}) {
 export function marketingLayout({ title, description, body, user, flash, path = '', waMode = 'smart' }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#try', 'Try it'], ['/#connect', 'Connect your AI'], ['/pricing', 'Pricing'], ['/showcase', 'Showcase'], ['/roadmap', 'Roadmap'], ['/changelog', 'What’s new'], ['/faq', 'FAQ']].map(([href, label]) => [href, label, href === path]),
+    // The order is the visitor's journey: try it → understand it → see who it is for → the shortcut → proof → price → doubts.
+    // Desktop fits seven items in the 1120px container; "Try it" is the hero's job there and leads the phone menu.
+    links: [['/#how', 'How it works'], ['/#who', 'Who it’s for'], ['/#connect', 'Connect your AI'], ['/showcase', 'Showcase'], ['/pricing', 'Pricing'], ['/faq', 'FAQ']].map(([href, label]) => [href, label, href === path]),
+    phoneFirst: [['/#try', 'Try it', false]],
+    more: [['/roadmap', 'Roadmap'], ['/changelog', 'What’s new'], ['/contact', 'Contact']].map(([href, label]) => [href, label, href === path]),
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Sign up free</a>`,
