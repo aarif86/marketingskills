@@ -53,6 +53,12 @@ export async function registerAdminRoutes(app) {
       signups30d: q("SELECT COUNT(*) n FROM users WHERE created_at > datetime('now','-30 days') AND role != 'admin'").n,
       activated30d: q("SELECT COUNT(*) n FROM users u WHERE u.created_at > datetime('now','-30 days') AND u.role != 'admin' AND EXISTS (SELECT 1 FROM releases r JOIN sites s ON s.id = r.site_id WHERE s.user_id = u.id AND r.created_at <= strftime('%Y-%m-%dT%H:%M:%fZ', u.created_at, '+1 day'))").n,
       nudged30d: q("SELECT COUNT(*) n FROM plan_notices WHERE kind = 'nudge_day0' AND ref > datetime('now','-30 days')").n,
+      // The Sunday funnel: sites live, people who talked to you, leads for the agency.
+      waTaps7d: q("SELECT COUNT(*) n FROM audit_log WHERE action = 'support.whatsapp_tap' AND at > datetime('now','-7 days')").n,
+      waTaps30d: q("SELECT COUNT(*) n FROM audit_log WHERE action = 'support.whatsapp_tap' AND at > datetime('now','-30 days')").n,
+      waMemberTaps30d: q("SELECT COUNT(*) n FROM audit_log WHERE action = 'support.whatsapp_tap' AND at > datetime('now','-30 days') AND details LIKE '%member, %'").n,
+      leads: q('SELECT COUNT(*) n FROM users WHERE agency_lead_at IS NOT NULL').n,
+      leads30d: q("SELECT COUNT(*) n FROM users WHERE agency_lead_at > datetime('now','-30 days')").n,
       requests7d: q("SELECT COALESCE(SUM(requests),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       bytes7d: q("SELECT COALESCE(SUM(bytes),0) n FROM site_traffic_daily WHERE day >= date('now','-7 days')").n,
       openAbuse: q("SELECT COUNT(*) n FROM abuse_reports WHERE status IN ('open','reviewing')").n,
@@ -63,9 +69,10 @@ export async function registerAdminRoutes(app) {
     };
     const alerts = all("SELECT * FROM audit_log WHERE severity IN ('warn','alert') ORDER BY at DESC LIMIT 15");
     const recentUsers = all('SELECT id, email, name, plan_id, status, created_at FROM users ORDER BY created_at DESC LIMIT 8');
+    const leads = all("SELECT u.id, u.email, u.name, u.plan_id, u.agency_lead_at, u.agency_lead_note, (SELECT subdomain FROM sites s WHERE s.user_id = u.id AND s.status != 'deleted' ORDER BY s.created_at LIMIT 1) subdomain FROM users u WHERE u.agency_lead_at IS NOT NULL ORDER BY u.agency_lead_at DESC LIMIT 12");
     const recentDeploys = all('SELECT r.*, s.subdomain FROM releases r JOIN sites s ON s.id = r.site_id ORDER BY r.created_at DESC LIMIT 8');
     const upgrades = all("SELECT e.*, u.email FROM plan_events e JOIN users u ON u.id = e.user_id WHERE e.type = 'upgrade_requested' AND e.created_at > datetime('now','-30 days') ORDER BY e.created_at DESC LIMIT 10");
-    return render(req, reply, { title: 'Overview', active: 'overview', body: V.overview({ stats, alerts, recentUsers, recentDeploys, extensions: pendingExtensionRequests(), upgrades, csrf: csrfTokenFor(req) }) });
+    return render(req, reply, { title: 'Overview', active: 'overview', body: V.overview({ stats, alerts, recentUsers, recentDeploys, extensions: pendingExtensionRequests(), upgrades, leads, csrf: csrfTokenFor(req) }) });
   });
 
   // ---- users ----
@@ -114,6 +121,14 @@ export async function registerAdminRoutes(app) {
     const back = `/admin/users/${user.id}`;
     const isSelf = user.id === req.user.id;
     switch (action) {
+      case 'agency_lead': {
+        const on = b.value === 'on';
+        const note = String(b.note ?? '').slice(0, 200);
+        getDb().prepare('UPDATE users SET agency_lead_at = ?, agency_lead_note = ?, updated_at = ? WHERE id = ?').run(on ? nowIso() : null, on ? note : '', nowIso(), user.id);
+        audit({ req, action: on ? 'admin.user.agency_lead_on' : 'admin.user.agency_lead_off', targetType: 'user', targetId: user.id, details: { note } });
+        flash(reply, 'success', on ? 'Marked as a lead for NasarDigital. It is on the Overview funnel now.' : 'No longer marked as a lead.');
+        break;
+      }
       case 'legal_hold': {
         const on = b.value === 'on';
         setLegalHold(user.id, on);

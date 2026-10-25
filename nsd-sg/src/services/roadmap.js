@@ -143,6 +143,8 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-34', '0.13.34', 'Link previews with the new words; the Sunday funnel for admin', `- Changed: when you share nsd.sg on WhatsApp or anywhere else, the preview card now carries the new words: made something with AI, sharing it is the hard part, a real person in Singapore behind it.
+- Admin: the Overview opens with the three numbers that matter, sites live, people who talked to you (WhatsApp taps, with paying members counted separately) and leads for NasarDigital, with a “Lead for NasarDigital” button on every user page.`, 'improved', '2026-10-26T04:00:00Z'],
   ['cl-0-13-33', '0.13.33', 'Paying members, looked after properly', `- New: an email for every money moment: payment received (what you have, next charge, how to cancel), card saved for later, a scheduled switch, a cancellation with the paid-until date, a failed card with three days to fix it, a refund on its way, and a heads-up seven days before a yearly renewal.
 - Changed: switching plans while paying (say, Plus monthly to Plus yearly) starts the new plan on the day your current paid period ends. The old subscription stops charging now. Nothing lost, nothing double.
 - Changed: reminders to a member whose paid plan is ending say “your Plus plan”, not “your free period”, and point to resubscribing.

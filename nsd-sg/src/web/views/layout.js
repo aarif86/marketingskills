@@ -73,14 +73,14 @@ function head(title, { description = '' } = {}) {
   return html`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title ? `${title} · NSD.SG` : 'NSD.SG — You made it with AI. Give it a proper address.'}</title>
-<meta name="description" content="${description || 'Made a page with Claude, ChatGPT or Gemini? Paste the code and it is online at yourname.nsd.sg in a minute. Free to start. Try it without an account.'}">
+<meta name="description" content="${description || 'Made something with AI? The link it gives you is random letters, a file on your laptop, or a page in someone else’s branding. Paste it at nsd.sg and it lives at yourname.nsd.sg in a minute. Free. A real person in Singapore behind it.'}">
 <link rel="stylesheet" href="/assets/app.css?v=${config.version}">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#0f1014">
 <meta property="og:site_name" content="NSD.SG"><meta property="og:type" content="website">
 <meta property="og:title" content="${title ? `${title} · NSD.SG` : 'NSD.SG — You made it with AI. Give it a proper address.'}">
-<meta property="og:description" content="${description || 'Made a page with Claude, ChatGPT or Gemini? Paste the code, or connect your AI, and it is online at yourname.nsd.sg in a minute. Free to start.'}">
-<meta property="og:image" content="${config.publicScheme}://${config.platformHosts[0]}/assets/social-site.png"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:description" content="${description || 'Made something with AI? Sharing it is the hard part. Paste it at nsd.sg, or let your AI publish it, and it lives at yourname.nsd.sg in a minute. Free, with a real person in Singapore behind it.'}">
+<meta property="og:image" content="${config.publicScheme}://${config.platformHosts[0]}/assets/social-home.png?v=${config.version}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">
 </head>`;
 }
 

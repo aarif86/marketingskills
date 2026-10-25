@@ -6,7 +6,7 @@ const pill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 const stat = (label, value, sub = '') => html`<div class="stat"><div class="stat-value">${value}</div><div class="stat-label">${label}</div>${sub ? html`<div class="muted small">${sub}</div>` : ''}</div>`;
 const hidden = (csrf, extra = {}) => html`<input type="hidden" name="_csrf" value="${csrf}">${Object.entries(extra).map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}`;
 
-export function overview({ stats, alerts, recentUsers, recentDeploys, extensions, upgrades, csrf }) {
+export function overview({ stats, alerts, recentUsers, recentDeploys, extensions, upgrades, leads = [], csrf }) {
   return html`<div class="page-head"><h1>Overview</h1><div class="actions"><a class="btn btn-ghost btn-sm" href="/admin/health">System health</a><a class="btn btn-ghost btn-sm" href="/admin/audit">Audit log</a><a class="btn btn-ghost btn-sm" href="/admin/abuse">Abuse reports</a></div></div>
 <div class="stats">
   ${stat('Users', stats.users, `${stats.usersActive} active · +${stats.usersNew7d} this week`)}
@@ -18,6 +18,15 @@ export function overview({ stats, alerts, recentUsers, recentDeploys, extensions
   ${stat('Monthly recurring', `S$${(stats.mrrCents / 100).toFixed(0)}`, `${stats.payers} paying · active HitPay subscriptions`)}
   ${stat('Open abuse', stats.openAbuse)}
   ${stat('Plans expiring ≤14d', stats.expiringSoon, `${stats.expired} already expired`)}
+</div>
+<div class="card funnel"><h2>The Sunday funnel</h2>
+<p class="muted small">Three numbers that say whether nsd.sg is working as a front door. Subscriptions are a bonus.</p>
+<div class="stats three">
+  ${stat('Sites live', stats.live, `${stats.sites} in total`)}
+  ${stat('Talked to you (30 d)', stats.waTaps30d, `${stats.waTaps7d} this week · ${stats.waMemberTaps30d} from paying members · WhatsApp taps`)}
+  ${stat('Leads for NasarDigital', stats.leads, `${stats.leads30d} in the last 30 days · mark one on a user page`)}
+</div>
+${leads.length ? html`<table class="table small"><thead><tr><th>Lead</th><th>Site</th><th>Plan</th><th>Note</th><th>Marked</th></tr></thead><tbody>${leads.map((l) => html`<tr><td><a href="/admin/users/${l.id}">${l.name || l.email}</a><div class="muted small">${l.email}</div></td><td>${l.subdomain ? html`<a href="https://${l.subdomain}.${config.baseDomain}" target="_blank" rel="noopener">${l.subdomain}</a>` : html`<span class="muted">none</span>`}</td><td>${l.plan_id}</td><td class="muted small">${l.agency_lead_note || ''}</td><td class="muted small">${timeAgo(l.agency_lead_at)}</td></tr>`)}</tbody></table>` : html`<p class="muted small">No leads marked yet. When someone's page turns into real NasarDigital work, open their user page and press “Lead for NasarDigital”.</p>`}
 </div>
 <div class="grid two">
 <div class="card"><h2>Extension requests (${extensions.length})</h2>
@@ -56,8 +65,9 @@ export function userDetail({ user, ent, sites, sessions, events, auditRows, plan
   const act = (fields, label, cls = '', confirm = '') => html`<form method="post" action="/admin/users/${user.id}/action" class="inline" ${confirm ? html`data-confirm="${confirm}"` : ''}>${hidden(csrf, fields)}<button class="btn btn-tiny ${cls}">${label}</button></form>`;
   const o = ent.overrides;
   return html`<p class="crumb"><a href="/admin/users">Users</a> / ${user.email}</p>
-<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''} ${user.legal_hold ? pill('legal hold') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}${user.google_sub ? ' · Google-linked' : ''}</p></div>
+<div class="page-head"><div><h1>${user.email} ${pill(user.status)} ${user.role === 'admin' ? pill('admin') : ''} ${user.legal_hold ? pill('legal hold') : ''} ${user.agency_lead_at ? pill('lead') : ''}</h1><p class="muted">${user.name || 'no name'} · id ${user.id} · joined ${formatDate(user.created_at)} · last login ${timeAgo(user.last_login_at)} from ${user.last_login_ip || '—'} · email ${user.email_verified_at ? 'verified' : 'NOT verified'}${user.google_sub ? ' · Google-linked' : ''}</p></div>
 <div class="actions">
+  ${user.agency_lead_at ? act({ action: 'agency_lead', value: 'off' }, 'Not a lead after all') : html`<form method="post" action="/admin/users/${user.id}/action" class="inline lead-form">${hidden(csrf, { action: 'agency_lead', value: 'on' })}<input name="note" maxlength="200" placeholder="what they want (optional)"><button class="btn btn-tiny btn-primary" type="submit">Lead for NasarDigital</button></form>`}
   ${user.status !== 'active' ? act({ action: 'activate' }, 'Activate', 'btn-primary') : ''}
   ${user.status === 'active' ? act({ action: 'suspend' }, 'Suspend', 'btn-danger', 'Suspend this user and take all their sites offline?') : ''}
   ${user.status !== 'disabled' ? act({ action: 'disable' }, 'Disable', 'btn-danger', 'Disable this account? They will not be able to log in.') : ''}

@@ -57,6 +57,9 @@ test('marketing pages render', async () => {
   assert.match(r.body, /application\/ld\+json/);
   assert.match(r.body, /"@type":"FAQPage"/);
   assert.match(r.body, /property="og:title"/);
+  assert.match(r.body, /og:image" content="http:\/\/nsd\.test\/assets\/social-home\.png/);
+  assert.match(r.body, /og:description" content="Made something with AI\? Sharing it is the hard part/);
+  assert.equal((await get('/assets/social-home.png')).statusCode, 200);
   assert.doesNotMatch(r.body, /id="features"/, 'the repetitive feature list is gone');
   assert.match(r.body, /Also included:/);
   assert.match(r.body, /People who build with AI tools/);
@@ -757,4 +760,20 @@ test('testimonials: admin adds a quote and it shows on the home page; hide remov
   assert.match(bill, /Plus yearly/);
   assert.match(bill, /S\$90\/year/);
   assert.match(bill, /two months free/);
+});
+
+test('admin funnel: a user can be marked as a lead for NasarDigital and shows on the Overview funnel', async () => {
+  const bobId = getDb().prepare("SELECT id FROM users WHERE email = 'bob@example.com'").get().id;
+  let ov = (await get('/admin', admin.cookie)).body;
+  assert.match(ov, /The Sunday funnel/);
+  assert.match(ov, /Talked to you \(30 d\)/);
+  assert.match(ov, /No leads marked yet/);
+  const r = await post(`/admin/users/${bobId}/action`, admin.cookie, { action: 'agency_lead', value: 'on', note: 'wants a proper site for his stall' });
+  assert.equal(r.statusCode, 302, r.body);
+  assert.match((await get(`/admin/users/${bobId}`, admin.cookie)).body, /Not a lead after all/);
+  ov = (await get('/admin', admin.cookie)).body;
+  assert.match(ov, /wants a proper site for his stall/);
+  assert.doesNotMatch(ov, /No leads marked yet/);
+  await post(`/admin/users/${bobId}/action`, admin.cookie, { action: 'agency_lead', value: 'off' });
+  assert.match((await get(`/admin/users/${bobId}`, admin.cookie)).body, /Lead for NasarDigital/);
 });
