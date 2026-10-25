@@ -113,7 +113,10 @@ export function deleteChangelog(id) { getDb().prepare('DELETE FROM changelog WHE
 
 // ---- seed: the real history of the product so the pages are never empty -------------------------
 const SEED_ROADMAP = [
-  ['rm-mcp', 'Publish straight from Claude', 'Add NSD.SG to Claude once, then say “publish this as my-site” and get a live link back. Tokens you can revoke, same rules as the dashboard.', 'shipped', 'platform', 8],
+  ['rm-mcp', 'Publish straight from your AI', 'Connect your AI once (Claude, ChatGPT, Codex, Gemini CLI, Cursor and any other tool that supports connectors), then say “put this online as my-site” and get a live link back. Keys you can switch off, same rules as the dashboard.', 'shipped', 'platform', 8],
+  ['rm-help-panel', 'A real human one tap away', 'A small help panel on every page: three quick answers for where you are, then WhatsApp a real person. It shows up when you seem stuck, not all the time.', 'shipped', 'platform', 4],
+  ['rm-samples', 'Three sample pages to try', 'No page yet? A proposal, a class quiz and a one-page shop, one click each, so anyone can see the whole flow before making their own.', 'shipped', 'platform', 5],
+  ['rm-evidence-grade', 'Evidence packs an investigator can use', 'Plain-words summary, every version with the IP that uploaded it, a SHA-256 manifest and chain of custody, legal hold, and visitor logs for reported sites.', 'shipped', 'admin', 6],
   ['rm-lifecycle', 'Clear rules when a free period ends', 'Site stays online, changes pause; own domain off after 30 days, holding page after 60, removed after 150 with emails before each step.', 'shipped', 'billing', 11],
   ['rm-file-list', 'A tidy file list when there is no home page', 'Upload a few PDFs and nothing else, and visitors get a clean NSD.SG-style list instead of “page not found”.', 'shipped', 'platform', 12],
   ['rm-self-heal', 'Addresses that fix themselves', 'If Hostinger misses creating an address, NSD.SG retries on its own and tells admin if it stays stuck.', 'shipped', 'platform', 13],
@@ -140,6 +143,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-14', '0.13.14', 'Roadmap caught up', `- Changed: the roadmap now shows the help panel, the sample pages and the evidence upgrade as shipped, and the “publish from your AI” card no longer says Claude only. In progress: visitor stats and the capacity gauge (waitlist mode next). Planned list unchanged.`, 'improved', '2026-10-25T09:00:00Z'],
   ['cl-0-13-13', '0.13.13', '“Connect your AI”: not only Claude', `- Changed: the page is now called Connect your AI, because it works with any AI tool that supports connectors (MCP): Claude, ChatGPT, Codex, Gemini CLI, Cursor, VS Code and more. Setup steps for each are on the page, in plain words.`, 'improved', '2026-10-25T08:00:00Z'],
   ['cl-0-13-12', '0.13.12', 'Connect to Claude, explained in plain words', `- Changed: the Connect to Claude page now says why you need a key (“like a house key you give to a helper”), walks through the three steps in order, and uses everyday words throughout. Tokens are now called keys on that page; nothing changed underneath.`, 'improved', '2026-10-25T07:00:00Z'],
   ['cl-0-13-11', '0.13.11', 'Clearer example on Connect to Claude', `- Fixed: the Connect to Claude page used your own site's name in its example (“publish this as yoursite”), which read like an instruction to overwrite it. It now uses a made-up name.`, 'fix', '2026-10-25T06:00:00Z'],
