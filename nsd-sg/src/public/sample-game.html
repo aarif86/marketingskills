@@ -1,0 +1,174 @@
+<!doctype html>
+<!--
+  Sample page for trying out NSD.SG · a tiny browser game, one file, no server
+  Created: 26 Oct 2026 · By Aarif Raziff
+  Notes: the kopitiam and the scores are made up. Everything runs in the visitor's browser: canvas, touch and
+  keyboard. Proof that "pages only" still includes games. Swap the sprites, keep the bones.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kopi Catcher · a 30-second game</title>
+<meta name="description" content="Catch the kopi, grab the teh tarik, dodge the chilli. Thirty seconds, one file, runs in your browser. A sample game for NSD.SG.">
+<meta property="og:title" content="Kopi Catcher · a 30-second game">
+<meta property="og:description" content="Catch the kopi, dodge the chilli. Thirty seconds. Runs right in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#1d120c;--bg2:#2a1a11;--cream:#fbf1e2;--cream-2:#e9d6bd;--muted:#b89a7c;--kopi:#8a4b1f;--teh:#e08a2e;--chilli:#e23b2e;--ok:#5cc08a;--line:rgba(251,241,226,.12);
+    --font:"Fredoka",-apple-system,"Segoe UI",Roboto,sans-serif;--spring:cubic-bezier(.34,1.4,.4,1)}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--font);color:var(--cream);background:radial-gradient(900px 500px at 50% -10%,#4a2a17,transparent 70%),var(--bg);display:flex;flex-direction:column;align-items:center;min-height:100%;-webkit-font-smoothing:antialiased;touch-action:none;overscroll-behavior:none}
+  header{width:100%;max-width:440px;padding:22px 18px 8px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  h1{margin:0;font-size:1.55rem;letter-spacing:-.01em;line-height:1}
+  h1 small{display:block;font-size:.78rem;color:var(--muted);font-weight:500;margin-top:6px;letter-spacing:.02em}
+  .hud{display:flex;gap:10px}
+  .pill{background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:.82rem;color:var(--cream-2);min-width:64px;text-align:center}
+  .pill b{display:block;font-size:1.05rem;color:var(--cream);font-variant-numeric:tabular-nums}
+  .stage{position:relative;width:100%;max-width:440px;padding:0 18px 18px}
+  canvas{display:block;width:100%;height:auto;border-radius:22px;background:linear-gradient(#3a2415,#241510);border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(0,0,0,.8)}
+  .overlay{position:absolute;inset:0 18px 18px;border-radius:22px;background:rgba(29,18,12,.78);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;gap:14px;transition:opacity .25s,transform .35s var(--spring)}
+  .overlay[hidden]{display:none}
+  .overlay h2{margin:0;font-size:2rem;line-height:1.05}
+  .overlay p{margin:0;color:var(--cream-2);max-width:300px;line-height:1.5}
+  .legend{display:flex;gap:14px;font-size:.85rem;color:var(--muted)}
+  .legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  .legend .k::before{background:var(--kopi)}.legend .t::before{background:var(--teh)}.legend .c::before{background:var(--chilli)}
+  button{font:inherit;font-weight:700;font-size:1.05rem;color:#1d120c;background:var(--teh);border:0;border-radius:999px;padding:14px 28px;cursor:pointer;box-shadow:0 10px 30px -10px rgba(224,138,46,.8);transition:transform .2s var(--spring)}
+  button:hover{transform:translateY(-2px) scale(1.03)}
+  .big{font-size:3.4rem;line-height:1;font-weight:700;color:var(--teh)}
+  .toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-size:1.6rem;font-weight:700;color:var(--ok);opacity:0;pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .toast.go{animation:pop .7s var(--spring) forwards}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+  footer{width:100%;max-width:440px;padding:0 18px 28px;color:var(--muted);font-size:.78rem;line-height:1.5}
+  footer b{color:var(--cream-2);font-weight:500}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kopi Catcher<small>Ah Huat's kopitiam · 30 seconds</small></h1>
+  <div class="hud"><div class="pill">Score<b id="score">0</b></div><div class="pill">Time<b id="time">30</b></div><div class="pill">Best<b id="best">0</b></div></div>
+</header>
+<div class="stage">
+  <canvas id="c" width="400" height="560" aria-label="Kopi Catcher game"></canvas>
+  <div class="toast" id="toast"></div>
+  <div class="overlay" id="start">
+    <h2>Catch the kopi.</h2>
+    <p>Move the tray with your finger, mouse or arrow keys. Kopi is 1 point, teh tarik is 3. Chilli padi costs you 3.</p>
+    <div class="legend"><span class="k">kopi</span><span class="t">teh tarik</span><span class="c">chilli</span></div>
+    <button id="play" type="button">Play</button>
+  </div>
+  <div class="overlay" id="end" hidden>
+    <p>Your order</p>
+    <div class="big" id="final">0</div>
+    <p id="verdict">Not bad, uncle.</p>
+    <button id="again" type="button">Play again</button>
+  </div>
+</div>
+<footer>This is a sample page made for trying out <b>NSD.SG</b>. The kopitiam and the scores are made up. One file, no server: the whole game runs in your browser, which is exactly the kind of thing you can put at your own address.</footer>
+<script>
+(function () {
+  var canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+  var W = 400, H = 560, dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
+  var scoreEl = document.getElementById('score'), timeEl = document.getElementById('time'), bestEl = document.getElementById('best');
+  var startEl = document.getElementById('start'), endEl = document.getElementById('end'), finalEl = document.getElementById('final'), verdictEl = document.getElementById('verdict'), toast = document.getElementById('toast');
+  var best = 0; try { best = Number(localStorage.getItem('kopi-best') || 0); } catch (e) {}
+  bestEl.textContent = best;
+
+  var tray = { x: W / 2, w: 92, h: 16 }, items = [], score = 0, timeLeft = 30, running = false, last = 0, spawnAt = 0, speed = 1, streak = 0;
+  var KINDS = [
+    { kind: 'kopi', color: '#8a4b1f', top: '#d9b58c', pts: 1, weight: 10 },
+    { kind: 'teh', color: '#e08a2e', top: '#f7d9a8', pts: 3, weight: 2 },
+    { kind: 'chilli', color: '#e23b2e', top: '#ff8a7a', pts: -3, weight: 3 }
+  ];
+  function pick() { var total = 0, i; for (i = 0; i < KINDS.length; i++) total += KINDS[i].weight; var r = Math.random() * total; for (i = 0; i < KINDS.length; i++) { r -= KINDS[i].weight; if (r <= 0) return KINDS[i]; } return KINDS[0]; }
+  function spawn() { var k = pick(); items.push({ k: k, x: 30 + Math.random() * (W - 60), y: -30, vy: (120 + Math.random() * 60) * speed, r: k.kind === 'chilli' ? 11 : 15, wob: Math.random() * 6 }); }
+  function say(text, color) { toast.textContent = text; toast.style.color = color || ''; toast.classList.remove('go'); void toast.offsetWidth; toast.classList.add('go'); }
+
+  function moveTo(px) { var rect = canvas.getBoundingClientRect(); var x = (px - rect.left) / rect.width * W; tray.x = Math.max(tray.w / 2, Math.min(W - tray.w / 2, x)); }
+  canvas.addEventListener('pointermove', function (e) { moveTo(e.clientX); });
+  canvas.addEventListener('pointerdown', function (e) { moveTo(e.clientX); });
+  canvas.addEventListener('touchmove', function (e) { e.preventDefault(); moveTo(e.touches[0].clientX); }, { passive: false });
+  var keys = {};
+  window.addEventListener('keydown', function (e) { keys[e.key] = true; if ((e.key === ' ' || e.key === 'Enter') && !running) start(); });
+  window.addEventListener('keyup', function (e) { keys[e.key] = false; });
+
+  function drawCup(it) {
+    var x = it.x + Math.sin((it.y + it.wob * 40) / 40) * 3, y = it.y, r = it.r;
+    ctx.save();
+    if (it.k.kind === 'chilli') {
+      ctx.translate(x, y); ctx.rotate(0.6);
+      ctx.fillStyle = it.k.color; ctx.beginPath(); ctx.ellipse(0, 0, 7, 16, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4caf50'; ctx.beginPath(); ctx.ellipse(0, -16, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = it.k.color; ctx.beginPath(); ctx.roundRect(x - r, y - r, r * 2, r * 2.1, 6); ctx.fill();
+      ctx.strokeStyle = it.k.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x + r + 3, y + 2, 7, -1.2, 1.2); ctx.stroke();
+      ctx.fillStyle = it.k.top; ctx.beginPath(); ctx.ellipse(x, y - r + 2, r - 2, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 4, y - r - 6); ctx.quadraticCurveTo(x - 1, y - r - 12, x - 4, y - r - 18); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawTray() {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+    ctx.fillStyle = '#c99a62'; ctx.beginPath(); ctx.roundRect(tray.x - tray.w / 2, H - 46, tray.w, tray.h, 8); ctx.fill();
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.fillStyle = '#8a5a2b'; ctx.fillRect(tray.x - tray.w / 2 + 8, H - 32, tray.w - 16, 4);
+    ctx.restore();
+  }
+  function drawBackdrop() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.035)';
+    for (var i = 0; i < 6; i++) { ctx.fillRect(0, 90 + i * 80, W, 1); }
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, H - 24, W, 24);
+  }
+
+  function frame(t) {
+    if (!running) return;
+    var dt = Math.min(0.05, (t - last) / 1000); last = t;
+    timeLeft -= dt; if (timeLeft <= 0) { timeLeft = 0; return finish(); }
+    timeEl.textContent = Math.ceil(timeLeft);
+    if (keys.ArrowLeft) tray.x = Math.max(tray.w / 2, tray.x - 420 * dt);
+    if (keys.ArrowRight) tray.x = Math.min(W - tray.w / 2, tray.x + 420 * dt);
+    spawnAt -= dt; if (spawnAt <= 0) { spawn(); spawnAt = Math.max(0.28, 0.75 / speed); }
+    drawBackdrop();
+    for (var i = items.length - 1; i >= 0; i--) {
+      var it = items[i]; it.y += it.vy * dt;
+      var caught = it.y + it.r >= H - 46 && it.y - it.r <= H - 30 && Math.abs(it.x - tray.x) < tray.w / 2 + it.r * 0.6;
+      if (caught) {
+        score = Math.max(0, score + it.k.pts); scoreEl.textContent = score;
+        if (it.k.pts > 0) { streak++; if (streak % 5 === 0) { speed += 0.15; say('Shiok! x' + streak, '#5cc08a'); } else if (it.k.kind === 'teh') say('+3 teh tarik', '#e08a2e'); }
+        else { streak = 0; say('Chilli! -3', '#e23b2e'); }
+        items.splice(i, 1); continue;
+      }
+      if (it.y - it.r > H) { if (it.k.pts > 0) streak = 0; items.splice(i, 1); continue; }
+      drawCup(it);
+    }
+    drawTray();
+    requestAnimationFrame(frame);
+  }
+  function start() {
+    items = []; score = 0; timeLeft = 30; speed = 1; streak = 0; spawnAt = 0.2; tray.x = W / 2;
+    scoreEl.textContent = '0'; timeEl.textContent = '30';
+    startEl.hidden = true; endEl.hidden = true; running = true; last = performance.now();
+    requestAnimationFrame(frame);
+  }
+  function finish() {
+    running = false; drawBackdrop(); drawTray();
+    finalEl.textContent = score;
+    if (score > best) { best = score; bestEl.textContent = best; try { localStorage.setItem('kopi-best', String(best)); } catch (e) {} verdictEl.textContent = 'New best. The auntie is impressed.'; }
+    else verdictEl.textContent = score >= 25 ? 'Steady lah. Kopi gao level.' : score >= 12 ? 'Not bad, uncle.' : 'Spilled a few. Try again?';
+    endEl.hidden = false;
+  }
+  document.getElementById('play').addEventListener('click', start);
+  document.getElementById('again').addEventListener('click', start);
+  document.addEventListener('visibilitychange', function () { if (document.hidden && running) { running = false; startEl.hidden = false; startEl.querySelector('h2').textContent = 'Paused.'; } });
+  drawBackdrop(); drawTray();
+})();
+</script>
+</body>
+</html>

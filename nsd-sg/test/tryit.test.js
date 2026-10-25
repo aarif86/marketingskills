@@ -250,7 +250,7 @@ test('expired previews are removed from the table and disk; unknown folders are 
 });
 
 test('sample pages: served as html, offered in the try box, and a sample pasted through /try goes online', async () => {
-  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html']) {
+  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html', 'sample-game.html']) {
     const r = await get(`/assets/${f}`);
     assert.equal(r.statusCode, 200, f);
     assert.match(r.headers['content-type'], /text\/html/);
@@ -285,7 +285,8 @@ test('sample pages: served as html, offered in the try box, and a sample pasted 
 });
 
 test('pasted pages may arrive base64-encoded (html_b64) on /try and on a site paste; samples carry no onload= attributes', async () => {
-  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html']) assert.doesNotMatch((await get(`/assets/${f}`)).body, /onload=/, f);
+  for (const f of ['sample-proposal.html', 'sample-quiz.html', 'sample-shop.html', 'sample-game.html']) assert.doesNotMatch((await get(`/assets/${f}`)).body, /onload=/, f);
+  assert.match((await get('/')).body, /name="sample" value="sample-game\.html"/, 'the game is offered in the try box');
   forgetIp();
   const page = '<!doctype html><html><body><h1>Encoded</h1><script>document.title="x"</script><img onload="x()" src="a.png"></body></html>';
   const b64 = Buffer.from(page, 'utf8').toString('base64');

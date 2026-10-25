@@ -66,7 +66,8 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null, live = {
       <div class="sample-row">
         ${[['sample-proposal.html', '💼', 'A one-page proposal', 'Scope, price table, timeline and a “yes, let’s start” button. For consultants and freelancers.'],
            ['sample-quiz.html', '📖', 'A class quiz', 'Five questions that mark themselves, with notes under each answer. Send it to the parents’ group.'],
-           ['sample-shop.html', '🏪', 'A one-page shop', 'Today’s menu, opening hours, map, and a WhatsApp order button. For a stall or a small business.']].map(([file, icon, title, blurb]) => html`
+           ['sample-shop.html', '🏪', 'A one-page shop', 'Today’s menu, opening hours, map, and a WhatsApp order button. For a stall or a small business.'],
+           ['sample-game.html', '🎮', 'A tiny game', 'Catch the kopi, dodge the chilli, 30 seconds. Touch or arrow keys. Proof that a page can be a game: it all runs in the browser.']].map(([file, icon, title, blurb]) => html`
         <div class="sample"><span class="sample-icon" aria-hidden="true">${icon}</span><h4>${title}</h4><p class="muted small">${blurb}</p>
           <div class="sample-actions"><button class="btn btn-primary btn-sm" type="submit" name="sample" value="${file}" data-sample-btn>Put this one online →</button><a class="muted small" href="/assets/${file}" download>Download the file</a></div></div>`)}
       </div>

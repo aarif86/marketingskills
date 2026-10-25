@@ -143,6 +143,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-38', '0.13.38', 'A game in the try box', `- New: a fourth sample page, Kopi Catcher, a 30-second game in one HTML file. Touch or arrow keys. It is there to show that “pages only” still includes anything that runs in the browser, games included.`, 'new', '2026-10-26T08:00:00Z'],
   ['cl-0-13-37', '0.13.37', 'Admin can see the hourly cron working', `- Admin: the Health page shows when the hourly maintenance run last happened, with a warning if it has been more than two hours.`, 'improved', '2026-10-26T07:00:00Z'],
   ['cl-0-13-36', '0.13.36', 'No more “setting up” on an address that already works', `- Fixed: on Hostinger the server sometimes cannot fetch its own new subdomain even though every browser can, so a site stayed on “setting up your address” for days. Once Hostinger reports the address provisioned and 30 minutes have passed, the site is shown as online and the retries stop. Admin sees why, and can still mark it reachable at once.`, 'fix', '2026-10-26T06:00:00Z'],
   ['cl-0-13-35', '0.13.35', 'Yearly for the S$6 members too', `- New: Beta yearly, S$60 instead of S$72. Everyone on the S$6 rate sees it when their free period is ending: Beta members and the gift and promo plans that renew at the Beta price. Plus yearly stays for everyone.`, 'new', '2026-10-26T05:00:00Z'],
