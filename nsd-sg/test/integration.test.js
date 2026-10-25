@@ -55,6 +55,13 @@ test('marketing pages render', async () => {
   assert.match(r.body, /application\/ld\+json/);
   assert.match(r.body, /"@type":"FAQPage"/);
   assert.match(r.body, /property="og:title"/);
+  assert.doesNotMatch(r.body, /id="features"/, 'the repetitive feature list is gone');
+  assert.match(r.body, /Also included:/);
+  assert.match(r.body, /People who build with AI tools/);
+  assert.match(r.body, /Built and looked after in Singapore/);
+  assert.match((await get('/signup')).body, /Have a code\?/, 'sign-up has a code field');
+  assert.match((await get('/signup?code=abc123')).body, /name="code" value="ABC123"/, 'the link pre-fills the code');
+  assert.match(r.body, /Connect your AI, now on the front page/, 'hero pill is pinned to the connector release');
   const llms = await get('/llms.txt');
   assert.equal(llms.statusCode, 200);
   assert.match(llms.headers['content-type'], /text\/plain/);
@@ -648,6 +655,11 @@ test('showcase modes: a beta (promo) site is listed by default and can be hidden
   const betty = getDb().prepare('SELECT id FROM users WHERE email = ?').get('betty@example.com');
   getDb().prepare("UPDATE users SET email_verified_at = datetime('now') WHERE id = ?").run(betty.id);
   await upload(cookie, siteId, [{ name: 'index.html', data: '<h1>betty</h1>' }], 'replace');
+  // the live strip on the home page shows real sites and links to the full showcase
+  const homeLive = await get('/');
+  assert.match(homeLive.body, /id="live"/);
+  assert.match(homeLive.body, /bettysite\.nsd\.test/);
+  assert.match(homeLive.body, /See all \d+ →/);
   assert.ok(names().includes('bettysite'), 'free: listed');
   assert.doesNotMatch((await get(`/sites/${siteId}/settings`, cookie)).body, /name="listed"/, 'free: no choice');
   await post(`/admin/users/${betty.id}/action`, admin.cookie, { action: 'plan', plan_id: 'beta' });

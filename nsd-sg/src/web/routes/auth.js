@@ -11,7 +11,7 @@ import {
   issueToken, consumeToken, markEmailVerified, changePassword,
 } from '../../services/users.js';
 import { createSite, subdomainUnavailableReason } from '../../services/sites.js';
-import { getPlan } from '../../services/plans.js';
+import { getPlan, redeemPromoCode } from '../../services/plans.js';
 import { marketingLayout } from '../views/layout.js';
 import { signupPage, loginPage, forgotPage, resetPage } from '../views/auth.js';
 import { csrfTokenFor, setSessionCookie, clearSessionCookie, readFlash, flash } from '../middleware.js';
@@ -20,6 +20,14 @@ import { getPreview, claimPreview, TryError } from '../../services/tryit.js';
 import { entitlementsFor } from '../../services/plans.js';
 
 // Move a "try it" test page onto a brand-new site. Returns the flash sentence, or null when there was nothing to keep.
+// A promo code typed at sign-up (or carried in the link: /signup?code=ABCSG). Codes are 4-32 letters/numbers.
+const cleanCode = (v) => String(v ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 32);
+function applyCode(req, user, code) {
+  const r = redeemPromoCode({ userId: user.id, code });
+  audit({ req, actor: user, action: r.ok ? 'promo.redeemed' : 'promo.rejected', targetType: 'user', targetId: user.id, details: { code, via: 'signup', reason: r.ok ? undefined : r.reason } });
+  return r.ok ? ` Your code ${code} is applied: you are on the ${r.plan.name} plan.` : ` Your code ${code} could not be applied (${r.reason.replace(/\.$/, '')}). You can try another code on your Plan page.`;
+}
+
 async function keepPreview(req, user, site, preview) {
   if (!preview) return null;
   try {
@@ -46,7 +54,7 @@ export async function registerAuthRoutes(app) {
     const plan = getPlan(String(req.query.plan ?? ''));
     const preview = getPreview(String(req.query.preview ?? ''))?.id ?? '';
     if (req.query.preview && !preview) flash(reply, 'error', 'That test page has expired. Sign up anyway and paste the code again on your site page.');
-    return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: normalizeSubdomain(req.query.name ?? ''), plan: plan?.is_public ? plan : null, values: {}, errors: [], preview, googleEnabled: google.enabled() }));
+    return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: normalizeSubdomain(req.query.name ?? ''), plan: plan?.is_public ? plan : null, values: {}, errors: [], preview, googleEnabled: google.enabled(), code: cleanCode(req.query.code) }));
   });
 
   // ---- Continue with Google (OpenID Connect + PKCE) ----
@@ -59,7 +67,7 @@ export async function registerAuthRoutes(app) {
     const { state, verifier, url } = google.beginFlow();
     const name = normalizeSubdomain(req.query.name ?? '').slice(0, 40);
     const preview = getPreview(String(req.query.preview ?? ''))?.id ?? '';
-    reply.setCookie(FLOW_COOKIE, google.sealFlow({ state, verifier, next: safeNext(req.query.next), name, preview, t: Date.now() }), flowCookieOpts(600));
+    reply.setCookie(FLOW_COOKIE, google.sealFlow({ state, verifier, next: safeNext(req.query.next), name, preview, code: cleanCode(req.query.code), t: Date.now() }), flowCookieOpts(600));
     return reply.redirect(url);
   });
 
@@ -93,6 +101,7 @@ export async function registerAuthRoutes(app) {
         siteMsg = await keepPreview(req, user, r.site, flow.preview) ?? ` ${flow.name}.${config.baseDomain} is yours. Paste your page or add your files to go live.`;
       }
     }
+    if (created && flow.code) siteMsg += applyCode(req, user, flow.code);
     const sessionToken = createSession({ userId: user.id, ip: req.ip, userAgent: req.headers['user-agent'] ?? '' });
     setSessionCookie(reply, sessionToken);
     if (created) flash(reply, 'success', `Welcome to NSD.SG!${siteMsg}`);
@@ -107,6 +116,7 @@ export async function registerAuthRoutes(app) {
     const password = String(b.password ?? '');
     const subdomain = normalizeSubdomain(b.subdomain ?? '');
     const preview = getPreview(String(b.preview ?? ''))?.id ?? '';
+    const code = cleanCode(b.code);
     const errors = [];
     const e1 = validateEmail(email); if (e1) errors.push(e1);
     const e2 = validatePasswordStrength(password); if (e2) errors.push(e2);
@@ -115,7 +125,7 @@ export async function registerAuthRoutes(app) {
     if (!b.agree) errors.push('Please tick the box to accept the Terms of Service.');
     if (!errors.length && findUserByEmail(email)) errors.push('An account with that email already exists. Try logging in.');
     if (errors.length) {
-      return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: subdomain, plan: null, values: { email, name }, errors, preview, googleEnabled: google.enabled() }));
+      return render(req, reply, 'Create your account', signupPage({ csrf: csrfTokenFor(req), name: subdomain, plan: null, values: { email, name }, errors, preview, googleEnabled: google.enabled(), code }));
     }
     const user = await createUser({ email, password, name });
     audit({ req, actor: user, action: 'auth.signup', targetType: 'user', targetId: user.id });
@@ -129,6 +139,7 @@ export async function registerAuthRoutes(app) {
         siteMsg = await keepPreview(req, user, r.site, preview) ?? ` ${subdomain}.${config.baseDomain} is yours. Paste your page or add your files to go live.`;
       }
     }
+    if (code) siteMsg += applyCode(req, user, code);
     const token = issueToken(user.id, 'verify_email', 3 * 86400);
     sendMail({
       to: email,

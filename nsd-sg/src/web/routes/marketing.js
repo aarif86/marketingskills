@@ -15,6 +15,7 @@ import { createPreview, getPreview, claimPreview, previewUrl, checkReady, valida
 import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
+import { getSetting } from '../../services/settings.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -39,7 +40,10 @@ export async function registerMarketingRoutes(app) {
     ? reply.type('text/html; charset=utf-8').send(appLayout({ title, body, user: req.user, flash: readFlash(req, reply), csrf: csrfTokenFor(req), active, path: String(req.raw.url ?? '').split('?')[0] }))
     : render(req, reply, { title, description, body });
 
-  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), latest: listChangelog(1)[0] ?? null }) }));
+  // The "New" pill in the hero shows the changelog entry the admin pinned (settings home.pill), else the latest one.
+  const heroPill = () => { const pin = getSetting('home.pill', 'latest'); const all = listChangelog(200); return (pin !== 'latest' && all.find((e) => e.id === pin)) || all[0] || null; };
+  const liveStrip = () => { const sites = listShowcaseSites(); return { total: sites.length, sites: sites.slice(0, 3) }; };
+  app.get('/', async (req, reply) => render(req, reply, { body: homePage({ baseDomain: config.baseDomain, plans: listPlans({ publicOnly: true }), csrf: csrfTokenFor(req), live: liveStrip(), latest: heroPill() ?? null }) }));
 
   // ---- Try it: upload the .html file or paste the code, no account, live for 3 hours at try.<baseDomain>/<id>/ ----
   app.post('/try', { preHandler: limiter('tryIt') }, async (req, reply) => {

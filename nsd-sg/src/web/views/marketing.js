@@ -9,13 +9,13 @@ const price = (cents) => (cents === 0 ? 'Free' : `S$${(cents / 100).toFixed(0)}/
 export const period = (days) => (days >= 60 ? `${Math.round(days / 30)} months` : `${days} days`);
 const space = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(b % 1024 ** 3 ? 1 : 0)} GB` : `${Math.round(b / 1024 / 1024)} MB`);
 
-export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
+export function homePage({ baseDomain, plans, csrf = '', latest = null, live = { total: 0, sites: [] } }) {
   return html`
 <section class="hero"><div class="container">
   ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
   <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
-  <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours. Or <a href="#connect">connect your AI</a> and just say “put this online”.</p>
+  <p class="lead">Claude, ChatGPT, Gemini, or a builder like Cursor or v0 made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours. Or <a href="#connect">connect your AI</a> and just say “put this online”.</p>
   <form class="hero-form" action="/signup" method="get">
     <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Pick your web address"><span>.${baseDomain}</span></div>
     <button class="btn btn-primary btn-lg" type="submit">Claim my address</button>
@@ -61,6 +61,14 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   </form>
 </div></section>
 
+${live.sites.length ? html`<section id="live" class="section live"><div class="container">
+  <h2>Live right now <span class="muted">${live.total}</span></h2>
+  <p class="section-lead">Real pages people put online with NSD.SG, each at its own address. Yours could be next to them in a minute. <a href="/showcase">See all ${live.total} →</a></p>
+  <div class="grid three">
+    ${live.sites.map((st) => html`<a class="card live-card" href="${config.publicScheme}://${st.subdomain}.${baseDomain}/" target="_blank" rel="noopener"><h3>${st.title || st.subdomain}</h3><p class="eg">${st.subdomain}.${baseDomain}</p><span class="muted small">Open it →</span></a>`)}
+  </div>
+</div></section>` : ''}
+
 <section id="who" class="section who"><div class="container">
   <h2>Who this is for</h2>
   <p class="section-lead">People who are not web designers, but who now make web pages with AI and need to hand them to someone else without it looking like a test.</p>
@@ -68,7 +76,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
     <div class="card"><h3><span class="ico">💼</span>People who share their work</h3><p>Consultants, trainers, coaches, freelancers. A proposal, a price calculator, an explainer, a checklist, a one-page pitch.</p><p class="eg">yourname.${baseDomain}/proposal</p></div>
     <div class="card"><h3><span class="ico">📖</span>Teachers and educators</h3><p>A lesson page, a class quiz, a reading list, the term timetable. Send it to the parents’ WhatsApp group. It opens on any phone.</p><p class="eg">teachername.${baseDomain}/quiz</p></div>
     <div class="card"><h3><span class="ico">📅</span>Event and community organisers</h3><p>The programme, the timings, the map, how to register. It only needs to live for three weeks, but it has to look trustworthy for all of them.</p><p class="eg">event.${baseDomain}</p></div>
-    <div class="card"><h3><span class="ico">🧪</span>People trying out an idea</h3><p>You made something last night and want feedback this morning. Send a proper link. Change it tonight. Every older copy is kept.</p><p class="eg">project.${baseDomain}</p></div>
+    <div class="card"><h3><span class="ico">🧪</span>People who build with AI tools</h3><p>Claude Code, Cursor, v0, Bolt, Lovable, or an idea you made last night. Drop in the finished site, or the ZIP of your build folder. Deep links, your own “page not found” page and caching just work. Every older copy is kept.</p><p class="eg">project.${baseDomain}</p></div>
     <div class="card"><h3><span class="ico">🏪</span>Small businesses with one page</h3><p>Opening hours, what you do, how to reach you. The page the AI wrote for you, on a Singapore address, for free.</p><p class="eg">shopname.${baseDomain}</p></div>
     <div class="card"><h3><span class="ico">🚫</span>Not for</h3><p>Things that need a login, save people’s data, or take payments. NSD.SG shows pages; it does not run programs. When you need that, <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a> builds it for you.</p></div>
   </div>
@@ -113,18 +121,10 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
     <div class="card"><h3>Nothing to learn</h3><p>No setup, no settings, no technical words. If the page opens in your browser, it works here.</p></div>
     <div class="card"><h3>One page is enough</h3><p>Most things people make with AI are one page. Paste it and you are done. Add more pages only if you want to.</p></div>
     <div class="card"><h3>Safe</h3><p>Every page gets the padlock (secure connection) for free. Pages cannot run programs, so nothing on them can harm your visitors.</p></div>
-    <div class="card"><h3>A real person in Singapore</h3><p>Built and looked after by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Stuck? Email us and a person replies.</p></div>
+    <div class="card"><h3>A real person in Singapore</h3><p>Built and looked after by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>. Stuck? WhatsApp or email us and a person replies.</p></div>
     <div class="card"><h3>Room to grow</h3><p>When your page becomes a business, we help with your own .sg or .com name, a professional website and getting found on Google. Same team.</p></div>
   </div>
-</div></section>
-
-<section id="features" class="section alt"><div class="container">
-  <h2>What you get</h2>
-  <ul class="features">
-    <li>Paste the code, or drop in files, a folder or a ZIP</li><li>Extra pages with their own names: /proposal, /quiz, /menu</li><li>Older copies kept, so you can go back</li>
-    <li>The padlock (secure connection) on every page</li><li>Your own “page not found” page if you want one</li><li>Protection against fake and copycat names</li>
-    <li>See how many people visited</li><li>Connect your AI: say “put this online” and it is</li><li>Your own domain name on Plus</li><li>Email help from NasarDigital</li>
-  </ul>
+  <p class="muted also">Also included: extra pages with their own names (/proposal, /quiz, /menu) · older versions kept · your own “page not found” page · visit counts · protection against fake and copycat names · <a href="#connect">Connect your AI</a> · your own domain name on Plus.</p>
 </div></section>
 
 <section id="pricing" class="section"><div class="container">
@@ -137,7 +137,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
         ${p.features.custom_domains ? html`<li><strong>Your own domain name, like mybusiness.sg</strong></li>` : ''}
         <li>${p.limits.max_sites} site${p.limits.max_sites === 1 ? '' : 's'}, as many pages as you like</li>
         <li>${space(p.limits.max_storage_bytes)} of space</li>
-        <li>Last ${p.limits.max_releases} copies kept</li>
+        <li>${p.limits.max_releases} versions kept, so you can go back</li>
         <li>${p.features.branding_removable ? 'No NSD.SG badge, on your pages or in link previews' : 'Small “Powered by NasarDigital” badge on your pages'}</li>
         ${p.features.custom_domains ? '' : html`<li>yourname.${config.baseDomain} address</li>`}
         <li>${{ always: html`Listed on the public <a href="/showcase">showcase</a>`, opt_out: html`On the public <a href="/showcase">showcase</a>, unless you hide it`, opt_in: 'Off the public showcase unless you want to be on it' }[showcaseMode(p.features)]}</li>
@@ -162,6 +162,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   <h2>Your page is ready. Give it an address.</h2>
   <a class="btn btn-primary btn-lg" href="/signup">Claim my ${baseDomain} address</a>
   <p class="muted">Make it with AI → Put it online with NSD.SG → Grow with NasarDigital</p>
+  <p class="muted small behind">Built and looked after in Singapore by <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a>, a web agency. Your pages live on servers in Singapore and Asia and are backed up every day. Stuck? <a href="/contact">WhatsApp a real human</a>.</p>
 </div></section>
 ${raw(jsonLd({ baseDomain, plans }))}`.toString();
 }

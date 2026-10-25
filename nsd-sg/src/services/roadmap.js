@@ -143,6 +143,12 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-27', '0.13.27', 'Codes at sign-up, real sites on the front page, straighter words', `- New: a “Have a code?” box on the sign-up page, and links like nsd.sg/signup?code=YOURCODE fill it in. The code is applied the moment the account exists, also when you continue with Google.
+- New: “Live right now” on the home page shows three real sites and a link to the full showcase.
+- Changed: the Free plan now says what it is, one site at your own nsd.sg address. “Last 3 copies kept” reads “3 versions kept, so you can go back”. Help says WhatsApp or email, not email only.
+- Changed: a card for people who build with AI tools (Claude Code, Cursor, v0, Bolt, Lovable) next to the teachers, event organisers and small businesses. The hero names those tools too.
+- Changed: the “What you get” list is folded into one line under “Why not just send the link”, so the page is shorter. The closing band says who runs NSD.SG and where pages live.
+- Admin: the home page “New” pill can be pinned to a chosen release (Health page).`, 'improved', '2026-10-25T21:00:00Z'],
   ['cl-0-13-26', '0.13.26', 'A menu that reads like a story, and a roomier Try it box', `- Changed: the top menu now follows the visitor's path: How it works, Who it's for, Connect your AI, Showcase, Pricing, FAQ. Roadmap, What's new and Contact sit under “More”, so nothing is cut off on any screen. The phone menu lists everything.
 - Changed: the Try it box on the home page is as wide as the rest of the page instead of a narrow column.`, 'improved', '2026-10-25T20:00:00Z'],
   ['cl-0-13-25', '0.13.25', 'Sample pages open with one tap', `- Fixed: “Try this one” on the home page did nothing on phones and only filled the paste box on computers. The three sample buttons now read “Put this one online” and open the sample in a new tab straight away, like your own page would. No download, no paste.`, 'fix', '2026-10-25T19:00:00Z'],

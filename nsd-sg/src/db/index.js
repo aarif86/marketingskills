@@ -61,7 +61,7 @@ export const DEFAULT_PLANS = [
   {
     id: 'free',
     name: 'Free',
-    description: 'Host one site on your own .sg address. Free for 30 days; ask for more time or upgrade.',
+    description: 'One site at your own nsd.sg address, as many pages as you like.',
     price_cents_month: 0,
     trial_days: 30,
     is_public: 1,

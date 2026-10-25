@@ -6,7 +6,8 @@ import { capacityInfo, isEnabled as hostingEnabled, listOrphanDirs, removeOrphan
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePack, listStoredPacks, storedPackZip, setLegalHold, evidenceStats } from '../../services/evidence.js';
 import { setLogVisitors, visitsForSite, visitsCsv, visitCount } from '../../services/visits.js';
-import { setSetting } from '../../services/settings.js';
+import { setSetting, getSetting } from '../../services/settings.js';
+import { listChangelog } from '../../services/roadmap.js';
 import { supportConfig } from '../help.js';
 import { listDomainsWaiting, listDomainsActive, setDomainStatus } from '../../services/domains.js';
 import { statusInfo, refresh as refreshStatus } from '../../services/status.js';
@@ -520,7 +521,7 @@ export async function registerAdminRoutes(app) {
     const dbSize = q("SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()").n;
     return render(req, reply, { title: 'System health', active: 'health', body: V.healthPage({
       version: config.version, node: process.version, uptimeSec: Math.round((Date.now() - startedAt) / 1000), disk, mem, load: os.loadavg(), cpus: os.cpus().length, totalMem: os.totalmem(), freeMem: os.freemem(),
-      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), capacity,
+      dataDir: config.dataDir, dbSize, top, bigSites, baseDomain: config.baseDomain, smtp: !!config.smtp.host, env: config.env, packs: listStoredPacks().slice(0, 50), support: supportConfig(), homePill: getSetting('home.pill', 'latest'), changelog: listChangelog(60), capacity,
       hosting: hostingEnabled() ? {
         tenantRoot: config.hostinger.tenantRoot, apiToken: !!config.hostinger.apiToken, username: config.hostinger.username,
         byState: all("SELECT hosting_state, COUNT(*) n FROM sites WHERE status != 'deleted' GROUP BY hosting_state"),
@@ -553,6 +554,15 @@ export async function registerAdminRoutes(app) {
     const ok = removePreview(id);
     audit({ req, action: 'try.removed', targetType: 'preview', targetId: id, severity: 'warn', details: { ok } });
     flash(reply, ok ? 'ok' : 'error', ok ? `Test page ${id} removed.` : 'No such test page.');
+    return reply.redirect('/admin/health');
+  });
+
+  app.post('/admin/health/home-pill', opts, async (req, reply) => {
+    const want = String(req.body?.pill ?? 'latest');
+    const ok = want === 'latest' || listChangelog(500).some((e) => e.id === want);
+    setSetting('home.pill', ok ? want : 'latest');
+    audit({ req, action: 'admin.home_pill.update', targetType: 'system', targetId: 'home.pill', details: { pill: ok ? want : 'latest' } });
+    flash(reply, 'success', ok && want !== 'latest' ? 'The home page “New” pill is pinned.' : 'The home page “New” pill follows the latest release.');
     return reply.redirect('/admin/health');
   });
 

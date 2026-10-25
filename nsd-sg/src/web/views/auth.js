@@ -7,12 +7,12 @@ const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="t
 const googleQuery = (params) => { const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString(); return q ? `?${q}` : ''; };
 const errorList = (errors) => (errors?.length ? html`<div class="flash flash-error"><ul>${errors.map((e) => html`<li>${e}</li>`)}</ul></div>` : '');
 
-export function signupPage({ csrf, name, plan, values, errors, googleEnabled = false, preview = '' }) {
+export function signupPage({ csrf, name, plan, values, errors, googleEnabled = false, preview = '', code = '' }) {
   return html`<section class="section auth"><div class="container narrow">
   <h1>${preview ? 'Keep your page. Pick its address.' : 'Create your account'}</h1>
   <p class="muted">${preview ? html`Choose a name below. When you sign up, your test page moves to <strong>thatname.${config.baseDomain}</strong> and stays online.` : plan ? html`You picked the <strong>${plan.name}</strong> plan. Everyone starts on Free; you can upgrade from inside once you are in.` : 'Free for 30 days, no card. Your page can be online a minute from now.'}</p>
   ${errorList(errors)}
-  ${googleEnabled ? googleButton(`/auth/google${googleQuery({ name, preview })}`, 'Continue with Google') : ''}
+  ${googleEnabled ? googleButton(`/auth/google${googleQuery({ name, preview, code })}`, 'Continue with Google') : ''}
   <form method="post" action="/signup" class="form" autocomplete="on">
     <input type="hidden" name="_csrf" value="${csrf}">
     ${preview ? html`<input type="hidden" name="preview" value="${preview}">` : ''}
@@ -22,6 +22,8 @@ export function signupPage({ csrf, name, plan, values, errors, googleEnabled = f
     <label>Your name <input name="name" value="${values.name ?? ''}" maxlength="80" autocomplete="name"></label>
     <label>Email <input type="email" name="email" value="${values.email ?? ''}" required maxlength="254" autocomplete="email"></label>
     <label>Choose a password <input type="password" name="password" required minlength="10" maxlength="200" autocomplete="new-password"><small>At least 10 characters. A short sentence works well.</small></label>
+    <details class="how" ${code ? 'open' : ''}><summary>Have a code? <span class="muted">(optional)</span></summary>
+      <label>Code <input name="code" value="${code}" maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. ABC123" style="text-transform:uppercase"><small>From a group, an event or a friend. It is applied the moment your account is made.</small></label></details>
     <label class="check"><input type="checkbox" name="agree" value="1" required> I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy policy</a>.</label>
     <button class="btn btn-primary btn-lg" type="submit">${preview ? 'Create account and keep my page' : 'Create account'}</button>
   </form>

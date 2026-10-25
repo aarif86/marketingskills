@@ -152,6 +152,23 @@ test('admin health page renders the publisher block with orphan removal forms ca
   assert.deepEqual(listOrphanDirs(), []);
 });
 
+test('a promo code typed at sign-up (or carried in the link) is applied the moment the account exists; a bad code is explained', async () => {
+  resetLimit('signup:127.0.0.1');
+  const { createPromoCode } = await import('../src/services/plans.js');
+  createPromoCode({ code: 'SIGNUP1', planId: 'beta', maxUses: 5, actorId: 'test' });
+  const r = await post('/signup', '', { email: 'nora@example.com', name: 'Nora', password: 'correct-horse-battery', subdomain: 'nora', agree: '1', code: 'signup1' });
+  assert.equal(r.statusCode, 302, r.body);
+  const nora = getDb().prepare("SELECT plan_id FROM users WHERE email = 'nora@example.com'").get();
+  assert.equal(nora.plan_id, 'beta');
+  const dash = await get('/dashboard', cookiesFrom(r));
+  assert.match(dash.body, /Your code SIGNUP1 is applied: you are on the Beta plan/);
+  resetLimit('signup:127.0.0.1');
+  const r2 = await post('/signup', '', { email: 'omar@example.com', name: 'Omar', password: 'correct-horse-battery', subdomain: 'omar', agree: '1', code: 'NOPE99' });
+  assert.equal(r2.statusCode, 302, r2.body);
+  assert.match((await get('/dashboard', cookiesFrom(r2))).body, /Your code NOPE99 could not be applied \(That code is not valid\)/);
+  assert.equal(getDb().prepare("SELECT plan_id FROM users WHERE email = 'omar@example.com'").get().plan_id, 'free');
+});
+
 test('promo code moves a user to the beta plan; showcase lists live sites; badge demo renders', async () => {
   const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' });
   const admin = cookiesFrom(login);
