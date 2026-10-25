@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 // Administrator panel. Every route requires role=admin; every mutation is audited.
 import os from 'node:os';
-import { config, publicUrlForSubdomain } from '../../config.js';
+import { config, publicUrlForSubdomain, platformUrl } from '../../config.js';
+import { sendMail } from '../../lib/mailer.js';
 import { capacityInfo, isEnabled as hostingEnabled, listOrphanDirs, removeOrphanDir, envFileKeys, syncAll , repairSite, repairPending, checkApi } from '../../publish/hostinger.js';
 import { tryHostStatus, ensureTryHost, removePreview } from '../../services/tryit.js';
 import { PACK_KEEP_DAYS, listHoldsForUser, holdSite, holdZip, buildPack, storePack, listStoredPacks, storedPackZip, setLegalHold, evidenceStats } from '../../services/evidence.js';
@@ -21,7 +22,7 @@ import {
   listSitesForUser, getSiteById, setSiteStatus, setSiteBranding, renameSubdomain, deleteSite, listReserved, addReserved, removeReserved, trafficForSite, flushTraffic,
   listBlockedWords, addBlockedWord, removeBlockedWord, checkSiteReady,
 } from '../../services/sites.js';
-import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, listPlanEvents, listPromoCodes, createPromoCode, promoDetail, updatePromoCode, deletePromoCode } from '../../services/plans.js';
+import { listPlans, getPlan, upsertPlan, assignPlan, extendPlan, entitlementsFor, pendingExtensionRequests, declineExtension, listPlanEvents, listPromoCodes, createPromoCode, promoDetail, updatePromoCode, deletePromoCode } from '../../services/plans.js';
 import { listReleases, listReleaseFiles, diskUsage } from '../../storage/releases.js';
 import { adminLayout } from '../views/layout.js';
 import * as V from '../views/admin.js';
@@ -142,6 +143,16 @@ export async function registerAdminRoutes(app) {
         else db().prepare("UPDATE sites SET status = CASE WHEN current_release_id IS NULL THEN 'empty' ELSE 'live' END, suspended_reason = '' WHERE user_id = ? AND status = 'suspended'").run(user.id);
         audit({ req, action: `admin.user.${action}`, targetType: 'user', targetId: user.id, details: { reason: b.reason ?? '' }, severity: 'warn' });
         flash(reply, 'success', `User ${status}.`);
+        break;
+      }
+      case 'decline': {
+        const reason = String(b.reason ?? '').slice(0, 300);
+        declineExtension({ userId: user.id, actorId: req.user.id, reason });
+        const offers = listPlans().filter((p) => p.price_cents_month > 0 && (p.is_public || p.id === user.plan_id)).map((p) => `${p.name} at S$${(p.price_cents_month / 100).toFixed(0)} a month`);
+        const text = `Hi ${user.name || ''},\n\nWe could not extend your free period this time${reason ? ` (${reason})` : ''}. Your pages stay online, and nothing is deleted.\n\nTo keep publishing, pick a plan on your Plan page: ${offers.join(' or ')}. ${platformUrl('/billing')}\n\nIf you think we got this wrong, reply to this email and a person reads it.\n\nNSD.SG`;
+        sendMail({ to: user.email, subject: 'About your NSD.SG extension request', text }).catch((err) => req.log.error({ err }, 'decline mail failed'));
+        audit({ req, action: 'admin.user.extension_declined', targetType: 'user', targetId: user.id, details: { reason } });
+        flash(reply, 'success', `Declined. ${user.email} has been emailed with the paid options.`);
         break;
       }
       case 'plan': {

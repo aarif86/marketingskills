@@ -242,6 +242,21 @@ export function removePromo({ userId }) {
 export function pendingExtensionFor(userId) {
   return getDb().prepare(`SELECT e.created_at FROM plan_events e WHERE e.user_id = ? AND e.type = 'extension_requested'
       AND e.created_at > datetime('now', '-14 days')
+      AND NOT EXISTS (SELECT 1 FROM plan_events g WHERE g.user_id = e.user_id AND g.type IN ('extension_granted', 'extension_declined') AND g.created_at > e.created_at)
+      ORDER BY e.created_at DESC LIMIT 1`).get(userId) ?? null;
+}
+
+/** Admin says no to a second extension. The request leaves the queue; the user sees why on the Plan page and by email. */
+export function declineExtension({ userId, actorId = null, reason = '' }) {
+  getDb().prepare('INSERT INTO plan_events (id, user_id, type, from_plan, to_plan, details, created_by) VALUES (?, ?, ?, NULL, NULL, ?, ?)')
+    .run(newId(), userId, 'extension_declined', JSON.stringify({ reason }), actorId);
+  return { ok: true };
+}
+
+/** The most recent decline (last 30 days) with no extension granted after it, or null. */
+export function lastDeclineFor(userId) {
+  return getDb().prepare(`SELECT e.created_at, e.details FROM plan_events e WHERE e.user_id = ? AND e.type = 'extension_declined'
+      AND e.created_at > datetime('now', '-30 days')
       AND NOT EXISTS (SELECT 1 FROM plan_events g WHERE g.user_id = e.user_id AND g.type = 'extension_granted' AND g.created_at > e.created_at)
       ORDER BY e.created_at DESC LIMIT 1`).get(userId) ?? null;
 }
@@ -265,7 +280,7 @@ export function pendingExtensionRequests() {
   return getDb().prepare(`
     SELECT e.*, u.email, u.name, u.plan_id, u.plan_expires_at FROM plan_events e JOIN users u ON u.id = e.user_id
     WHERE e.type = 'extension_requested'
-      AND NOT EXISTS (SELECT 1 FROM plan_events g WHERE g.user_id = e.user_id AND g.type = 'extension_granted' AND g.created_at > e.created_at)
+      AND NOT EXISTS (SELECT 1 FROM plan_events g WHERE g.user_id = e.user_id AND g.type IN ('extension_granted', 'extension_declined') AND g.created_at > e.created_at)
     ORDER BY e.created_at ASC`).all();
 }
 

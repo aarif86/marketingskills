@@ -42,6 +42,19 @@ test('first extension is instant; the second waits for a person', async () => {
   x = await post('/billing/extend', u.cookie, { reason: 'Still building my site', note: 'One more month would really help me finish this.' }, '/billing');
   assert.match(flashOf(x), /Second extension request sent/);
   assert.match((await get('/billing', u.cookie)).body, /Free extension submitted/);
+  // admin says no: the request leaves the queue, the user is told on the Plan page (and by email) with the paid options
+  const { pendingExtensionRequests } = await import('../src/services/plans.js');
+  assert.ok(pendingExtensionRequests().some((e) => e.user_id === u.id), 'request is in the admin queue');
+  const login = await post('/login', '', { email: 'admin@nsd.test', password: 'admin-password-123' }, '/login');
+  const adminCookie = cookiesFrom(login);
+  const d = await post(`/admin/users/${u.id}/action`, adminCookie, { action: 'decline', reason: 'free period already extended once' }, '/admin');
+  assert.equal(d.statusCode, 302, d.body);
+  assert.match(flashOf(d), /Declined\. noor@example\.com has been emailed/);
+  assert.ok(!pendingExtensionRequests().some((e) => e.user_id === u.id), 'request left the queue');
+  const bill = (await get('/billing', u.cookie)).body;
+  assert.match(bill, /Your extension request was not approved/);
+  assert.doesNotMatch(bill, /Free extension submitted/);
+  assert.match(bill, /Need more time\?/, 'they may ask again later');
 });
 
 test('a 120-day gift plan still gets only 30 instant days; Keep-my-plan is listed first', async () => {

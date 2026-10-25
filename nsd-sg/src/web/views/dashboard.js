@@ -226,7 +226,7 @@ function planCompare(freePlan, ent, promo, csrf) {
 }
 const getPlanName = (id, freePlan) => (id && id !== freePlan.id ? id : freePlan.name);
 
-export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [], promo = null, freePlan = null, pendingExtension = null }) {
+export function billingPage({ user, ent, plans, events, storageUsed, siteCount, csrf, subscriptions = [], promo = null, freePlan = null, pendingExtension = null, declined = null }) {
   const activeSub = subscriptions.find((s) => s.status === 'active') ?? subscriptions.find((s) => s.status === 'scheduled');
   // Only a fresh checkout deserves the "not confirmed yet" notice; older ones are timed out by reconcileUser.
   const pendingSub = subscriptions.find((s) => s.status === 'pending' && Date.now() - Date.parse(s.created_at) < 20 * 60_000); // a card page takes minutes, not hours
@@ -252,6 +252,7 @@ ${planBanner(ent)}
     <li>Started: ${formatDate(user.plan_started_at)}</li>
     <li>Expires: <strong>${ent.expiresAt ? formatDate(ent.expiresAt) : 'never'}</strong>${ent.daysLeft !== null && !ent.expired ? html` <span class="muted">(${ent.daysLeft} days left)</span>` : ''}</li>
   </ul>
+  ${declined && !pendingExtension ? html`<div class="flash flash-warn ext-declined"><strong>Your extension request was not approved</strong> on ${formatDate(declined.created_at)}. Your pages stay online and nothing is deleted. To keep publishing, choose one of the plans below. Think we got it wrong? <a href="/contact">Tell a person</a>.</div>` : ''}
   ${ent.plan.trial_days && pendingExtension ? html`<div class="flash flash-info ext-pending"><strong>Free extension submitted</strong> on ${formatDate(pendingExtension.created_at)}. We review requests within 3–5 working days and confirm by email. Check back here — the expiry date above updates when it is approved.</div>` : ''}
   ${ent.plan.trial_days && !pendingExtension ? html`<form method="post" action="/billing/extend" class="form"><input type="hidden" name="_csrf" value="${csrf}">
     <h3>Need more time?</h3><p class="muted small">Your first extension is instant: ${Math.min(ent.plan.trial_days, 30)} more days, no waiting. After that a person looks at each request.</p>

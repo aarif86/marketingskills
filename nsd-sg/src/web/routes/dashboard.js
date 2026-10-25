@@ -14,7 +14,7 @@ import { watchdog } from '../../lib/audit.js';
 import {
   createSite, listSitesForUser, getSiteForUser, updateSiteSettings, deleteSite, storageUsedByUser, trafficForSite, monthlyBytesForSite, checkSiteReady, knownReady,
 } from '../../services/sites.js';
-import { showcaseMode, getPlan, entitlementsFor, requestExtension, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
+import { showcaseMode, getPlan, entitlementsFor, requestExtension, lastDeclineFor, listPlanEvents, listPlans, redeemPromoCode, removePromo, activePromoFor, pendingExtensionFor, getDefaultPlan } from '../../services/plans.js';
 import * as hitpay from '../../services/hitpay.js';
 import { updateProfile, changePassword, listSessions, destroyAllSessions, verifyPasswordForUser } from '../../services/users.js';
 import { storePack } from '../../services/evidence.js';
@@ -399,7 +399,7 @@ export async function registerDashboardRoutes(app) {
       const r = await hitpay.reconcileUser(req.user.id);
       if (r.some((x) => x.activated)) { const { findUserById } = await import('../../services/users.js'); user = findUserById(req.user.id); }
     } catch (e) { req.log.warn({ err: e }, 'hitpay reconcile failed'); }
-    return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), promo: activePromoFor(user.id), freePlan: getDefaultPlan(), pendingExtension: pendingExtensionFor(user.id), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
+    return render(req, reply, { title: 'Plan & billing', active: 'billing', body: V.billingPage({ user, ent: entitlementsFor(user), plans: listPlans(), promo: activePromoFor(user.id), freePlan: getDefaultPlan(), pendingExtension: pendingExtensionFor(user.id), declined: lastDeclineFor(user.id), subscriptions: hitpay.listSubscriptionsForUser(user.id), events: listPlanEvents(req.user.id), storageUsed: storageUsedByUser(req.user.id), siteCount: listSitesForUser(req.user.id).length, csrf: csrfTokenFor(req) }) });
   });
 
   app.post('/billing/hitpay/dismiss', { preHandler: requireUser }, async (req, reply) => {

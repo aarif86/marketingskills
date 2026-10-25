@@ -22,7 +22,7 @@ export function overview({ stats, alerts, recentUsers, recentDeploys, extensions
 <div class="card"><h2>Extension requests (${extensions.length})</h2>
   ${extensions.length === 0 ? html`<p class="muted">None pending.</p>` : extensions.map((e) => html`
   <div class="row-between"><div><a href="/admin/users/${e.user_id}">${e.email}</a> <span class="muted small">${e.plan_id} · expires ${e.plan_expires_at ? e.plan_expires_at.slice(0, 10) : 'never'} · asked ${timeAgo(e.created_at)}</span><div class="muted small">${(JSON.parse(e.details || '{}').note) || ''}</div></div>
-  <form method="post" action="/admin/users/${e.user_id}/action" class="inline">${hidden(csrf, { action: 'extend', days: 90, reason: 'extension request' })}<button class="btn btn-tiny btn-primary">+90 days</button></form></div>`)}
+  <span class="inline-actions"><form method="post" action="/admin/users/${e.user_id}/action" class="inline">${hidden(csrf, { action: 'extend', days: 90, reason: 'extension request' })}<button class="btn btn-tiny btn-primary">+90 days</button></form> <form method="post" action="/admin/users/${e.user_id}/action" class="inline" data-confirm="Decline and email ${e.email} the paid options?">${hidden(csrf, { action: 'decline', reason: '' })}<button class="btn btn-tiny btn-ghost">Decline</button></form></span></div>`)}
 </div>
 <div class="card"><h2>Upgrade requests (30d)</h2>
   ${upgrades.length === 0 ? html`<p class="muted">None.</p>` : upgrades.map((e) => html`<div class="row-between"><a href="/admin/users/${e.user_id}">${e.email}</a><span class="muted small">→ ${e.to_plan} · ${timeAgo(e.created_at)}</span></div>`)}
