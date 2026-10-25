@@ -760,6 +760,20 @@ test('testimonials: admin adds a quote and it shows on the home page; hide remov
   assert.match(bill, /Plus yearly/);
   assert.match(bill, /S\$90\/year/);
   assert.match(bill, /two months free/);
+  assert.doesNotMatch(bill, /Beta yearly/, 'a Free account is not on the S$6 rate');
+  // a member on the S$6 rate (Beta, or a gift plan priced like Beta) gets the S$60 yearly too
+  getDb().prepare("UPDATE users SET plan_id = 'beta', plan_expires_at = datetime('now', '+5 days') WHERE email = 'bob@example.com'").run();
+  const beta = (await get('/billing', bob.cookie)).body;
+  assert.match(beta, /Beta yearly/);
+  assert.match(beta, /S\$60\/year/);
+  assert.match(beta, /Keep Beta after your free period/);
+  const { upsertPlan } = await import('../src/services/plans.js');
+  upsertPlan({ id: 'plus-gift6', name: 'Plus (gift)', description: 'gift', price_cents_month: 600, trial_days: 120, is_public: 0, is_default: 0, sort_order: 90, limits: { max_sites: 5, max_storage_bytes: 1024 ** 3, max_file_bytes: 50 * 1024 * 1024, max_releases: 10, max_bandwidth_bytes_month: 50 * 1024 ** 3 }, features: { branding_removable: true, custom_domains: true, showcase: 'opt_out' } });
+  getDb().prepare("UPDATE users SET plan_id = 'plus-gift6', plan_expires_at = datetime('now', '+5 days') WHERE email = 'bob@example.com'").run();
+  const gift = (await get('/billing', bob.cookie)).body;
+  assert.match(gift, /Beta yearly/, 'gift plan at the S$6 rate sees the S$60 yearly');
+  assert.match(gift, /Plus yearly/, 'and the public yearly');
+  getDb().prepare("UPDATE users SET plan_id = 'free', plan_expires_at = datetime('now', '+20 days') WHERE email = 'bob@example.com'").run();
 });
 
 test('admin funnel: a user can be marked as a lead for NasarDigital and shows on the Overview funnel', async () => {

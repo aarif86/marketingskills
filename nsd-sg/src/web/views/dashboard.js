@@ -241,7 +241,16 @@ export function billingPage({ user, ent, plans, events, storageUsed, siteCount, 
   const switchAt = activeSub?.last_paid_at ? paidUntil(activeSub.last_paid_at, 'canceled', activePlan?.features?.interval ?? 'month') : null;
   const yearlyMoment = ent.expired || (ent.daysLeft !== null && ent.daysLeft <= 14) || (!!activeSub && activePlan?.features?.interval !== 'year');
   const priceOf = (p) => (p.features?.interval === 'year' ? `S$${((p.features.price_cents_total ?? p.price_cents_month * 12) / 100).toFixed(0)}/year` : `S$${(p.price_cents_month / 100).toFixed(0)}/month`);
-  const offers = plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : (p.is_public && !dominated(p)) || (p.features?.interval === 'year' && yearlyMoment)) && !(activeSub && activeSub.plan_id === p.id))
+  // A yearly plan belongs to a monthly one (features.yearly_of). The public one (Plus) is offered to everyone at the
+  // moment of decision; a code plan's yearly (Beta) only to people already on that rate: Beta itself, a gift or promo
+  // plan that renews at the Beta price, or an active Beta subscription.
+  const yearlyEligible = (p) => {
+    const base = plans.find((b) => b.id === p.features?.yearly_of);
+    if (!base) return false;
+    if (base.is_public) return true;
+    return ent.plan.id === base.id || ent.plan.price_cents_month === base.price_cents_month || activeSub?.plan_id === base.id || activePlan?.price_cents_month === base.price_cents_month;
+  };
+  const offers = plans.filter((p) => p.price_cents_month > 0 && (p.id === ent.plan.id ? !!ent.expiresAt : (p.is_public && !dominated(p)) || (p.features?.interval === 'year' && yearlyMoment && yearlyEligible(p))) && !(activeSub && activeSub.plan_id === p.id))
     .sort((a, b) => (a.id === ent.plan.id ? 0 : 1) - (b.id === ent.plan.id ? 0 : 1));
   const anchor = keeping && !keeping.is_public ? plans.filter((p) => p.is_public && dominated(p)).sort((a, b) => a.price_cents_month - b.price_cents_month)[0] : null;
   return html`<h1>Plan &amp; billing</h1>
