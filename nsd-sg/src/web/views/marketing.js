@@ -15,7 +15,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   ${latest ? html`<div class="hero-new-wrap"><a class="hero-new" href="/changelog#v${latest.version.replace(/\./g, '-')}"><b>New</b> ${latest.title} →</a></div>` : ''}
   <p class="eyebrow">For anyone who makes things with AI · Singapore</p>
   <h1>You made it with AI.<br><span class="grad">Give it a proper address.</span></h1>
-  <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours.</p>
+  <p class="lead">Claude, ChatGPT or Gemini made you a page. Now you want to send it to someone. Put it at <strong>yourname.${baseDomain}</strong>. It takes a minute, it is free, and it looks like yours. Or <a href="#connect">connect your AI</a> and just say “put this online”.</p>
   <form class="hero-form" action="/signup" method="get">
     <div class="domain-input"><input name="name" placeholder="yourname" maxlength="40" autocomplete="off" spellcheck="false" data-availability aria-label="Pick your web address"><span>.${baseDomain}</span></div>
     <button class="btn btn-primary btn-lg" type="submit">Claim my address</button>
@@ -78,8 +78,31 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   <h2>How it works</h2>
   <div class="grid three">
     <div class="card"><div class="step">1</div><h3>Ask the AI for a page</h3><p>Tell Claude, ChatGPT or Gemini what you want. When it is done, press “Copy code”. That code is your whole page.</p></div>
-    <div class="card"><div class="step">2</div><h3>Paste it here</h3><p>Sign up for free, pick your name, paste the code. Have files instead? Drop them in. That works too.</p></div>
+    <div class="card"><div class="step">2</div><h3>Paste it here</h3><p>Sign up for free, pick your name, paste the code. Have files instead? Drop them in. Or <a href="#connect">connect your AI</a> and it does this step for you.</p></div>
     <div class="card"><div class="step">3</div><h3>Send the link</h3><p>Your page is now at <strong>yourname.${baseDomain}</strong>. Send it on WhatsApp, email, anywhere. Paste again any time to change it.</p></div>
+  </div>
+</div></section>
+
+<section id="connect" class="section connect"><div class="container">
+  <p class="eyebrow">Connect your AI · the shortcut</p>
+  <h2>Skip the copy and paste.<br>Let your AI put it online.</h2>
+  <p class="section-lead">Works with <strong>Claude, ChatGPT, Codex, Gemini, Cursor</strong> and any AI tool that can use connectors. Today you ask your AI for a page, download it and upload it here. Connected, you say “put this online as kopi-stall” and your AI gives you the live link. Three steps, once only.</p>
+  <div class="connect-wrap">
+    <div class="grid three connect-steps">
+      <div class="card"><div class="step">1</div><h3>Get a key</h3><p>Sign up free, open <strong>Connect your AI</strong>, press one button. You get a long web address. That is the key.</p></div>
+      <div class="card"><div class="step">2</div><h3>Give it to your AI</h3><p>Paste it where your AI keeps its connectors. In Claude: Settings → Connectors → Add custom connector. Once only; the page shows the steps for each AI.</p></div>
+      <div class="card"><div class="step">3</div><h3>Just ask</h3><p>“Put this page online as <strong>kopi-stall</strong>.” Your AI answers with <strong>kopi-stall.${baseDomain}</strong>. “Change it”, “show my sites” and “remove it” work too.</p></div>
+    </div>
+    <div class="chat card" aria-label="Example conversation">
+      <div class="msg me"><span>Make me a one-page menu for my kopi stall, then put it online as <b>kopi-stall</b>.</span></div>
+      <div class="msg ai"><span>Done. Your menu is live at <b>https://kopi-stall.${baseDomain}</b>. The padlock takes a few minutes the first time.</span></div>
+      <div class="msg me"><span>Change the opening hours to 7am.</span></div>
+      <div class="msg ai"><span>Updated. Same link, version 2. The old copy is kept.</span></div>
+    </div>
+  </div>
+  <div class="connect-foot">
+    <a class="btn btn-primary btn-lg" href="/connect">Connect my AI</a>
+    <p class="muted small">Your AI can only put up, change, list and remove <strong>your</strong> sites, within your plan. It asks before publishing. Switch the key off any time. For the technical: an MCP server, the open standard for AI connectors.</p>
   </div>
 </div></section>
 
@@ -100,7 +123,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   <ul class="features">
     <li>Paste the code, or drop in files, a folder or a ZIP</li><li>Extra pages with their own names: /proposal, /quiz, /menu</li><li>Older copies kept, so you can go back</li>
     <li>The padlock (secure connection) on every page</li><li>Your own “page not found” page if you want one</li><li>Protection against fake and copycat names</li>
-    <li>See how many people visited</li><li>Your own domain name on Plus</li><li>Email help from NasarDigital</li>
+    <li>See how many people visited</li><li>Connect your AI: say “put this online” and it is</li><li>Your own domain name on Plus</li><li>Email help from NasarDigital</li>
   </ul>
 </div></section>
 
@@ -131,6 +154,7 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   <details><summary>What is “the code”?</summary><p>When an AI makes you a page, it writes it in a language called HTML. That is the code. You never need to read it. Just copy all of it and paste it here.</p></details>
   <details><summary>Can I change the page after I send the link?</summary><p>Yes. Paste the new code and the link stays the same. The old copy is kept, so you can go back if you need to.</p></details>
   <details><summary>Why is there a small badge on my page?</summary><p>Free pages show a small “Powered by NasarDigital · nsd.sg” badge in the corner. That is what pays for the free plan. Plus removes it.</p></details>
+  <details><summary>Can my AI put the page online by itself?</summary><p>Yes. <a href="#connect">Connect your AI</a> once, then say “put this online as kopi-stall”. Works with Claude, ChatGPT, Codex, Gemini, Cursor and any tool with connectors.</p></details>
   <p><a href="/faq">Read all the questions →</a></p>
 </div></section>
 
@@ -138,7 +162,21 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
   <h2>Your page is ready. Give it an address.</h2>
   <a class="btn btn-primary btn-lg" href="/signup">Claim my ${baseDomain} address</a>
   <p class="muted">Make it with AI → Put it online with NSD.SG → Grow with NasarDigital</p>
-</div></section>`.toString();
+</div></section>
+${raw(jsonLd({ baseDomain, plans }))}`.toString();
+}
+
+// Structured data for search engines and AI assistants that fetch the home page.
+function jsonLd({ baseDomain, plans }) {
+  const site = `${config.publicScheme}://${config.platformHosts[0]}`;
+  const data = [
+    { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'NSD.SG', applicationCategory: 'WebApplication', operatingSystem: 'Web', url: site,
+      description: `Static hosting for pages made with AI. Paste the HTML or let your AI publish through a connector (MCP); the page is live at yourname.${baseDomain} with HTTPS in a minute. Singapore.`,
+      offers: plans.map((p) => ({ '@type': 'Offer', name: p.name, price: (p.price_cents_month / 100).toFixed(2), priceCurrency: 'SGD', description: p.description })),
+      provider: { '@type': 'Organization', name: 'NasarDigital', url: config.branding.partnerUrl } },
+    { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_QA.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+  ];
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
 
 export function pricingPage({ plans }) {
@@ -157,8 +195,7 @@ export function pricingPage({ plans }) {
 </div></section>`.toString();
 }
 
-export function faqPage() {
-  const qa = [
+export const FAQ_QA = [
     ['What is NSD.SG?', 'A place to put the page you made with AI online, at your own name.nsd.sg address. Paste the code or drop in your files, then send the link to anyone.'],
     ['What is “the code”?', 'When Claude, ChatGPT or Gemini makes you a page, it writes it in a language called HTML. That is the code. You do not need to understand it. Copy all of it and paste it into NSD.SG.'],
     ['Can I try it before I sign up?', 'Yes. On the home page, paste the code into the “Try it first” box. You get a link that works for 3 hours. If you like it, sign up and press “Keep it” to move the page to your own address.'],
@@ -179,7 +216,10 @@ export function faqPage() {
     ['Are there names I cannot use?', 'Names that look like banks, government services or well-known brands are blocked, so nobody can trick your visitors. Rude names are blocked too.'],
     ['What if someone puts something bad on a page?', 'Every page is checked and kept separate from the others. Anyone can report a page at /report, and we take bad pages down quickly.'],
     ['Where are the pages kept?', 'On NasarDigital servers in Singapore and Asia, with the padlock (secure connection) on every page. Copies are made every day.'],
-  ];
+    ['Can my AI put the page online by itself?', 'Yes. Sign up, open “Connect your AI” and press one button to get a key. Paste the key where your AI keeps its connectors (Claude, ChatGPT, Codex, Gemini, Cursor or any tool that supports MCP connectors). From then on you say “put this online as kopi-stall” and your AI answers with the live link. It can only touch your own sites, and it asks before publishing.'],
+];
+export function faqPage() {
+  const qa = FAQ_QA;
   return html`<section class="section"><div class="container narrow"><h1>Questions people ask</h1>
   ${qa.map(([q, a]) => html`<details><summary>${q}</summary><p>${a}</p></details>`)}
   <p class="mt">Something else? ${whatsappLink('from the FAQ page') ? html`<a href="${whatsappLink('from the FAQ page')}" target="_blank" rel="noopener">WhatsApp a real human</a> or email` : 'Email'} <a href="mailto:hello@${config.baseDomain}">hello@${config.baseDomain}</a>. A person replies.</p></div></section>`.toString();

@@ -46,6 +46,22 @@ test('marketing pages render', async () => {
   assert.match(r.body, /Give it a proper address/);
   assert.match(r.body, /Who this is for/);
   assert.match(r.headers['content-security-policy'], /frame-ancestors 'none'/);
+  // the connector is marketed on the landing page and discoverable by AI assistants
+  assert.match(r.body, /id="connect"/);
+  assert.match(r.body, /Claude, ChatGPT, Codex, Gemini, Cursor/);
+  assert.match(r.body, /href="\/#connect">Connect your AI/);
+  assert.match(r.body, /application\/ld\+json/);
+  assert.match(r.body, /"@type":"FAQPage"/);
+  assert.match(r.body, /property="og:title"/);
+  const llms = await get('/llms.txt');
+  assert.equal(llms.statusCode, 200);
+  assert.match(llms.headers['content-type'], /text\/plain/);
+  assert.match(llms.body, /nsd_publish/);
+  assert.match(llms.body, /## Plans/);
+  const sm = await get('/sitemap.xml');
+  assert.equal(sm.statusCode, 200);
+  assert.match(sm.body, /<loc>http:\/\/nsd.test\/pricing<\/loc>/);
+  assert.match((await get('/robots.txt')).body, /Sitemap: /);
 });
 
 test('unknown host is refused only in production; tenant on unknown subdomain gets 404', async () => {

@@ -73,13 +73,17 @@ function head(title, { description = '' } = {}) {
 <link rel="stylesheet" href="/assets/app.css?v=${config.version}">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#0f1014">
+<meta property="og:site_name" content="NSD.SG"><meta property="og:type" content="website">
+<meta property="og:title" content="${title ? `${title} · NSD.SG` : 'NSD.SG — You made it with AI. Give it a proper address.'}">
+<meta property="og:description" content="${description || 'Made a page with Claude, ChatGPT or Gemini? Paste the code, or connect your AI, and it is online at yourname.nsd.sg in a minute. Free to start.'}">
+<meta property="og:image" content="${config.publicScheme}://${config.platformHosts[0]}/assets/social-site.png"><meta name="twitter:card" content="summary_large_image">
 </head>`;
 }
 
 export function marketingLayout({ title, description, body, user, flash, path = '', waMode = 'smart' }) {
   return html`${head(title, { description })}<body class="marketing">
 ${raw(header({
-    links: [['/#try', 'Try it'], ['/#who', 'Who it’s for'], ['/#how', 'How it works'], ['/pricing', 'Pricing'], ['/showcase', 'Showcase'], ['/roadmap', 'Roadmap'], ['/changelog', 'What’s new'], ['/faq', 'FAQ']].map(([href, label]) => [href, label, href === path]),
+    links: [['/#try', 'Try it'], ['/#connect', 'Connect your AI'], ['/pricing', 'Pricing'], ['/showcase', 'Showcase'], ['/roadmap', 'Roadmap'], ['/changelog', 'What’s new'], ['/faq', 'FAQ']].map(([href, label]) => [href, label, href === path]),
     ctas: user
       ? html`<a class="btn btn-primary btn-sm" href="/dashboard">Dashboard</a>`
       : html`<a class="btn btn-ghost btn-sm" href="/login">Log in</a><a class="btn btn-primary btn-sm" href="/signup">Sign up free</a>`,
@@ -89,7 +93,7 @@ ${helpPanel({ context: title ? `on the ${title} page` : 'on the home page', tipK
 <footer class="site-footer"><div class="container">
 <div class="foot-grid">
 <div><div class="brand small">NSD<span>.SG</span></div><p>Make it with AI. Put it online with NSD.SG. Grow with <a href="${config.branding.partnerUrl}" rel="noopener">NasarDigital</a></p></div>
-<div><h4>Product</h4><a href="/#try">Try it</a><a href="/#who">Who it’s for</a><a href="/#how">How it works</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">What’s new</a><a href="/faq">Questions</a></div>
+<div><h4>Product</h4><a href="/#try">Try it</a><a href="/#who">Who it’s for</a><a href="/#how">How it works</a><a href="/#connect">Connect your AI</a><a href="/pricing">Pricing</a><a href="/roadmap">Roadmap</a><a href="/changelog">What’s new</a><a href="/faq">Questions</a></div>
 <div><h4>Account</h4><a href="/login">Log in</a><a href="/signup">Sign up</a><a href="/forgot">Reset password</a></div>
 <div><h4>Trust</h4><a href="/contact">Contact</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/report">Report abuse</a>${supportConfig().enabled ? html`<a href="${whatsappLink('from the footer')}" target="_blank" rel="noopener">WhatsApp a real human</a>` : ''}</div>
 </div>

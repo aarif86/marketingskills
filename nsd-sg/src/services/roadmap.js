@@ -143,6 +143,10 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-24', '0.13.24', 'Connect your AI, now on the front page', `- New: the home page has a “Connect your AI” section: Claude, ChatGPT, Codex, Gemini, Cursor and any AI tool with connectors can put your page online when you say so. Three steps, an example conversation, and a Connect my AI button. Also in the top menu, the feature list and the FAQ.
+- New: nsd.sg/llms.txt, a plain-text summary for AI assistants that are asked “what is nsd.sg?”, plus a sitemap and link-preview (Open Graph) tags on every public page, and structured data (software listing and FAQ) on the home page.
+- Changed: the top menu is shorter (Try it, Connect your AI, Pricing, Showcase, Roadmap, What’s new, FAQ) so nothing is cut off on laptop screens; “Who it’s for” and “How it works” stay in the footer.
+- Fixed: on narrow phones the address box on the home page was slightly wider than the screen.`, 'new', '2026-10-25T18:30:00Z'],
   ['cl-0-13-23', '0.13.23', 'Builder essentials: redirects, single-page apps, caching', `- New: a _redirects file in your site works like on Netlify or Cloudflare Pages: /old /new 301, /blog/* /posts/:splat 302, /gone / 404, and /* /index.html 200 for apps with their own page addresses (React, Vue, Svelte). Rules only point to pages on your own site; links to other websites are refused with the line number, so nobody can misuse an nsd.sg address.
 - New: hashed build files (index-BxK3f9aQ.js, _astro/…) are cached by browsers for a year; pages still refresh within a minute. Same on the Node server and the LiteSpeed docroot.
 - Fixed: folders and files starting with an underscore (_astro/, _next/) were refused at upload.
