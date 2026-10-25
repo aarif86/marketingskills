@@ -303,9 +303,11 @@ ${fresh ? html`<div class="card token-fresh"><h2>Here is your key</h2>
   <details class="how" open><summary>Claude (web or the desktop app)</summary><ol class="plain-steps">
     <li>Open <strong>Settings</strong>, then <strong>Connectors</strong> (on the web: claude.ai/settings/connectors).</li>
     <li>Press <strong>Add custom connector</strong>.</li>
-    <li>Name: <code>NSD.SG</code>. URL: paste the long address from step 1. Leave the other boxes empty. Press <strong>Add</strong>.</li>
+    <li>Name: <code>NSD.SG</code>. URL: paste the long address from step 1.</li>
+    <li>Under <strong>Authentication</strong> choose <strong>No sign-in</strong> (it usually says “Detected” already). Your key is inside the address, so you need nothing else. Leave <strong>Request headers</strong> empty. Press <strong>Add</strong>.</li>
     <li>In a chat, open the tools menu near the message box and switch <strong>NSD.SG</strong> on.</li>
-  </ol></details>
+  </ol>
+  <p class="muted small">Prefer the key out of the address? Use <code>${base}/mcp</code> as the URL, then press <strong>Add header</strong>: name <code>Authorization</code>, value <code>Bearer</code> followed by a space and the part of your address after <code>/mcp/</code>. Claude stores it hidden. Same result either way.</p></details>
   <details class="how"><summary>ChatGPT</summary><ol class="plain-steps">
     <li>Open <strong>Settings</strong>, then <strong>Connectors</strong>. Under Advanced, switch on <strong>Developer mode</strong>.</li>
     <li>Press <strong>Create</strong>. Name: <code>NSD.SG</code>. URL: paste the long address. Authentication: <strong>None</strong>. Save.</li>

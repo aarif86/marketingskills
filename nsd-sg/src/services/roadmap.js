@@ -143,6 +143,7 @@ const SEED_ROADMAP = [
   ['rm-watchdog', 'Abuse-name watchdog', 'Names that break the terms (adult, gambling, scams, impersonation) are refused at signup and logged.', 'shipped', 'admin', 907],
 ];
 const SEED_CHANGELOG = [
+  ['cl-0-13-18', '0.13.18', 'Connect steps match the new Claude dialog', `- Changed: Claude’s “Add custom connector” box now asks about sign-in. The steps say what to pick: No sign-in, no headers, Add. Also the safer variant with the key as a hidden header.`, 'fix', '2026-10-25T12:30:00Z'],
   ['cl-0-13-17', '0.13.17', 'Copy button for your key', `- New: the Connect your AI page has a Copy button next to the key, so there is no long address to select by hand on a phone.`, 'improved', '2026-10-25T12:00:00Z'],
   ['cl-0-13-16', '0.13.16', 'Two more guard rails before the crowd arrives', `- New: a site that uses more transfer than its plan allows in a month is paused with a plain notice until the 1st, so one busy or abused site cannot slow down everyone else's.
 - New: anonymous test pages cannot contain a password or login form. Real sites can; sign up for those.
