@@ -733,3 +733,29 @@ test('lifecycle speaks to paying members as members: a cancelled Plus says "your
   assert.ok(outbox.some((x) => x.to === 'yearly@example.com' && /renews on/.test(x.subject) && /S\$90/.test(x.text)));
   assert.equal(await renewalSweep(), 0, 'once per due date');
 });
+
+test('self-probe fallback: a provisioned address the server cannot fetch is assumed reachable after the grace period, and the retry queue clears', async () => {
+  const { checkSiteReady, READY_GRACE_MS } = await import('../src/services/sites.js');
+  answers = false;
+  const { createUser } = await import('../src/services/users.js');
+  const { createSite } = await import('../src/services/sites.js');
+  const u = await createUser({ email: 'stuck@example.com', password: 'correct-horse-battery', name: 'Stuck' });
+  const made = createSite({ user: u, subdomain: 'stucksite', title: 'Stuck' });
+  const db = getDb();
+  db.prepare("UPDATE sites SET hosting_state = 'ready', hosting_ready_at = NULL WHERE id = ?").run(made.site.id);
+  let site = db.prepare('SELECT * FROM sites WHERE id = ?').get(made.site.id);
+  let r = await checkSiteReady(site);
+  assert.equal(r.ready, false, 'a fresh site still waits for the probe');
+  db.prepare("UPDATE sites SET created_at = ?, hosting_state = 'ready' WHERE id = ?").run(new Date(Date.now() - READY_GRACE_MS - 60_000).toISOString(), made.site.id); // in tests the repair above has no API and flips state to pending; live Hostinger keeps it ready
+  site = db.prepare('SELECT * FROM sites WHERE id = ?').get(made.site.id);
+  r = await checkSiteReady(site);
+  assert.equal(r.ready, true); assert.equal(r.assumed, true);
+  const row = db.prepare('SELECT hosting_ready_at, hosting_error FROM sites WHERE id = ?').get(made.site.id);
+  assert.ok(row.hosting_ready_at); assert.match(row.hosting_error, /assumed reachable/);
+  // the 2-minute sweep applies the same rule and stops retrying
+  db.prepare("UPDATE sites SET hosting_ready_at = NULL, hosting_error = '', hosting_state = 'ready' WHERE id = ?").run(made.site.id);
+  const sweep = await repairPending();
+  assert.ok(sweep.assumed >= 1, JSON.stringify(sweep));
+  assert.ok(db.prepare('SELECT hosting_ready_at FROM sites WHERE id = ?').get(made.site.id).hosting_ready_at);
+  answers = true;
+});

@@ -369,9 +369,10 @@ export async function repairSite(siteId, { force = false } = {}) {
 /** Sweep every site whose address is not confirmed yet. Cheap when there is nothing to do. */
 export async function repairPending({ force = false } = {}) {
   if (!isEnabled()) return { skipped: true };
-  const rows = getDb().prepare("SELECT id, subdomain FROM sites WHERE status != 'deleted' AND hosting_ready_at IS NULL").all();
-  const out = { checked: rows.length, repaired: 0, failed: 0, skipped: 0, details: [] };
+  const rows = getDb().prepare("SELECT id, subdomain, hosting_state, hosting_ready_at, created_at FROM sites WHERE status != 'deleted' AND hosting_ready_at IS NULL").all();
+  const out = { checked: rows.length, repaired: 0, failed: 0, skipped: 0, assumed: 0, details: [] };
   for (const r of rows) {
+    if ((await import('../services/sites.js')).assumeReadyIfOverdue(r)) { out.assumed++; out.details.push({ subdomain: r.subdomain, assumed: true }); continue; }
     const res = await repairSite(r.id, { force });
     if (res.skipped) out.skipped++; else if (res.ok) out.repaired++; else out.failed++;
     out.details.push({ subdomain: r.subdomain, ...res });

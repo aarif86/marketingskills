@@ -1,6 +1,7 @@
 import { html, formatBytes, formatDate, timeAgo } from '../../lib/html.js';
 import { showcaseMode } from '../../services/plans.js';
 import { config } from '../../config.js';
+import { READY_GRACE_MS } from '../../services/sites.js';
 
 const pill = (s) => html`<span class="pill pill-${s}">${s}</span>`;
 const stat = (label, value, sub = '') => html`<div class="stat"><div class="stat-value">${value}</div><div class="stat-label">${label}</div>${sub ? html`<div class="muted small">${sub}</div>` : ''}</div>`;
@@ -143,6 +144,7 @@ export function siteDetail({ site, owner, ent, files, releases, traffic, reports
 <div class="page-head"><div><h1>${site.subdomain}<span class="muted">.${config.baseDomain}</span> ${pill(site.status)}</h1>
 <p class="muted">${site.title} · owner <a href="/admin/users/${site.user_id}">${owner?.email ?? '?'}</a> (${owner?.plan_id ?? '?'}) · ${files.length} files · ${formatBytes(site.storage_bytes)} current / ${formatBytes(site.total_storage_bytes)} total · created ${formatDate(site.created_at)} · deployed ${timeAgo(site.last_deployed_at)}</p>
 ${site.status === 'suspended' ? html`<p class="flash flash-error">Suspended: ${site.suspended_reason || 'no reason recorded'}</p>` : ''}
+${site.hosting_state !== undefined && !site.hosting_ready_at && site.hosting_state === 'ready' ? html`<p class="muted small">Hostinger has provisioned this address but the server has not managed to fetch it itself yet. Open it in a browser: if it loads with the padlock, press “Mark reachable” below, or wait: it is assumed reachable ${Math.round(READY_GRACE_MS / 60_000)} minutes after provisioning.</p>` : ''}
 ${site.hosting_state !== undefined ? html`<p class="muted small">Hosting: <strong>${site.hosting_state}</strong>${site.hosting_error ? html` · error: <code>${site.hosting_error}</code>` : ''} · address ${site.hosting_ready_at ? html`confirmed reachable ${timeAgo(site.hosting_ready_at)}` : html`<strong class="warn">not yet confirmed</strong> (owner sees “setting up”) · ${site.hosting_attempts ?? 0} automatic retr${(site.hosting_attempts ?? 0) === 1 ? 'y' : 'ies'}${site.hosting_last_attempt_at ? html`, last ${timeAgo(site.hosting_last_attempt_at)}` : ''}`}</p>` : ''}</div>
 <div class="actions"><a class="btn btn-ghost" href="${url}" target="_blank" rel="noopener">Open ↗</a>
   ${site.status === 'suspended' ? act({ action: 'unsuspend' }, 'Unsuspend', 'btn-primary') : ''}

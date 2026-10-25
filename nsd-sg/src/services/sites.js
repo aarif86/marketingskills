@@ -85,6 +85,18 @@ export function createSite({ user, subdomain, title = '' }) {
 // Same-process serving (VPS/local) answers as soon as the row exists. On Hostinger the address is only real once
 // LiteSpeed answers 200 over HTTPS, which for a new subdomain waits on its certificate (5-15 min). The site page
 // shows "setting up" until this says ready, then remembers it (hosting_ready_at) so it is never asked again.
+// On Hostinger the app sometimes cannot fetch its own subdomains (the browser can, the server cannot). Once Hostinger
+// itself reports the subdomain provisioned and this much time has passed, we stop waiting for the self-probe: the
+// owner is told the site is online, and the usual padlock note covers the last few minutes of certificate issuing.
+export const READY_GRACE_MS = Number(process.env.HOSTING_READY_GRACE_MIN || 30) * 60_000;
+export function assumeReadyIfOverdue(site, detail = '') {
+  if (site.hosting_ready_at || site.hosting_state !== 'ready') return false;
+  if (Date.now() - Date.parse(site.created_at) < READY_GRACE_MS) return false;
+  const r = getDb().prepare("UPDATE sites SET hosting_ready_at = ?, hosting_error = ? WHERE id = ? AND hosting_ready_at IS NULL")
+    .run(nowIso(), `assumed reachable ${Math.round(READY_GRACE_MS / 60_000)} min after Hostinger reported it ready; the server could not fetch it itself${detail ? ` (${detail})` : ''}`, site.id);
+  return r.changes > 0;
+}
+
 export async function checkSiteReady(site) {
   const url = publicUrlForSubdomain(site.subdomain);
   if (!hostingEnabled()) return { ready: true, url };
@@ -94,6 +106,7 @@ export async function checkSiteReady(site) {
     getDb().prepare('UPDATE sites SET hosting_ready_at = ? WHERE id = ? AND hosting_ready_at IS NULL').run(nowIso(), site.id);
     return { ready: true, url };
   }
+  if (assumeReadyIfOverdue(site, detail)) return { ready: true, url, assumed: true };
   // Not answering: while the owner is watching, quietly re-ask Hostinger (throttled to once a minute).
   let repair = null;
   try { repair = await repairSite(site.id); } catch { /* recorded on the row */ }
