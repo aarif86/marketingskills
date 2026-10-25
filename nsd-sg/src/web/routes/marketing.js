@@ -16,7 +16,15 @@ import { listSitesForUser, getSiteForUser } from '../../services/sites.js';
 import { entitlementsFor } from '../../services/plans.js';
 import { listShowcaseSites } from '../../services/sites.js';
 import fs from 'node:fs';
+import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
+
+// One of our bundled sample pages (src/public/sample-*.html), by file name. Null for anything else.
+function sampleHtml(name) {
+  if (!/^sample-[a-z]+\.html$/.test(String(name ?? ''))) return null;
+  const abs = path.join(config.rootDir, 'src', 'public', name);
+  try { return fs.readFileSync(abs, 'utf8'); } catch { return null; }
+}
 import { listRoadmap, listChangelog, toggleVote, suggest, addAttachment, ATTACHMENT_EXTS, ATTACHMENT_MAX_FILES, ATTACHMENT_MAX_BYTES, attachmentExt } from '../../services/roadmap.js';
 import { tempFile } from '../../storage/releases.js';
 import { requireUser, csrfGuard } from '../middleware.js';
@@ -63,8 +71,10 @@ export async function registerMarketingRoutes(app) {
       if (rejected) return back('That page sat open too long. Refresh it and try again.');
       if (tooBig) return back('That file is bigger than 1 MB. Test pages are for a single page; sign up to publish something bigger.');
       if (!htmlText) htmlText = pastedHtml(fields, TRY_MAX_BYTES);
+      if (!htmlText.trim() && fields.sample) { const s = sampleHtml(fields.sample); if (s) { htmlText = s; source = 'sample'; } }
     } else {
       htmlText = pastedHtml(req.body, TRY_MAX_BYTES);
+      if (!htmlText.trim() && req.body?.sample) { const s = sampleHtml(req.body.sample); if (s) { htmlText = s; source = 'sample'; } }
     }
     if (!htmlText.trim()) return back('Choose the file or paste the code first, then press the button.');
     const problem = validatePaste(htmlText);

@@ -132,20 +132,20 @@
       try { tryFile.files = files; } catch (err) { say('Your browser could not take the dropped file. Use “Choose the file” instead.', true); return; }
       say('Putting ' + files[0].name + ' online…'); go();
     });
-    // Sample pages: fetch one of ours into the paste box and send it, so a visitor with no file yet still sees the whole flow.
-    tryForm.querySelectorAll('[data-try-sample]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var all = tryForm.querySelectorAll('[data-try-sample]'); all.forEach(function (x) { x.disabled = true; });
-        say('Fetching the sample…');
-        fetch(b.getAttribute('data-try-sample'), { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(); return r.text(); }).then(function (html) {
-          if (tryText) tryText.value = html;
-          try { tryFile.value = ''; } catch (err) { /* ignore */ }
-          say('Putting the sample online…'); go();
-        }).catch(function () { say('Could not load the sample. Try the download link instead.', true); })
-          .finally(function () { all.forEach(function (x) { x.disabled = false; }); });
-      });
-    });
+    // Sample pages: the buttons are real submit buttons (name=sample), so the tap itself opens the new tab.
+    // Older browsers without e.submitter: remember which one was pressed.
+    var sampleBtn = null;
+    tryForm.querySelectorAll('[data-sample-btn]').forEach(function (b) { b.addEventListener('click', function () { sampleBtn = b; }); });
     tryForm.addEventListener('submit', function (e) {
+      var sample = (e.submitter && e.submitter.name === 'sample') ? e.submitter : (sampleBtn && sampleBtn.name === 'sample' ? sampleBtn : null);
+      sampleBtn = null;
+      if (sample) {
+        var label = sample.textContent;
+        // Disable only after the browser has read the form (a disabled submitter is left out of the data).
+        setTimeout(function () { sample.disabled = true; sample.textContent = 'Opening in a new tab…'; if (tryBar) tryBar.hidden = false; }, 0);
+        setTimeout(function () { sample.disabled = false; sample.textContent = label; if (tryBar) tryBar.hidden = true; }, 2500);
+        return;
+      }
       if (!tryFile.files.length && !(tryText && tryText.value.trim())) { e.preventDefault(); say('Choose the file or paste the code first.', true); return; }
       tryBtn.disabled = true; tryBtn.textContent = 'Putting your page online…';
       if (tryBar) tryBar.hidden = false;

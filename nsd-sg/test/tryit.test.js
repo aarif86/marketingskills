@@ -253,7 +253,7 @@ test('sample pages: served as html, offered in the try box, and a sample pasted 
     assert.doesNotMatch(r.body, /src="http|href="http[^"]*\.(css|js)"/, 'self-contained: no external scripts or styles');
   }
   const home = await get('/');
-  assert.match(home.body, /data-try-sample="\/assets\/sample-quiz\.html"/);
+  assert.match(home.body, /name="sample" value="sample-quiz\.html"/, 'sample buttons are real submit buttons');
   assert.match(home.body, /download>Download the file/);
   forgetIp();
   const quiz = (await get('/assets/sample-quiz.html')).body;
@@ -262,6 +262,20 @@ test('sample pages: served as html, offered in the try box, and a sample pasted 
   const r = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp.headers }, body: mp.body });
   assert.equal(r.statusCode, 302, r.body);
   assert.match(r.headers.location, /^\/try\//);
+  // pressing a sample button sends only its name; the server reads the file itself (no fetch round trip, works on phones)
+  forgetIp(); reset('tryIt:127.0.0.1');
+  const mp2 = multipart({ _csrf: csrfFrom((await get('/')).body), sample: 'sample-shop.html' }, []);
+  const r2 = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp2.headers }, body: mp2.body });
+  assert.equal(r2.statusCode, 302, r2.body);
+  assert.match(r2.headers.location, /^\/try\//);
+  const shown = await get(`/${r2.headers.location.split('/').pop()}/page.html`, '', 'try.nsd.test');
+  assert.match(shown.body, /made up/, 'the shop sample went online');
+  forgetIp(); reset('tryIt:127.0.0.1');
+  const mp3 = multipart({ _csrf: csrfFrom((await get('/')).body), sample: '../../.env' }, []);
+  const r3 = await app.inject({ method: 'POST', url: '/try', headers: { host: H, origin: `http://${H}`, ...mp3.headers }, body: mp3.body });
+  assert.equal(r3.statusCode, 302);
+  assert.match(r3.headers.location, /^\/#try/, 'an unknown sample name is treated as an empty paste');
+  reset('tryIt:127.0.0.1');
 });
 
 test('pasted pages may arrive base64-encoded (html_b64) on /try and on a site paste; samples carry no onload= attributes', async () => {

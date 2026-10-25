@@ -49,13 +49,13 @@ export function homePage({ baseDomain, plans, csrf = '', latest = null }) {
     <div class="drop-veil" aria-hidden="true"><span>Drop it to put it online</span></div>
     <p class="muted small try-fine">Anyone with the link can see a test page. It is deleted after 3 hours. ${TRY_FREE_PER_PERSON} test pages free without an account. No email, nothing to install.</p>
     <div class="try-samples">
-      <p class="muted small"><strong>No page yet?</strong> Try one of ours. Each is one plain .html file, the kind an AI gives you.</p>
+      <p class="muted small"><strong>No page yet?</strong> Try one of ours. Press the button and it opens online in a new tab, like your own page would. Each is one plain .html file, the kind an AI gives you.</p>
       <div class="sample-row">
         ${[['sample-proposal.html', '💼', 'A one-page proposal', 'Scope, price table, timeline and a “yes, let’s start” button. For consultants and freelancers.'],
            ['sample-quiz.html', '📖', 'A class quiz', 'Five questions that mark themselves, with notes under each answer. Send it to the parents’ group.'],
            ['sample-shop.html', '🏪', 'A one-page shop', 'Today’s menu, opening hours, map, and a WhatsApp order button. For a stall or a small business.']].map(([file, icon, title, blurb]) => html`
         <div class="sample"><span class="sample-icon" aria-hidden="true">${icon}</span><h4>${title}</h4><p class="muted small">${blurb}</p>
-          <div class="sample-actions"><button class="btn btn-ghost btn-sm" type="button" data-try-sample="/assets/${file}">Try this one</button><a class="muted small" href="/assets/${file}" download>Download the file</a></div></div>`)}
+          <div class="sample-actions"><button class="btn btn-primary btn-sm" type="submit" name="sample" value="${file}" data-sample-btn>Put this one online →</button><a class="muted small" href="/assets/${file}" download>Download the file</a></div></div>`)}
       </div>
     </div>
   </form>
